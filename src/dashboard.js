@@ -2800,6 +2800,7 @@
       '  <div class="panel hud-thin" id="panelStyle">' +
       '    <h3>外观风格 / STYLE <span class="tiny faint" id="styleNow"></span></h3>' +
       '    <div class="style-grid" id="styleRows"></div>' +
+      '    <div id="styleHour"></div>' +
       '    <div class="set-hint" style="margin-top:7px">风格决定材质（圆角、铬条、阴影、字体），昼夜只决定颜色。两者互不干涉，随时可切；调色台里钉住的颜色仍按昼/夜分别保存。</div>' +
       '  </div>' +
       '  <div class="panel hud-thin" id="panelPalette">' +
@@ -2946,6 +2947,15 @@
       }
       renderPalette();
       renderStyleRows();
+      const hour = $('#styleHour', root);
+      if (hour) {
+        hour.appendChild(switchRow('夜间配色', '同一材质下的昼夜两套餐色；也可用左下角的「昼 / 夜」按钮',
+          NeonTheme ? NeonTheme.themeOf(S.state.settings) === 'ink' : st.theme === 'ink', (v) => {
+            API.op({ type: 'settings:update', patch: { theme: v ? 'ink' : 'paper' } });
+            toast(v ? '夜间主题 // NIGHT' : '白昼主题 // DAY');
+            renderStyleRows();
+          }));
+      }
       const toggles = $('#panelToggles', root);
       const iface = $('#panelInterface', root);
       if (iface) {

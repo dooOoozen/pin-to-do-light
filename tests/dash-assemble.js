@@ -43,9 +43,13 @@
       var sr = R(s), vr = R(s.querySelector('.v'));
       if (Math.abs((sr.left + sr.right) / 2 - (vr.left + vr.right) / 2) > 3) off++;
     });
+    var blk = R(q('.pd-stats'));
+    var sb = R(q('#modStats > .mod-body'));
     note('statTiles=' + qa('.pd-stats .stat').length + ' offCentre=' + off +
       ' vFont=' + Math.round(parseFloat(getComputedStyle(q('.pd-stats .stat .v')).fontSize)) +
-      ' statsH=' + Math.round(R(q('.pd-stats')).height));
+      ' statsH=' + Math.round(blk.height) + ' bodyH=' + Math.round(sb.height) +
+      ' gapTop=' + Math.round(blk.top - sb.top) + ' gapBottom=' + Math.round(sb.bottom - blk.bottom) +
+      ' vCentred=' + (Math.abs((blk.top - sb.top) - (sb.bottom - blk.bottom)) < 4));
     var ring = R(q('.today-ring'));
     var b = R(q('#modToday .mod-body'));
     note('ring=' + Math.round(ring.width) + 'x' + Math.round(ring.height) +
