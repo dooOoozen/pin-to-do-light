@@ -1,0 +1,51 @@
+[package]
+name = "pin-tauri"
+version = "0.1.0"
+description = "Tauri 2 port of the pin-to-do desktop card layer"
+edition = "2021"
+rust-version = "1.77.2"
+# edition 2021 keeps a plain `extern "system"` block valid; 2024 would require
+# `unsafe extern` around the GetCursorPos declaration in src/lib.rs
+
+[lib]
+name = "pin_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# tray-icon is needed for the always-on desktop layer to survive the dashboard
+# window closing; image-png only feeds include_image! at compile time (it decodes
+# the PNG into raw RGBA in the binary, so it costs no runtime bytes beyond the
+# pixels themselves).
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Every one of these costs installer bytes, which is the entire point of the port,
+# so each is justified individually:
+#   global-shortcut -> Ctrl+Alt+T quick add
+#   autostart       -> launch at login
+#   notification    -> due-task reminders
+#   single-instance -> the layer must not stack up
+# Import deliberately does NOT take tauri-plugin-dialog: the renderer already has a
+# working <input type=file> path, and shipping a native file picker for it would
+# cost bytes for nothing.
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+
+# No `regex` crate: the foreground-window classifier is a set of exact class and
+# process names plus two dotted prefixes, so plain string matching covers it and
+# regex would have added hundreds of KB to save three lines.
+# No `windows` / `winapi` crate either: the four user32/kernel32 calls used in
+# src/win32.rs are declared by hand.
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

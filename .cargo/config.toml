@@ -1,0 +1,10 @@
+# Statically link the MSVC CRT. Without this the built exe needs the Visual C++
+# redistributable installed on the target machine, and the usual fix (bundling
+# vc_redist into the installer) adds ~25 MB -- which would blow the size budget
+# all by itself.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[build]
+# Keep build output on the same volume as the project.
+incremental = true

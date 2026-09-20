@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DASHBOARD 1971 · 任务终端</title>
+  <link rel="stylesheet" href="theme.css" />
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body class="dash">
+  <div class="paper-grid" aria-hidden="true"></div>
+  <div class="paper-age" aria-hidden="true"></div>
+
+  <div class="app">
+    <aside class="side" id="side">
+      <div class="brand">
+        <div class="brand-mark">▣</div>
+        <div class="brand-text">
+          <h1 class="chrome-text">DASHBOARD <b>1971</b></h1>
+          <div class="tiny faint">TASK TERMINAL // 任务终端</div>
+        </div>
+      </div>
+
+      <div class="side-scroll">
+        <div class="quick-add">
+          <div class="qa-row">
+            <input class="input" id="qaInput" placeholder="明天五点吃火锅 -日常" autocomplete="off" />
+            <button class="qa-btn" id="qaBtn" title="识别并创建（Enter）">＋</button>
+          </div>
+          <div class="qa-preview tiny" id="qaPreview">用一句话登记：明天五点吃火锅 -日常</div>
+        </div>
+
+        <div class="side-sec">
+          <div class="side-sec-head"><span class="tiny faint">VIEWS / 视图</span></div>
+          <nav class="nav" id="navFilters"></nav>
+        </div>
+
+        <div class="side-groups">
+          <div class="side-sec-head">
+            <span class="tiny faint">DECKS / 分组</span>
+            <button class="icon-btn" id="btnAddGroup" title="新建分组">＋</button>
+          </div>
+          <ul class="group-list" id="groupList"></ul>
+        </div>
+      </div>
+
+      <div class="side-meter hud-thin" id="sideMeter"></div>
+
+      <div class="side-foot">
+        <button class="btn ghost sm" id="btnOverlay" title="显示 / 隐藏桌面卡片层">卡片层</button>
+        <button class="btn ghost sm" id="btnSettings" title="设置">设置</button>
+        <button class="btn ghost sm" id="btnTheme" title="切换明暗主题">夜</button>
+      </div>
+
+      <div class="side-resizer" id="sideResizer" title="拖动调整侧栏宽度 · 双击复位"></div>
+    </aside>
+
+    <main class="main">
+      <header class="titlebar" data-tauri-drag-region>
+        <div class="tb-left" data-tauri-drag-region>
+          <button class="icon-btn" id="btnSide" title="收起 / 展开左侧导航栏">⟨</button>
+          <span class="tb-dot" id="tbDot"></span>
+          <span class="mono" id="viewTitle">全部任务</span>
+          <span class="tiny faint" id="viewSub"></span>
+        </div>
+        <div class="tb-actions">
+          <button class="win-dot dot-min" id="btnMin" title="最小化">–</button>
+          <button class="win-dot dot-max" id="btnMax" title="最大化 / 还原">▢</button>
+          <button class="win-dot dot-close" id="btnClose" title="关闭">✕</button>
+        </div>
+      </header>
+
+      <div class="ruler-bar" aria-hidden="true">
+        <div class="ruler-ticks"></div>
+        <div class="ruler-labels" id="rulerLabels"></div>
+      </div>
+
+      <!-- ============================ 仪表盘 ============================
+           One grid of modules. The title bar of each is the handle: drag it onto
+           another module to swap places, and use the ▭ button to change how many
+           of the six columns it claims. Order and spans live in settings.dashLayout. -->
+      <section class="page u-hidden" id="pageDash">
+        <div class="dash-grid" id="dashGrid">
+          <section class="mod hud reticle" id="modClock" data-mod="clock">
+            <div class="hud-head mod-head">
+              <span class="idx-mark plain">钟</span><span>CLOCK / 时钟</span>
+              <span class="spacer"></span><span class="mod-grip" aria-hidden="true">⠿</span>
+              <button class="mod-span" type="button" title="调整占宽">▭</button>
+            </div>
+            <div class="mod-body mod-clock-body">
+              <div class="pd-clock-time num" id="clockTime">--:--</div>
+              <div class="pd-clock-date" id="clockDate">—</div>
+              <div class="pd-clock-week tiny faint" id="clockWeek"></div>
+            </div>
+          </section>
+
+          <section class="mod hud" id="modStats" data-mod="stats">
+            <div class="hud-head mod-head">
+              <span class="idx-mark plain">统</span><span>STATS / 统计</span>
+              <span class="spacer"></span><span class="mod-grip" aria-hidden="true">⠿</span>
+              <button class="mod-span" type="button" title="调整占宽">▭</button>
+            </div>
+            <div class="mod-body"><div class="pd-stats" id="dashStats"></div></div>
+          </section>
+
+          <section class="mod hud" id="modPomo" data-mod="pomo">
+            <div class="hud-head mod-head">
+              <span class="idx-mark plain">番</span><span>POMODORO / 番茄钟</span>
+              <span class="spacer"></span><span class="mono faint" id="pomoCount"></span>
+              <span class="mod-grip" aria-hidden="true">⠿</span>
+              <button class="mod-span" type="button" title="调整占宽">▭</button>
+            </div>
+            <div class="mod-body mod-pomo-body"></div>
+          </section>
+
+          <section class="mod hud" id="modToday" data-mod="today">
+            <div class="hud-head mod-head">
+              <span class="idx-mark plain">今</span><span>TODAY / 今日概览</span>
+              <span class="spacer"></span><span class="mono faint" id="todayTotal"></span>
+              <span class="mod-grip" aria-hidden="true">⠿</span>
+              <button class="mod-span" type="button" title="调整占宽">▭</button>
+            </div>
+            <div class="mod-body mod-today-body"></div>
+          </section>
+
+          <section class="mod hud" id="modMemo" data-mod="memo">
+            <div class="hud-head mod-head">
+              <span class="idx-mark plain">记</span><span>MEMO / 备忘录</span>
+              <span class="spacer"></span><span class="mono faint" id="memoN"></span>
+              <span class="mod-grip" aria-hidden="true">⠿</span>
+              <button class="mod-span" type="button" title="调整占宽">▭</button>
+            </div>
+            <div class="mod-body mod-memo-body"></div>
+          </section>
+
+          <section class="mod hud" id="modHeat" data-mod="heat">
+            <div class="hud-head mod-head">
+              <span class="idx-mark plain">年</span><span class="tiny faint" id="heatLabel"></span>
+              <span class="spacer"></span><span class="mod-grip" aria-hidden="true">⠿</span>
+              <button class="mod-span" type="button" title="调整占宽">▭</button>
+            </div>
+            <div class="mod-body heat-body" id="heatBody"></div>
+          </section>
+
+          <section class="mod hud" id="modMini" data-mod="mini">
+            <div class="hud-head mod-head">
+              <span class="idx-mark plain">列</span><span>今日清单 / TODAY'S LIST</span>
+              <span class="spacer"></span>
+              <select class="select select-sm" id="miniGroup"></select>
+              <span class="mod-grip" aria-hidden="true">⠿</span>
+              <button class="mod-span" type="button" title="调整占宽">▭</button>
+            </div>
+            <div class="mod-body mini-list" id="miniList"></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================ 任务页 ============================ -->
+      <section class="page" id="pageTasks">
+        <section class="composer hud reticle">
+          <div class="hud-head">
+            <span class="idx-mark plain">NEW</span>
+            <span>ENTRY FORM / 登记新任务</span>
+          </div>
+          <div class="composer-body">
+            <div class="composer-row1">
+              <input class="input" id="newTitle" placeholder="要做什么…（Enter 提交）" autocomplete="off" />
+              <span class="input-key">N</span>
+            </div>
+            <div class="composer-row2" id="composerExtra">
+              <select class="select" id="newGroup"></select>
+              <div class="plan-anchor">
+                <button class="btn ghost sm plan-btn" id="planBtn" type="button">无计划</button>
+                <div class="plan-pop u-hidden" id="planPop"><div id="planHost"></div></div>
+              </div>
+              <select class="select" id="newPrio"></select>
+              <button class="btn primary" id="newAdd">登记 ADD</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="list-wrap hud">
+          <div class="hud-head">
+            <span class="idx-mark plain">▤</span>
+            <span>LEDGER / 任务台账</span>
+            <button class="icon-btn tb-search" id="btnSearch" type="button" title="搜索任务 / 备注 / 标签（/）">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6.8" cy="6.8" r="4.3" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M10.2 10.2 L14.2 14.2" fill="none" stroke="currentColor" stroke-width="1.9" /></svg>
+            </button>
+            <select class="select select-sm" id="prioFilter"></select>
+            <select class="select select-sm" id="sortSel"></select>
+            <span class="spacer"></span>
+            <span class="mono faint" id="countLabel"></span>
+          </div>
+          <div class="search-row u-hidden" id="searchRow">
+            <input class="input search" id="search" placeholder="搜索任务 / 备注 / 标签…" autocomplete="off" />
+            <button class="btn ghost sm" id="btnSearchClear" type="button">清除</button>
+          </div>
+  <section class="list" id="list"></section>
+  </section>
+
+  <section class="view-panel hud u-hidden" id="viewPanel"></section>
+  </section>
+  </main>
+  </div>
+
+  <div class="modal-root" id="modalRoot"></div>
+  <div class="toast-root" id="toastRoot"></div>
+
+  <div class="paper-grain" aria-hidden="true"></div>
+  <div class="print-noise" aria-hidden="true"></div>
+
+  <script src="shared/lunar.js"></script>
+  <script src="shared/data.js"></script>
+    <script src="theme-apply.js"></script>
+    <script src="modal-drag.js"></script>
+  <script src="shared/nlp.js"></script>
+  <script src="bridge.js"></script>
+  <script src="planfield.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

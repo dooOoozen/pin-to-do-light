@@ -1,0 +1,579 @@
+/* ==========================================================================
+   DASHBOARD 1971 — cassette futurism / retro analog terminal print
+   Cream parchment, fine graph grid, 1px ink hairlines, flat fills,
+   brick red + forest green + slate blue accents. No radius, no glow,
+   no blur, no gradients. Monospace only.
+   ========================================================================== */
+
+:root {
+  --paper:      #ede5d3;
+  --paper-hi:   #f7f0e1;
+  --paper-lo:   #e5dbc3;
+  --paper-dim:  #dacdb1;
+  --ink:        #14120d;
+  --ink-2:      #4b4536;
+  --ink-3:      #7d735d;
+  --rule:       color-mix(in srgb, var(--ink) 16%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 38%, transparent);
+  /* the graph grid and the stacked-print shadow are the two places the ink is used at
+     partial alpha; as variables so the dark theme can flip them rather than carry a
+     second copy of every rule */
+  --grid-line:  color-mix(in srgb, var(--ink) 10%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 18%, transparent);
+  /* layered ambient elevation: a tight contact shadow plus two wide soft ones, no
+     offset — the panel reads as lifted off the desk rather than doubled. */
+  --pop-shadow: 0 1px 1px rgba(20, 18, 13, .05), 0 6px 16px rgba(20, 18, 13, .10), 0 22px 44px rgba(20, 18, 13, .12);
+  --pop-shadow-sm: 0 1px 2px rgba(20, 18, 13, .08), 0 4px 10px rgba(20, 18, 13, .12);
+  --ink-glow:   color-mix(in srgb, var(--ink) 90%, transparent);
+  --hit-line:   color-mix(in srgb, var(--ink) 22%, transparent);
+  --wm-ink:     color-mix(in srgb, var(--ink) 13%, transparent);
+  --hatch-line: color-mix(in srgb, var(--ink) 5%, transparent);
+  /* Surfaces that the colour lab can retune on their own: the day-group plates in the
+     ledger, the module plate on the dashboard, and the rule on the memo pad. Defaults
+     are mixed from the inks above so they follow a palette change until you pin them. */
+  --plate-day:     color-mix(in srgb, var(--ink) 9%, var(--paper));
+  --plate-today:   color-mix(in srgb, var(--brick) 22%, var(--paper));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 16%, var(--paper));
+  --plate-mod:     var(--paper);
+  --memo-rule:     color-mix(in srgb, var(--ink) 16%, transparent);
+
+  --brick:      #8d3a27;
+  --brick-ink:  #f5ecda;
+  --forest:     #2e4a33;
+  --forest-ink: #edeadb;
+  --slate:      #47597c;
+  --slate-ink:  #eeecdf;
+  --khaki:      #8a6a1f;
+  --teal:       #255c58;
+  --plum:       #6b3550;
+  --ochre:      #a8621f;
+  --sage:       #6aa690;
+  --vermillion: #df4c28;
+  --honey:      #eba93a;
+  --cream:      #f9efde;
+  /* cream is used two ways — as light type on a dark fill, and as a raised paper
+     surface. Only the second one flips in the night palette, so they are separate
+     tokens rather than one variable doing both jobs. */
+  --surface-hi: var(--cream);
+  /* two more light-only surfaces that were hardcoded: the entry form's title strip
+     and the focus tint on a field. Both would stay cream on a dark ground. */
+  --head-hi: #f2e6cf;
+  --field-focus: #fdf8ea;
+
+  --font-mono: "Cascadia Mono", "Consolas", "Courier New", ui-monospace, monospace;
+
+  --cs: 1;                 /* card scale (set by JS) */
+  --ds: 1;                 /* deck scale (set by JS) */
+  --grid-fine: 24px;
+  --grid-bold: 120px;
+
+  --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)' opacity='0.42'/%3E%3C/svg%3E");
+  --tex-speck: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cg fill='%2314120d' fill-opacity='0.45'%3E%3Ccircle cx='6' cy='9' r='0.6'/%3E%3Ccircle cx='28' cy='17' r='0.5'/%3E%3Ccircle cx='47' cy='6' r='0.7'/%3E%3Ccircle cx='63' cy='33' r='0.5'/%3E%3Ccircle cx='81' cy='21' r='0.6'/%3E%3Ccircle cx='14' cy='41' r='0.5'/%3E%3Ccircle cx='36' cy='55' r='0.7'/%3E%3Ccircle cx='58' cy='68' r='0.5'/%3E%3Ccircle cx='77' cy='52' r='0.6'/%3E%3Ccircle cx='22' cy='77' r='0.6'/%3E%3Ccircle cx='45' cy='84' r='0.5'/%3E%3Ccircle cx='68' cy='80' r='0.6'/%3E%3Ccircle cx='85' cy='73' r='0.5'/%3E%3C/g%3E%3C/svg%3E");
+  --tex-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0h9L4.5 6z' fill='%2314120d'/%3E%3C/svg%3E");
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  background-color: var(--paper);
+  -webkit-font-smoothing: auto;
+}
+button, input, select, textarea { font-family: var(--font-mono); color: inherit; }
+h1, h2, h3, h4 { margin: 0; font-weight: 700; }
+::selection { background: var(--ink); color: var(--paper); }
+
+*::-webkit-scrollbar { width: 11px; height: 11px; }
+*::-webkit-scrollbar-track { background: var(--paper-lo); border-left: 1px solid var(--ink); }
+*::-webkit-scrollbar-thumb { background: var(--paper); border: 1px solid var(--ink); }
+*::-webkit-scrollbar-thumb:hover { background: var(--ink); }
+
+/* ---------------------------------------------------------------- paper layers */
+
+.paper-grid {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-color: var(--paper);
+  background-image: repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px var(--grid-fine)), repeating-linear-gradient(0deg, var(--grid-line) 0 1px, transparent 1px var(--grid-fine)), repeating-linear-gradient(90deg, var(--grid-line-bold) 0 1px, transparent 1px var(--grid-bold)), repeating-linear-gradient(0deg, var(--grid-line-bold) 0 1px, transparent 1px var(--grid-bold)), var(--tex-grain);
+  background-size: auto, auto, auto, auto, 220px 220px;
+  background-blend-mode: normal, normal, normal, normal, multiply;
+}
+.paper-age { display: none; }
+.tex {
+  background-color: var(--paper);
+  background-image: var(--tex-grain);
+  background-size: 150px 150px;
+  background-blend-mode: multiply;
+}
+
+/* ---------------------------------------------------------------- type helpers */
+
+.display { text-transform: uppercase; letter-spacing: .18em; font-weight: 700; }
+.chrome-text { color: var(--ink); letter-spacing: .16em; text-transform: uppercase; font-weight: 700; }
+.mono { font-family: var(--font-mono); }
+.muted { color: var(--ink-2); }
+.faint { color: var(--ink-3); }
+.tiny { font-size: 9.5px; letter-spacing: .24em; text-transform: uppercase; }
+.glow { text-shadow: none; }
+.kbd {
+  font-size: 10px; letter-spacing: .1em;
+  border: 1px solid var(--ink); background: var(--paper-hi);
+  padding: 2px 5px; color: var(--ink);
+}
+.num {
+  font-family: var(--font-mono); font-weight: 700;
+  letter-spacing: -.02em;
+}
+.divider {
+  height: 0; border-top: 1px dashed var(--rule-strong);
+  margin: 10px 0;
+}
+.divider.solid { border-top-style: solid; border-top-color: var(--ink); }
+
+/* ---------------------------------------------------------------- panels */
+
+.hud {
+  position: relative;
+  background-color: var(--paper);
+  background-image: var(--tex-grain);
+  background-size: 150px 150px;
+  background-blend-mode: multiply;
+  border: 1px solid var(--ink);
+  clip-path: var(--chamfer);
+}
+.hud-thin {
+  border: 1px solid var(--ink);
+  background-color: var(--paper-lo);
+}
+.hud-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ink);
+  background: var(--paper-lo);
+  font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase;
+}
+.hud-corner::before,
+.hud-corner::after {
+  content: ""; position: absolute; width: 7px; height: 7px;
+  border: 1px solid var(--ink); pointer-events: none;
+}
+.hud-corner::before { top: 4px; left: 4px; border-right: 0; border-bottom: 0; }
+.hud-corner::after { right: 4px; bottom: 4px; border-left: 0; border-top: 0; }
+
+/* registration crosshairs drawn with explicit 1px rules (no scaled SVG) */
+.reticle {
+  background-size: 11px 1px, 1px 11px, 11px 1px, 1px 11px, 11px 1px, 1px 11px, 11px 1px, 1px 11px;
+  background-position:
+    3px 3px, 3px 3px,
+    calc(100% - 14px) 3px, calc(100% - 14px) 3px,
+    3px calc(100% - 14px), 3px calc(100% - 14px),
+    calc(100% - 14px) calc(100% - 14px), calc(100% - 14px) calc(100% - 14px);
+  background-repeat: no-repeat;
+  background-color: transparent;
+}
+.rule { height: 0; border-top: 1px solid var(--ink); }
+.ruler {
+  height: 20px;
+  border-bottom: 1px solid var(--ink);
+  background-color: var(--paper-lo);
+  background-size: 100% 6px, 100% 12px;
+  background-position: 0 bottom, 0 bottom;
+  background-repeat: repeat-x, repeat-x;
+}
+
+/* block-filled progress meter */
+.block-meter { display: flex; gap: 2px; align-items: flex-end; }
+.block-meter i {
+  display: block; width: 6px; height: 11px;
+  border: 1px solid var(--ink); background: transparent;
+}
+.block-meter i.on { background: var(--ink); }
+.block-meter i.brick.on { background: var(--brick); }
+.block-meter i.forest.on { background: var(--forest); }
+.block-meter.sm i { width: 4px; height: 8px; }
+
+/* square status marks + indices + stamps */
+.status-mark { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--ink); }
+.status-mark.on { background: var(--ink); }
+.status-mark.brick { background: var(--brick); }
+.idx-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 3px;
+  border: 1px solid var(--ink);
+  background: var(--ink); color: var(--paper);
+  font-size: 10px; font-weight: 700; letter-spacing: .04em;
+}
+.idx-mark.plain { background: transparent; color: var(--ink); }
+.stamp {
+  display: inline-block;
+  border: 1px solid var(--brick); color: var(--brick);
+  padding: 2px 6px; transform: rotate(-3.5deg);
+  font-size: 9.5px; letter-spacing: .26em; text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5em;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background .12s steps(2), color .12s steps(2);
+}
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn:active { transform: translate(1px, 1px); }
+.btn.primary { background: var(--brick); color: var(--brick-ink); border-color: var(--ink); }
+.btn.primary:hover { background: var(--ink); color: var(--paper); }
+.btn.danger { color: var(--brick); background: var(--paper); }
+.btn.danger:hover { background: var(--brick); color: var(--brick-ink); }
+.btn.ghost { background: transparent; border-style: dashed; color: var(--ink-2); }
+.btn.ghost:hover { background: var(--ink); color: var(--paper); border-style: solid; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+.btn.sm { padding: 5px 8px; font-size: 9.5px; }
+
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--ink);
+  font-size: 12px; line-height: 1;
+  cursor: pointer;
+  transition: background .12s steps(2), color .12s steps(2);
+}
+.icon-btn:hover { background: var(--ink); color: var(--paper); }
+.icon-btn.danger:hover { background: var(--brick); color: var(--brick-ink); }
+
+/* ---------------------------------------------------------------- forms */
+
+.label {
+  display: block; margin-bottom: 5px;
+  font-size: 9.5px; letter-spacing: .24em; text-transform: uppercase; color: var(--ink-2);
+}
+.input, .select, .textarea {
+  width: 100%;
+  font-size: 12.5px; line-height: 1.45;
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: 1px solid var(--ink);
+  padding: 7px 8px;
+  outline: none;
+}
+.textarea { resize: vertical; min-height: 58px; }
+.input::placeholder, .textarea::placeholder { color: var(--ink-3); }
+.input:focus, .select:focus, .textarea:focus {
+  background: var(--field-focus);
+}
+.select {
+  appearance: none;
+  padding-right: 26px;
+  background-image: var(--tex-caret);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 9px 6px;
+}
+.select option { background: var(--paper-hi); color: var(--ink); }
+input[type="datetime-local"] { color-scheme: light; }
+input[type="range"] { accent-color: var(--brick); }
+
+.chk {
+  width: 17px; height: 17px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; line-height: 1;
+  color: transparent;
+  background: var(--paper-hi);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  transition: background .1s steps(2), color .1s steps(2);
+}
+.chk::after { content: "\00D7"; font-weight: 700; }
+.chk:hover { background: var(--paper-dim); }
+.chk.on { background: var(--ink); color: var(--paper); }
+
+.switch {
+  position: relative; width: 34px; height: 16px; flex: none;
+  background: var(--paper-hi); border: 1px solid var(--ink);
+  cursor: pointer;
+}
+.switch i {
+  position: absolute; top: 1px; left: 1px;
+  width: 12px; height: 12px;
+  border: 1px solid var(--ink); background: transparent;
+  transition: left .12s steps(3), background .12s steps(2);
+}
+.switch.on { background: var(--paper-lo); }
+.switch.on i { left: 19px; background: var(--ink); }
+
+/* ---------------------------------------------------------------- badges / chips */
+
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+  padding: 2px 5px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.badge.prio-high { background: var(--brick); color: var(--brick-ink); }
+.badge.prio-med { background: var(--paper-dim); }
+.badge.prio-low { background: var(--paper-hi); }
+.badge.due-overdue { background: var(--brick); color: var(--brick-ink); }
+.badge.due-today { background: var(--ink); color: var(--paper); }
+.badge.due-soon { background: var(--paper-dim); }
+.badge.repeat { border-style: dotted; }
+.badge.group { border-style: dashed; }
+.badge.done { border-style: dashed; color: var(--ink-2); }
+
+.dot { width: 8px; height: 8px; flex: none; border: 1px solid var(--ink); background: var(--brick); }
+
+/* ---------------------------------------------------------------- modal + toast */
+
+.modal-root { position: fixed; inset: 0; z-index: 8000; display: none; }
+.modal-root.open { display: block; }
+.modal-backdrop {
+  position: absolute; inset: 0;
+}
+.modal-panel {
+  position: relative;
+  width: min(540px, 92vw);
+  max-width: 96vw;
+  max-height: 92vh;
+  display: flex; flex-direction: column;
+  margin: 8vh auto 0;
+  background-color: var(--paper);
+  background-image: var(--tex-grain);
+  background-size: 150px 150px;
+  background-blend-mode: multiply;
+  border: 1px solid var(--ink);
+  /* the stacked offset print shadow: two hard edges, no blur, so a lifted panel reads
+     as another sheet on the same desk rather than as a glow */
+  box-shadow: var(--pop-shadow);
+  animation: stamp-in .14s steps(3);
+}
+.modal-panel.wide { width: min(700px, 94vw); }
+.modal-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--ink);
+  background: var(--paper-lo);
+  flex: none;
+}
+.modal-head h2 { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; }
+.modal-title-sub { font-size: 9px; letter-spacing: .24em; text-transform: uppercase; color: var(--ink-3); margin-top: 3px; }
+.modal-body { padding: 12px; overflow: auto; flex: 1 1 auto; min-height: 0; }
+/* The corner grip NeonModalDrag installs. A dialog cannot be dragged outside the
+   window (a webview cannot paint past its own edge), so the other way to get at what
+   it covers is to resize it. */
+.modal-grip {
+  position: absolute; right: 0; bottom: 0; width: 17px; height: 17px;
+  z-index: 4; cursor: nwse-resize; touch-action: none;
+  background: linear-gradient(315deg,
+    var(--rule-strong) 0 2px, transparent 2px 6px,
+    var(--rule-strong) 6px 8px, transparent 8px 12px,
+    var(--rule-strong) 12px 14px, transparent 14px);
+}
+.modal-panel.resizing { user-select: none; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modal-grid .full { grid-column: 1 / -1; }
+.modal-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--ink);
+  background: var(--paper-lo);
+  flex: none;
+}
+.modal-foot .spread { margin-right: auto; }
+
+@keyframes stamp-in {
+  0% { transform: translateY(-6px); }
+  100% { opacity: 1; transform: none; }
+}
+
+.toast-root {
+  position: fixed; left: 50%; bottom: 26px; z-index: 9000;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  pointer-events: none;
+}
+.toast {
+  font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  box-shadow: var(--pop-shadow-sm);
+  padding: 7px 12px;
+  animation: stamp-in .12s steps(3);
+}
+/* One plate for every toast: the severity is a bar on the left, not a different
+   background. A khaki warning card next to an ink-black one read as two different
+   systems rather than as one message that matters more or less. */
+.toast.warn { border-left: 4px solid var(--khaki); }
+.toast.bad { border-left: 4px solid var(--brick); }
+.toast.out { opacity: 0; transition: opacity .25s steps(4); }
+
+/* per-task timer (shared by the ledger and the desk cards) */
+.badge.timer { background: var(--paper-hi); color: var(--ink-2); }
+.badge.timer.running { background: #8d3a27; color: var(--cream); border-color: var(--ink); }
+.icon-btn.on { background: #8d3a27; color: var(--cream); }
+
+.u-hidden { display: none !important; }
+.row { display: flex; align-items: center; gap: 8px; }
+.spacer { flex: 1; }
+.pointer { cursor: pointer; }
+
+.color-row .cbtn { position: relative; }
+.color-row .cbtn.on::after {
+  content: "\2713";
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #f5ecda; font-size: 13px; font-weight: 700;
+  text-shadow: 0 0 3px var(--ink-glow);
+}
+
+/* "next occurrence" marker for repeating tasks */
+.badge.next { border-style: dotted; border-color: var(--teal); color: var(--teal); }
+
+/* ---- plan widget (shared by both windows: composer popover + card modal) ---- */
+/* ---- plan widget: print-styled calendar, time selects and repeat-end ---- */
+.plan-quick { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; }
+.plan-quick button {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .08em;
+  padding: 3px 6px;
+  color: var(--ink); background: var(--paper-hi);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  transition: background .12s steps(2), color .12s steps(2);
+}
+.plan-quick button:hover { background: var(--vermillion); color: var(--cream); border-color: var(--vermillion); }
+.plan-row { display: flex; gap: 5px; margin-bottom: 5px; }
+.plan-row .input, .plan-row .select { flex: 1; min-width: 0; }
+.plan-sum { line-height: 1.5; }
+
+.plan-field {
+  flex: 1 1 auto; min-width: 0;
+  text-align: left;
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .05em;
+  color: var(--ink-2);
+  padding: 6px 7px;
+  background: var(--paper-hi);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  transition: background .12s steps(2), color .12s steps(2);
+}
+.plan-field:hover { background: var(--paper-dim); }
+.plan-field.on { color: var(--ink); font-weight: 700; background: var(--paper); }
+.select-time { flex: 0 0 62px; min-width: 0; font-size: 10.5px; padding: 6px 20px 6px 6px; }
+
+.plan-cal { border: 1px solid var(--ink); background: var(--paper); padding: 6px; margin-bottom: 5px; }
+.cal-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 5px; }
+.cal-head .cal-month { flex: 0 0 auto; min-width: 42px; text-align: center; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; }
+.cal-head button {
+  font-size: 10px; line-height: 1; padding: 2px 6px;
+  background: var(--paper-hi); border: 1px solid var(--ink); color: var(--ink); cursor: pointer;
+}
+.cal-head button:hover { background: var(--ink); color: var(--paper); }
+.cal-head .cal-year {
+  flex: 0 1 76px; min-width: 58px; width: auto;
+  font-size: 9.5px; padding: 2px 17px 2px 5px;
+  background-position: right 5px center;
+  background-size: 8px 5px;
+}
+.cal-head [data-cal="today"] { margin-left: auto; }
+.cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 3px; }
+.cal-dow span { text-align: center; font-size: 8px; color: var(--ink-3); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-day {
+  aspect-ratio: 1; min-width: 0;
+  font-family: var(--font-mono); font-size: 9.5px;
+  background: var(--paper-hi); border: 1px solid var(--rule-strong); color: var(--ink);
+  cursor: pointer;
+  transition: background .1s steps(2), color .1s steps(2);
+}
+.cal-day:hover { background: var(--paper-dim); }
+.cal-day.today { border-color: var(--vermillion); color: var(--vermillion); }
+.cal-day.on { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 700; }
+
+.plan-end { border-top: 1px dashed var(--rule-strong); padding-top: 6px; }
+.plan-end-hint { align-self: center; }
+
+/* ==========================================================================
+   Night mode — a palette swap, not a second stylesheet.
+   Everything in this design already reads paper / ink / rule / grid from the
+   tokens above, so trading paper and ink over restyles both windows at once.
+   The accent fills are the one judgement call: they are used both as text on
+   paper and as chips carrying paper-coloured labels, so on a dark ground they
+   come up in value and their label text goes back down.
+   ========================================================================== */
+
+:root[data-theme="ink"] {
+  --paper:      #1d1b16;
+  --paper-hi:   #262319;
+  --paper-lo:   #17150f;
+  --paper-dim:  #2f2b21;
+  /* near-white on near-black is legible but harsh over a long session, so the night
+     palette keeps a little distance between the two ends and lets the derived
+     rules/grid follow from the softer ink */
+  --ink:        #d9d3c5;
+  --ink-2:      #a9a08b;
+  --ink-3:      #837b69;
+  --rule:       color-mix(in srgb, var(--ink) 14%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 32%, transparent);
+  --grid-line:  color-mix(in srgb, var(--ink) 6%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 11%, transparent);
+  --pop-shadow: 0 1px 1px rgba(0, 0, 0, .30), 0 6px 16px rgba(0, 0, 0, .45), 0 22px 44px rgba(0, 0, 0, .50);
+  --pop-shadow-sm: 0 1px 2px rgba(0, 0, 0, .40), 0 4px 10px rgba(0, 0, 0, .45);
+  --ink-glow:   color-mix(in srgb, var(--ink) 90%, transparent);
+  --hit-line:   color-mix(in srgb, var(--ink) 22%, transparent);
+  --wm-ink:     color-mix(in srgb, var(--ink) 12%, transparent);
+  --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
+
+  --surface-hi: #262319;
+  --head-hi: #2f2b21;
+  --field-focus: #353026;
+  --brick:      #d4694a;
+  --brick-ink:  #1a1610;
+  --forest:     #6fb985;
+  --forest-ink: #10140f;
+  --slate:      #8fa9d8;
+  --slate-ink:  #101319;
+  --khaki:      #d8b45a;
+  --teal:       #5fb8ac;
+  --plum:       #c58bb0;
+  --ochre:      #e08a45;
+
+  --tex-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0h9L4.5 6z' fill='%23ede5d3'/%3E%3C/svg%3E");
+}
+
+/* the grain is multiplied over paper to age it; on a dark ground that only deepens
+   the black, so the texture is taken out rather than inverted */
+:root[data-theme="ink"] .tex,
+:root[data-theme="ink"] .hud,
+:root[data-theme="ink"] .plan-pop,
+:root[data-theme="ink"] .modal-panel { background-image: none; }
+
+/* A modal you can move: the title bar is the handle. It matters most while the colour
+   lab is open, since the panel otherwise sits on top of the surface being tuned. */
+.modal-head.draggable { cursor: grab; touch-action: none; user-select: none; }
+.modal-head.draggable.dragging { cursor: grabbing; }
+.modal-head.draggable::after {
+  content: "9999"; position: absolute; right: 34px; top: 11px;
+  font-size: 9px; letter-spacing: .1em; color: var(--ink-3);
+}
+
+/* ---------------------------------------------------------------- priority row
+   Shared: both the card layer's editor and the panel's task modal build .pbtn. */
+.prio-row { display: flex; gap: 4px; }
+.prio-row .pbtn {
+  flex: 1; padding: 6px 4px; text-align: center;
+  font-size: calc(9.5px * var(--uis, 1)); letter-spacing: .16em; text-transform: uppercase;
+  background: var(--paper-hi); border: 1px solid var(--ink); color: var(--ink);
+  cursor: pointer;
+  transition: background .1s steps(2), color .1s steps(2);
+}
+.prio-row .pbtn:hover { background: var(--paper-dim); }
+.prio-row .pbtn.on { background: var(--ink); color: var(--paper); font-weight: 700; }
