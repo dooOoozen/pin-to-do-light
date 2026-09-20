@@ -2797,6 +2797,11 @@
       '    <div class="divider"></div>' +
       '    <div class="set-row"><div><div class="set-label">卡盒位置</div><div class="set-hint">解锁后可直接拖动桌面卡盒，也可点右侧置中</div></div><button class="btn sm" data-act="dockReset">置中</button></div>' +
       '  </div>' +
+      '  <div class="panel hud-thin" id="panelStyle">' +
+      '    <h3>外观风格 / STYLE <span class="tiny faint" id="styleNow"></span></h3>' +
+      '    <div class="style-grid" id="styleRows"></div>' +
+      '    <div class="set-hint" style="margin-top:7px">风格决定材质（圆角、铬条、阴影、字体），昼夜只决定颜色。两者互不干涉，随时可切；调色台里钉住的颜色仍按昼/夜分别保存。</div>' +
+      '  </div>' +
       '  <div class="panel hud-thin" id="panelPalette">' +
       '    <h3>调色台 / COLOUR LAB <span class="tiny faint" id="palTheme"></span></h3>' +
       '    <div class="row" style="margin-bottom:6px">' +
@@ -2899,7 +2904,48 @@
           });
         });
       }
+      /* one card per material, each showing its own palette, because "diner" or "print"
+         is hard to choose from a name alone */
+      function renderStyleRows() {
+        const host = $('#styleRows', root);
+        const tag = $('#styleNow', root);
+        if (!host || !window.NeonTheme) return;
+        const cur = NeonTheme.styleOf(S.state.settings);
+        if (tag) {
+          tag.textContent = '// ' + (cur === 'diner' ? 'DINER' : 'PRINT') +
+            (NeonTheme.themeOf(S.state.settings) === 'ink' ? ' · NIGHT' : ' · DAY');
+        }
+        host.innerHTML = '';
+        NeonTheme.STYLES.forEach((s) => {
+          const b = doc.createElement('button');
+          b.type = 'button';
+          b.className = 'style-card' + (s.v === cur ? ' on' : '');
+          b.dataset.style = s.v;
+          const strip = doc.createElement('span');
+          strip.className = 'style-sw';
+          s.sw.forEach((c) => {
+            const i = doc.createElement('i');
+            i.style.background = c;
+            strip.appendChild(i);
+          });
+          const name = doc.createElement('b');
+          name.textContent = s.n;
+          const hint = doc.createElement('span');
+          hint.className = 'style-hint';
+          hint.textContent = s.d;
+          b.appendChild(strip);
+          b.appendChild(name);
+          b.appendChild(hint);
+          b.addEventListener('click', () => {
+            API.op({ type: 'settings:update', patch: { style: s.v } })
+              .then(() => renderStyleRows());
+            toast('外观风格：' + s.n + ' // STYLE ' + s.v.toUpperCase());
+          });
+          host.appendChild(b);
+        });
+      }
       renderPalette();
+      renderStyleRows();
       const toggles = $('#panelToggles', root);
       const iface = $('#panelInterface', root);
       if (iface) {

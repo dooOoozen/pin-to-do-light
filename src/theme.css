@@ -577,3 +577,206 @@ input[type="range"] { accent-color: var(--brick); }
 }
 .prio-row .pbtn:hover { background: var(--paper-dim); }
 .prio-row .pbtn.on { background: var(--ink); color: var(--paper); font-weight: 700; }
+
+/* ==========================================================================
+   DINER STYLE — a Googie console, not a terminal printout
+   ==========================================================================
+   A second value on the same token axis: `data-style` picks the material,
+   `data-theme` still picks day or night, and the colour lab still overrides
+   whichever token the user pins. Everything below is either a token swap or a
+   later rule for a class the base sheet already owns, so the 1971 style is
+   untouched unless the style attribute says otherwise.
+
+   What the reference asks for and where it lands:
+   - enamel cream base, muted cherry, mint teal, dusty navy, pale gold  -> palette
+   - rounded console form, thin chrome trim                            -> --r-* + .hud rules
+   - soft gentle shadows, no neon, no bloom                            -> --pop-shadow
+   - atomic starburst motif                                            -> the head's conic burst
+   - tactile vintage controls                                          -> buttons and fields get a
+     bevelled top edge and a pressed state instead of an inverted fill
+   - geometric type for labels, monospace kept for every number, so the
+     ledger's right-aligned columns still line up
+   ========================================================================== */
+
+:root {
+  /* defaults that keep the 1971 look: no radius, no bevel, no trim colour */
+  --r-plate: 0px;
+  --r-ctl: 0px;
+  --r-pill: 0px;
+  --edge: var(--ink);
+  --bevel: none;
+  --font-ui: var(--font-mono);
+  --motif: none;
+}
+
+:root[data-style="diner"] {
+  --paper:      #f4ece0;
+  --paper-hi:   #fbf5ea;
+  --paper-lo:   #e7dcca;
+  --paper-dim:  #d8ccb8;
+  --ink:        #2c3444;
+  --ink-2:      #4d5665;
+  --ink-3:      #77808f;
+  --rule:       color-mix(in srgb, var(--ink) 13%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 30%, transparent);
+  --grid-line:  color-mix(in srgb, var(--ink) 7%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 12%, transparent);
+
+  /* enamel does not show paper grain, and the console is lit from above: the shadow is
+     soft and slightly cool rather than the print build's doubled hard offset */
+  --tex-grain: none;
+  --pop-shadow: 0 2px 3px rgba(28, 34, 46, .07), 0 10px 22px rgba(28, 34, 46, .11), 0 26px 52px rgba(28, 34, 46, .12);
+  --pop-shadow-sm: 0 1px 2px rgba(28, 34, 46, .10), 0 5px 12px rgba(28, 34, 46, .12);
+
+  --brick:      #c74551;
+  --brick-ink:  #fdf3ec;
+  --vermillion: #d9503f;
+  --honey:      #dcae63;
+  --sage:       #6fb5a3;
+  --teal:       #2f7d6f;
+  --forest:     #35516e;
+  --forest-ink: #eaf1f8;
+  --slate:      #44607f;
+  --slate-ink:  #eef4fb;
+  --khaki:      #b8863f;
+  --plum:       #8a5a6b;
+  --ochre:      #c97b4a;
+  --cream:      #fbf5ea;
+  --surface-hi: #fbf5ea;
+  --head-hi:    #efe3d1;
+  --field-focus: #fffbf2;
+
+  --plate-day:     color-mix(in srgb, var(--ink) 7%, var(--paper));
+  --plate-today:   color-mix(in srgb, var(--brick) 16%, var(--paper));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 14%, var(--paper));
+  --memo-rule:     color-mix(in srgb, var(--slate) 26%, transparent);
+
+  --r-plate: 18px;
+  --r-ctl: 11px;
+  --r-pill: 999px;
+  --edge: #b9c3cd;
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, .75);
+  --font-ui: "Century Gothic", "Futura", "Avenir Next", "Trebuchet MS", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* night at the counter: the navy of the booths, with the enamel going smoky rather than
+   black, so the chrome trim still reads as metal */
+:root[data-style="diner"][data-theme="ink"] {
+  --paper:      #1b2028;
+  --paper-hi:   #232a34;
+  --paper-lo:   #141920;
+  --paper-dim:  #2a323d;
+  --ink:        #e9e3d6;
+  --ink-2:      #b3bcc7;
+  --ink-3:      #8f99a6;
+  --edge:       #56626f;
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, .10);
+  --pop-shadow: 0 2px 3px rgba(0, 0, 0, .35), 0 10px 22px rgba(0, 0, 0, .45), 0 26px 52px rgba(0, 0, 0, .50);
+  --pop-shadow-sm: 0 1px 2px rgba(0, 0, 0, .45), 0 5px 12px rgba(0, 0, 0, .45);
+  --brick:      #e06a72;
+  --brick-ink:  #1d1215;
+  --vermillion: #ef7060;
+  --honey:      #e6c68d;
+  --sage:       #8ed3c1;
+  --teal:       #6fc0ae;
+  --forest:     #79a8d6;
+  --slate:      #7fa6cf;
+  --khaki:      #dcb273;
+  --plum:       #c08fa3;
+  --ochre:      #e0996b;
+  --cream:      #232a34;
+  --surface-hi: #2a323d;
+  --head-hi:    #2a323d;
+  --field-focus: #303a47;
+}
+
+/* ---- the console shell ---- */
+
+:root[data-style="diner"] .hud,
+:root[data-style="diner"] .hud-thin {
+  border: 1px solid var(--edge);
+  border-radius: var(--r-plate);
+  box-shadow: var(--bevel);
+}
+:root[data-style="diner"] .hud-head {
+  border-bottom: 1px solid var(--edge);
+  border-radius: var(--r-plate) var(--r-plate) 0 0;
+  font-family: var(--font-ui);
+  letter-spacing: .14em;
+  /* the atomic starburst, tucked behind the right end of the strip */
+  background-image: repeating-conic-gradient(from 0deg at 96% 120%,
+    color-mix(in srgb, var(--honey) 30%, transparent) 0deg 2deg, transparent 2deg 11deg);
+  background-color: var(--paper-lo);
+}
+:root[data-style="diner"] .idx-mark {
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--slate);
+  color: var(--slate-ink);
+  font-family: var(--font-ui);
+}
+:root[data-style="diner"] .idx-mark.plain { background: transparent; color: var(--ink); }
+:root[data-style="diner"] .rule,
+:root[data-style="diner"] .divider { border-color: var(--edge); }
+
+/* ---- controls: pressed, not inverted ---- */
+
+:root[data-style="diner"] .btn,
+:root[data-style="diner"] .icon-btn,
+:root[data-style="diner"] .input,
+:root[data-style="diner"] .select,
+:root[data-style="diner"] .kbd,
+:root[data-style="diner"] .stamp {
+  border: 1px solid var(--edge);
+  border-radius: var(--r-ctl);
+  box-shadow: var(--bevel);
+}
+:root[data-style="diner"] .btn { font-family: var(--font-ui); letter-spacing: .1em; }
+:root[data-style="diner"] .btn:hover,
+:root[data-style="diner"] .icon-btn:hover {
+  background: color-mix(in srgb, var(--ink) 12%, var(--paper-hi));
+  color: var(--ink);
+}
+:root[data-style="diner"] .btn.primary {
+  background: var(--brick); color: var(--brick-ink); border-color: color-mix(in srgb, var(--brick) 70%, #000);
+}
+:root[data-style="diner"] .btn.primary:hover {
+  background: color-mix(in srgb, var(--brick) 84%, var(--ink)); color: var(--brick-ink);
+}
+:root[data-style="diner"] .btn:active { transform: translateY(1px); }
+:root[data-style="diner"] .btn.danger { color: var(--brick); background: var(--paper); }
+:root[data-style="diner"] .btn.danger:hover { background: var(--brick); color: var(--brick-ink); }
+
+/* ---- the surfaces the panel and the deck build out of ---- */
+
+:root[data-style="diner"] .modal-panel { border: 1px solid var(--edge); border-radius: 22px; }
+:root[data-style="diner"] .stat,
+:root[data-style="diner"] .badge,
+:root[data-style="diner"] .day-head,
+:root[data-style="diner"] .mini-row,
+:root[data-style="diner"] .memo-input,
+:root[data-style="diner"] .pal-swatch,
+:root[data-style="diner"] .mod-span,
+:root[data-style="diner"] .cal-day { border-radius: var(--r-ctl); }
+:root[data-style="diner"] .badge { border-radius: var(--r-pill); }
+:root[data-style="diner"] .stat { border: 1px solid var(--edge); background: var(--paper-hi); }
+:root[data-style="diner"] .todo-card {
+  border: 1px solid var(--edge);
+  border-radius: var(--r-plate);
+  box-shadow: var(--pop-shadow-sm);
+}
+:root[data-style="diner"] .card-wm { font-family: var(--font-ui); }
+
+/* the deck's own chrome: the box on the edge, its fanned sheets, the group chips, the
+   card tools and the toasts — all enamel plates with a chrome rim now */
+:root[data-style="diner"] .deck-sheet,
+:root[data-style="diner"] .gchip,
+:root[data-style="diner"] .toast,
+:root[data-style="diner"] .card-pin,
+:root[data-style="diner"] .card-tools .icon-btn,
+:root[data-style="diner"] .dock .icon-btn { border: 1px solid var(--edge); border-radius: var(--r-ctl); }
+:root[data-style="diner"] .gchip { border-radius: var(--r-pill); }
+:root[data-style="diner"] .chip-swatch,
+:root[data-style="diner"] .card-dot { border: 0; border-radius: 50%; }
+:root[data-style="diner"] .toast { box-shadow: var(--pop-shadow-sm); font-family: var(--font-ui); }
+:root[data-style="diner"] .card-title { font-family: var(--font-ui); letter-spacing: .01em; }

@@ -34,8 +34,11 @@ itself to the edge when idle.
   filter and sort.
 - **Quick add** — one line of Chinese or English natural language: `明天三点 开会 高`
   becomes a titled, scheduled, prioritised task.
-- **Pomodoro, memo, reminders, sound, tray, autostart, dark theme**, and a colour lab that
-  overrides any palette token live and saves it per theme.
+- **Pomodoro, memo, reminders, sound, tray, autostart**, two materials — **印刷 1971** (the
+  terminal sheet: square plates, hard print shadow, paper grain) and **餐厅 DINER** (a Googie
+  console: enamel cream, chrome trim, rounded corners, soft shadow, geometric labels with the
+  numbers still monospaced so the ledger columns line up) — each with its own day and night
+  palette, and a colour lab that overrides any token live and saves it per theme.
 
 Dates carry both solar and lunar labels (`9月20日 · 周日 · 农历八月初十`), and a task can
 repeat on the lunar calendar year by year.
@@ -80,10 +83,15 @@ as hovered.
 
 **Only five Win32 areas are reached by hand** (`src-tauri/src/win32.rs`, declared
 `extern "system"` rather than through the `windows` crate): the cursor feed, the region,
-window styles, monitor geometry and the foreground window. The layer is pinned to
-`WS_POPUP | WS_EX_TOOLWINDOW` after creation because `decorations(false)` +
-`skip_taskbar(true)` leave `WS_CAPTION` and `WS_EX_APPWINDOW` on the handle, which shows
-up as a taskbar button and the occasional native title bar.
+window styles, monitor geometry and the foreground window. The layer has to be pinned to
+`WS_POPUP | WS_EX_TOOLWINDOW` after creation *and kept there*: `decorations(false)` +
+`skip_taskbar(true)` leave `WS_CAPTION` and `WS_EX_APPWINDOW` on the handle, something puts
+them back about a second later, and the result is a taskbar button for a desktop ornament
+plus a native blue caption whenever the window region is cleared. The foreground poll
+repairs it and logs the transition.
+
+The material is a second axis on the same token set: `data-style` picks the sheet or the
+console, `data-theme` still picks day or night, and the colour lab keeps saving per theme.
 
 **Visibility policy** lives in the renderer: the user's switch wins, then a fullscreen
 rule (a film or a game owns the screen, so the deck steps out), then the optional

@@ -53,14 +53,31 @@
   var HEX = /^#[0-9a-fA-F]{3,8}$/;
   var applied = [];
 
+  /* two independent axes: the material (data-style) and the hour (data-theme). The
+     palette the colour lab edits is keyed by theme, so a style swap keeps the user's
+     pinned colours for that day/night half. */
+  var STYLES = [
+    { v: 'print', n: '印刷 1971', d: '方角、硬阴影、纸张颗粒、等宽字',
+      sw: ['#ede5d3', '#8d3a27', '#6aa690', '#47597c', '#eba93a'] },
+    { v: 'diner', n: '餐厅 DINER', d: '搪瓷圆角、铬条、柔和阴影、几何字',
+      sw: ['#f4ece0', '#c74551', '#6fb5a3', '#44607f', '#dcae63'] }
+  ];
+
   function themeOf(settings) {
     return settings && settings.theme === 'ink' ? 'ink' : 'paper';
+  }
+
+  function styleOf(settings) {
+    var s = settings && settings.style;
+    for (var i = 0; i < STYLES.length; i++) if (STYLES[i].v === s) return s;
+    return 'print';
   }
 
   function apply(settings) {
     var root = document.documentElement;
     var theme = themeOf(settings);
     root.dataset.theme = theme;
+    root.dataset.style = styleOf(settings);
     applied.forEach(function (k) { root.style.removeProperty(k); });
     applied = [];
     var bag = settings && settings.palette && settings.palette[theme];
@@ -117,8 +134,10 @@
 
   g.NeonTheme = {
     TOKENS: TOKENS,
+    STYLES: STYLES,
     apply: apply,
     themeOf: themeOf,
+    styleOf: styleOf,
     current: current,
     toHex: toHex,
     isHex: function (v) { return HEX.test(v); }

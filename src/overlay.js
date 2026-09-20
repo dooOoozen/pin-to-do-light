@@ -314,6 +314,9 @@
      deck pop while the cursor was still in the middle of the desktop. */
   const WAKE_X = 14;
   const WAKE_Y = 30;
+  /* how far outside the held rects the pointer still counts as "by the deck", used only
+     to decide when a manually recalled deck may arm itself again */
+  const HOVER_NEAR = 120;
   let layerShown = null;
   let lastSummary = '';
 
@@ -1870,7 +1873,8 @@
     if (modalOpen || drag || deckDrag || mode === 'deployed') return;
     const rects = holdRects();
     const inside = rects.some((r) => pointIn({ x: x, y: y }, r));
-    const near = rects.some((r) => pointIn({ x: x, y: y }, inflate(r, APPROACH_Y)));    if (!hoverArmed) {
+    const near = rects.some((r) => pointIn({ x: x, y: y }, inflate(r, HOVER_NEAR)));
+    if (!hoverArmed) {
       /* recalled: stay filed until the pointer is clearly away and the grace passed */
       if (Date.now() < hoverRearmAfter || near) return;
       hoverArmed = true;

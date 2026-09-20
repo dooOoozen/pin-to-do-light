@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicI32, AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicI64, AtomicIsize, Ordering};
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
@@ -135,6 +135,10 @@ static LAYER_H: AtomicI32 = AtomicI32::new(0);
 /// physical pixels per CSS pixel, times 1000 so it fits in an atomic integer
 static SCALE_X1000: AtomicI32 = AtomicI32::new(1000);
 static FORCE_SHOW_UNTIL: AtomicI64 = AtomicI64::new(0);
+/// The layer's HWND, so a background thread can keep an eye on its styles without
+/// asking Tauri for a window handle off the main thread.
+static LAYER_HWND: AtomicIsize = AtomicIsize::new(0);
+static FRAME_DIRTY: AtomicI32 = AtomicI32::new(0);
 /// Region hit testing replaces the WS_EX_TRANSPARENT toggle entirely: the toggle is
 /// what tauri#15947 reports as turning transparent areas black, and it cannot be
 /// combined with a region anyway (MSDN: with WS_EX_TRANSPARENT the shape is ignored).
@@ -215,6 +219,7 @@ fn build_layer(app: &AppHandle) -> Result<(), String> {
     /* before the first frame is composed: the shell reads the ex-styles when the window
        is created, and a taskbar button appears the moment the layer is shown */
     if let Ok(h) = win.hwnd() {
+        LAYER_HWND.store(h.0 as isize, Ordering::Relaxed);
         let (style, ex, cw, ch) = unsafe { win32::strip_frame(h.0 as win32::Hwnd) };
         let _ = boot_note(
             app.clone(),
@@ -223,6 +228,38 @@ fn build_layer(app: &AppHandle) -> Result<(), String> {
     }
     refresh_layer_cache(app);
     Ok(())
+}
+
+/// Something in the toolkit puts WS_CAPTION / WS_EX_APPWINDOW back on the layer after it
+/// is built — measured, not assumed: the strip logs 0x84000000 / 0x000800B8 at creation
+/// and the live window reads 0x14C80000 / 0x00040118 again a few seconds later. Those bits
+/// are what give a desktop widget a taskbar button and let DWM paint a native blue caption
+/// the moment the window region is cleared, so they have to stay off. Idempotent, and it
+/// logs only on the transition so the log also names when the styles got undone.
+fn repair_layer_frame(app: &AppHandle) {
+    let h = LAYER_HWND.load(Ordering::Relaxed);
+    if h == 0 {
+        return;
+    }
+    let hwnd = h as win32::Hwnd;
+    let (style, ex) = unsafe {
+        (
+            win32::GetWindowLongW(hwnd, win32::GWL_STYLE),
+            win32::GetWindowLongW(hwnd, win32::GWL_EXSTYLE),
+        )
+    };
+    if style & win32::FRAME_BITS == 0 && ex & win32::WS_EX_APPWINDOW == 0 {
+        if FRAME_DIRTY.swap(0, Ordering::Relaxed) != 0 {
+            let _ = boot_note(app.clone(), "[layer] frame clean".into());
+        }
+        return;
+    }
+    FRAME_DIRTY.store(1, Ordering::Relaxed);
+    let (ns, nex, _, _) = unsafe { win32::strip_frame(hwnd) };
+    let _ = boot_note(
+        app.clone(),
+        format!("[layer] frame repaired -> 0x{:08X}/0x{:08X}", ns, nex),
+    );
 }
 
 #[tauri::command]
@@ -543,6 +580,9 @@ fn spawn_foreground_watch(app: AppHandle) {
         let mut last = String::new();
         loop {
             std::thread::sleep(std::time::Duration::from_millis(700));
+            /* the frame repair rides along here: this loop already ticks while the layer
+               is up, and a second polling thread is not worth its codegen cost */
+            repair_layer_frame(&app);
             if !FOREGROUND_ON.load(Ordering::Relaxed) {
                 continue;
             }

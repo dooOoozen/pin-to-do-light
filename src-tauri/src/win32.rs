@@ -149,14 +149,14 @@ pub unsafe fn apply_region(hwnd: Hwnd, spans: &[(i32, i32, i32, i32)]) -> bool {
 
 pub const GWL_STYLE: i32 = -16;
 pub const GWL_EXSTYLE: i32 = -20;
-const WS_POPUP: i32 = -0x8000_0000;
-const WS_CAPTION: i32 = 0x00C0_0000;
-const WS_SYSMENU: i32 = 0x0008_0000;
-const WS_THICKFRAME: i32 = 0x0004_0000;
-const WS_MINIMIZEBOX: i32 = 0x0002_0000;
-const WS_MAXIMIZEBOX: i32 = 0x0001_0000;
-const WS_EX_TOOLWINDOW: i32 = 0x0000_0080;
-const WS_EX_APPWINDOW: i32 = 0x0004_0000;
+pub const WS_POPUP: i32 = -0x8000_0000;
+pub const WS_CAPTION: i32 = 0x00C0_0000;
+pub const WS_SYSMENU: i32 = 0x0008_0000;
+pub const WS_THICKFRAME: i32 = 0x0004_0000;
+pub const WS_MINIMIZEBOX: i32 = 0x0002_0000;
+pub const WS_MAXIMIZEBOX: i32 = 0x0001_0000;
+pub const WS_EX_TOOLWINDOW: i32 = 0x0000_0080;
+pub const WS_EX_APPWINDOW: i32 = 0x0004_0000;
 const SWP_NOSIZE: u32 = 0x0001;
 const SWP_NOMOVE: u32 = 0x0002;
 const SWP_NOZORDER: u32 = 0x0004;
@@ -165,11 +165,14 @@ const SWP_FRAMECHANGED: u32 = 0x0020;
 
 #[link(name = "user32")]
 extern "system" {
-    fn GetWindowLongW(hwnd: Hwnd, index: i32) -> i32;
+    pub fn GetWindowLongW(hwnd: Hwnd, index: i32) -> i32;
     fn SetWindowLongW(hwnd: Hwnd, index: i32, value: i32) -> i32;
     fn SetWindowPos(hwnd: Hwnd, after: Hwnd, x: i32, y: i32, w: i32, h: i32, flags: u32) -> i32;
     fn GetClientRect(hwnd: Hwnd, rect: *mut WinRect) -> i32;
 }
+
+/// The bits that must stay off the desktop layer, whatever the toolkit does with them.
+pub const FRAME_BITS: i32 = WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
 
 /// Strip the caption and the shell presence from the desktop layer.
 ///
@@ -179,8 +182,7 @@ extern "system" {
 /// and a blue caption is painted whenever the window region is cleared — which is exactly
 /// what happens as the layer is shown. Returns the style bits and client size afterwards.
 pub unsafe fn strip_frame(hwnd: Hwnd) -> (i32, i32, i32, i32) {
-    let gone = WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-    let style = (GetWindowLongW(hwnd, GWL_STYLE) & !gone) | WS_POPUP;
+    let style = (GetWindowLongW(hwnd, GWL_STYLE) & !FRAME_BITS) | WS_POPUP;
     SetWindowLongW(hwnd, GWL_STYLE, style);
     let ex = (GetWindowLongW(hwnd, GWL_EXSTYLE) & !WS_EX_APPWINDOW) | WS_EX_TOOLWINDOW;
     SetWindowLongW(hwnd, GWL_EXSTYLE, ex);
