@@ -152,6 +152,8 @@ pub const GWL_EXSTYLE: i32 = -20;
 pub const WS_POPUP: i32 = -0x8000_0000;
 pub const WS_CAPTION: i32 = 0x00C0_0000;
 pub const WS_SYSMENU: i32 = 0x0008_0000;
+pub const WS_BORDER: i32 = 0x0080_0000;
+pub const WS_DLGFRAME: i32 = 0x0040_0000;
 pub const WS_THICKFRAME: i32 = 0x0004_0000;
 pub const WS_MINIMIZEBOX: i32 = 0x0002_0000;
 pub const WS_MAXIMIZEBOX: i32 = 0x0001_0000;
@@ -208,6 +210,28 @@ pub unsafe fn strip_frame(hwnd: Hwnd) -> (i32, i32, i32, i32) {
         r.right,
         r.bottom,
     )
+}
+
+/// The panel's share of the same idea: drop only the caption, keep the sizing border
+/// and the taskbar button. DWM will paint a blue title bar for a window that carries
+/// WS_CAPTION even when WM_NCCALCSIZE has already given the client area back, which is
+/// the flash seen as the window is revealed after its first paint. Returns the style and
+/// the client size afterwards so the caller can prove nothing moved.
+pub unsafe fn strip_caption(hwnd: Hwnd) -> (i32, i32, i32) {
+    let style = GetWindowLongW(hwnd, GWL_STYLE) & !(WS_CAPTION | WS_BORDER | WS_DLGFRAME);
+    SetWindowLongW(hwnd, GWL_STYLE, style);
+    SetWindowPos(
+        hwnd,
+        std::ptr::null_mut(),
+        0,
+        0,
+        0,
+        0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+    );
+    let mut r = WinRect { left: 0, top: 0, right: 0, bottom: 0 };
+    GetClientRect(hwnd, &mut r);
+    (GetWindowLongW(hwnd, GWL_STYLE), r.right, r.bottom)
 }
 
 pub fn foreground() -> Hwnd {

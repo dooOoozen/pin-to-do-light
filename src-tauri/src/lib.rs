@@ -293,6 +293,13 @@ fn overlay_show(app: AppHandle, show: bool) -> Result<(), String> {
     };
     // deliberately does not touch CURSOR_ON: overlay visibility and feed lifetime are
     // separate decisions, and coupling them deadlocks the desktop-only rule
+    if show {
+        /* the same race as the panel: the region is what hides the caption, and it is
+           not re-applied until the renderer notices the window came back */
+        if let Ok(h) = win.hwnd() {
+            unsafe { win32::strip_frame(h.0 as win32::Hwnd) };
+        }
+    }
     let _ = if show { win.show() } else { win.hide() };
     Ok(())
 }
@@ -743,6 +750,16 @@ fn panel_ready(app: AppHandle) {
     if let Some(w) = app.get_webview_window(PANEL) {
         let hidden = !w.is_visible().unwrap_or(false);
         if hidden {
+            /* the caption has to be off before the window is composited, not after:
+               DWM paints a blue title bar for any window still carrying WS_CAPTION when
+               it first shows, which is the flash this used to leave behind */
+            if let Ok(h) = w.hwnd() {
+                let (style, cw, ch) = unsafe { win32::strip_caption(h.0 as win32::Hwnd) };
+                let _ = boot_note(
+                    app.clone(),
+                    format!("[panel] caption off 0x{:08X} client={}x{}", style, cw, ch),
+                );
+            }
             let _ = boot_note(app.clone(), "[panel] first paint, revealing".into());
         }
         let _ = w.show();

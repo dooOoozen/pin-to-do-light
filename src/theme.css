@@ -640,9 +640,9 @@ input[type="range"] { accent-color: var(--brick); }
   --forest-ink: #eaf1f8;
   --slate:      #44607f;
   --slate-ink:  #eef4fb;
-  --khaki:      #b8863f;
+  --khaki:      #8a6134;
   --plum:       #8a5a6b;
-  --ochre:      #c97b4a;
+  --ochre:      #a55a26;
   --cream:      #fbf5ea;
   --surface-hi: #fbf5ea;
   --head-hi:    #efe3d1;
@@ -837,7 +837,7 @@ input[type="range"] { accent-color: var(--brick); }
   --forest-ink: #f4f2ec;
   --slate:      #002fa7;
   --slate-ink:  #eaf0fb;
-  --khaki:      #e0c040;
+  --khaki:      #123a6b;
   --plum:       #12141a;
   --ochre:      #d8232a;
   --cream:      #fbfaf7;
@@ -870,6 +870,8 @@ input[type="range"] { accent-color: var(--brick); }
   --brick-ink:  #0b0e14;
   --vermillion: #ff4a4a;
   --honey:      #f2ce55;
+  --khaki:      #f2ce55;
+  --ochre:      #ff8a3d;
   --sage:       #7ea6e8;
   --teal:       #2e63d8;
   --slate:      #2e63d8;
@@ -925,221 +927,276 @@ input[type="range"] { accent-color: var(--brick); }
 /* ==========================================================================
    MATERIAL: 晨雾花园 / GARDEN ANTHOLOGY  (data-style="garden")
    ==========================================================================
-   Mineral pigment on paper, not light on a screen: rose and sage, a deep teal-black
-   ink instead of any near-black, gold hairlines, and the double-line cartouche of a
-   woodblock title page. The outline is the ink, the inner rule is the gold. */
+   The reference is a lit gradient, not a flat print: rose at the top falling to cream
+   at the bottom, acid-mint lattice drawn as glowing line-work over coral silhouettes,
+   iridescent discs. So the paper carries the gradient (it goes into --tex-grain, which
+   every plate already paints, with the tile size switched off for it), the green stops
+   being a muted sage and becomes the mint, and the ink stays a deep teal-black so it
+   holds against the rose. */
 
 :root[data-style="garden"] {
-  --paper:      #f6f1ea;
-  --paper-hi:   #fcf7f1;
-  --paper-lo:   #efe6dc;
-  --paper-dim:  #e3d6cb;
-  --ink:        #214e4d;
-  --ink-2:      #46706c;
-  --ink-3:      #7e9a93;
-  --rule:       color-mix(in srgb, var(--ink) 18%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 38%, transparent);
-  --grid-line:  color-mix(in srgb, var(--ink) 8%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 14%, transparent);
-  --tex-grain: none;
-  --pop-shadow: 0 1px 2px rgba(33, 78, 77, .10), 0 8px 20px rgba(33, 78, 77, .12);
-  --pop-shadow-sm: 0 1px 2px rgba(33, 78, 77, .12), 0 4px 10px rgba(33, 78, 77, .12);
+  --paper:      #fdeee6;
+  --paper-hi:   #fffaf4;
+  --paper-lo:   #fbdcd6;
+  --paper-dim:  #f4c8c6;
+  --ink:        #17342f;
+  --ink-2:      #35665c;
+  --ink-3:      #6d9a8e;
+  --rule:       color-mix(in srgb, var(--ink) 16%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 34%, transparent);
+  --grid-line:  color-mix(in srgb, var(--sage) 22%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--brick) 18%, transparent);
+  --pop-shadow: 0 2px 6px rgba(239, 93, 118, .16), 0 10px 26px rgba(23, 52, 47, .12), 0 26px 54px rgba(23, 52, 47, .10);
+  --pop-shadow-sm: 0 1px 3px rgba(239, 93, 118, .18), 0 6px 14px rgba(23, 52, 47, .12);
   --ink-glow:   color-mix(in srgb, var(--ink) 88%, transparent);
-  --hit-line:   color-mix(in srgb, var(--ink) 26%, transparent);
-  --wm-ink:     color-mix(in srgb, var(--brick) 26%, transparent);
-  --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
+  --hit-line:   color-mix(in srgb, var(--sage) 55%, transparent);
+  --wm-ink:     color-mix(in srgb, var(--brick) 24%, transparent);
+  --hatch-line: color-mix(in srgb, var(--sage) 16%, transparent);
 
-  --brick:      #f37992;   /* rose is the primary, not the warning */
-  --brick-ink:  #fff2f1;
-  --vermillion: #e4607a;
-  --honey:      #e0af62;   /* the gold hairline */
-  --sage:       #5c8578;
-  --teal:       #2e6f62;
-  --forest:     #5c8578;
-  --forest-ink: #f2f7f2;
-  --slate:      #4a7a8c;
-  --slate-ink:  #f0f6f8;
-  --khaki:      #c9a227;
-  --plum:       #c97b7e;
-  --ochre:      #d08a5e;
-  --cream:      #fcf7f1;
-  --surface-hi: #fcf7f1;
-  --head-hi:    #f3e3e0;
-  --field-focus: #fffaf5;
+  --brick:      #ef5d76;   /* coral, strong enough to sit on the rose half */
+  --brick-ink:  #fff3f1;
+  --vermillion: #d92b3a;
+  --honey:      #f5c469;
+  --sage:       #58d99a;   /* the acid mint of the lattice */
+  --teal:       #17a06f;
+  --forest:     #2fbf8f;
+  --forest-ink: #06251c;
+  --slate:      #3f8f9c;
+  --slate-ink:  #f0fbff;
+  --khaki:      #2f8f79;
+  --plum:       #e0607f;
+  --ochre:      #b05e2f;
+  --cream:      #fffaf4;
+  --surface-hi: #fffaf4;
+  --head-hi:    #fbdcd6;
+  --field-focus: #fffdf9;
 
-  --plate-day:     #efe6dc;
-  --plate-today:   color-mix(in srgb, var(--brick) 20%, var(--paper));
-  --plate-overdue: color-mix(in srgb, var(--vermillion) 26%, var(--paper));
-  --memo-rule:     color-mix(in srgb, var(--brick) 45%, transparent);
+  --plate-day:     color-mix(in srgb, var(--sage) 18%, var(--paper-hi));
+  --plate-today:   color-mix(in srgb, var(--brick) 20%, var(--paper-hi));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 30%, var(--paper-hi));
+  --memo-rule:     color-mix(in srgb, var(--sage) 55%, transparent);
 
-  --edge: #214e4d;
+  --edge: #2f8f79;
   --r-plate: 16px; --r-ctl: 10px; --r-pill: 999px; --r-dot: 50%;
   --bevel: none;
   --font-ui: Georgia, "Noto Serif SC", "Songti SC", SimSun, serif;
   --font-display: Georgia, "Noto Serif SC", "Songti SC", SimSun, serif;
 }
 
+/* the same garden after dark: the gradient becomes a lantern, mint keeps the line work */
 :root[data-style="garden"][data-theme="ink"] {
-  --paper:      #12211f;
-  --paper-hi:   #1a2c29;
-  --paper-lo:   #0d1817;
-  --paper-dim:  #233935;
-  --ink:        #ede4d8;
-  --ink-2:      #b9c8bf;
-  --ink-3:      #8aa098;
-  --edge:       #7fa79c;
-  --brick:      #f39aad;
-  --brick-ink:  #2a1218;
-  --vermillion: #ef8b9c;
-  --honey:      #e8c079;
-  --sage:       #8fbfa9;
-  --teal:       #7fc4b2;
-  --forest:     #8fbfa9;
-  --plum:       #e0a6a9;
-  --cream:      #1a2c29;
-  --surface-hi: #1a2c29;
-  --head-hi:    #233935;
-  --field-focus: #233935;
+  --paper:      #1a2b2b;
+  --paper-hi:   #23403a;
+  --paper-lo:   #12211f;
+  --paper-dim:  #2c4a42;
+  --ink:        #f0e7da;
+  --ink-2:      #c3d6c9;
+  --ink-3:      #90ac9d;
+  --edge:       #4fbf95;
+  --pop-shadow: 0 2px 6px rgba(0, 0, 0, .4), 0 10px 26px rgba(0, 0, 0, .45), 0 26px 54px rgba(0, 0, 0, .4);
+  --pop-shadow-sm: 0 1px 3px rgba(0, 0, 0, .45), 0 6px 14px rgba(0, 0, 0, .4);
+  --brick:      #ff8ba0;
+  --brick-ink:  #2a0f16;
+  --vermillion: #ff7d84;
+  --honey:      #ffd98a;
+  --sage:       #7ce8b0;
+  --teal:       #6fe3c8;
+  --forest:     #7ce8b0;
+  --slate:      #6fb8c8;
+  --khaki:      #7ce8b0;
+  --plum:       #ffa8bd;
+  --cream:      #23403a;
+  --surface-hi: #23403a;
+  --head-hi:    #2c4a42;
+  --field-focus: #2c4a42;
+  --plate-day:     #23403a;
+  --plate-today:   #34564c;
+  --plate-overdue: #4a2530;
 }
 
-/* the cartouche: an inner gold rule set a few pixels inside the ink outline */
+/* the gradient sky, painted where the grain was */
+:root[data-style="garden"] {
+  --tex-grain: linear-gradient(180deg, #f98ba0 0%, #fbc3ae 34%, #fde8d8 66%, #fffaef 100%);
+}
+:root[data-style="garden"] .hud,
+:root[data-style="garden"] .hud-thin,
+:root[data-style="garden"] .modal-panel,
+:root[data-style="garden"] .plan-pop,
+:root[data-style="garden"] .deck-face,
+:root[data-style="garden"] .deck-sheet,
+:root[data-style="garden"] .todo-card {
+  background-image: var(--tex-grain);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-blend-mode: normal;
+}
+:root[data-style="garden"][data-theme="ink"] .hud,
+:root[data-style="garden"][data-theme="ink"] .hud-thin,
+:root[data-style="garden"][data-theme="ink"] .modal-panel,
+:root[data-style="garden"][data-theme="ink"] .plan-pop,
+:root[data-style="garden"][data-theme="ink"] .deck-face,
+:root[data-style="garden"][data-theme="ink"] .deck-sheet,
+:root[data-style="garden"][data-theme="ink"] .todo-card {
+  background-image: linear-gradient(180deg, #2a4a44 0%, #1d3632 55%, #12211f 100%);
+}
+/* the cartouche: a mint hairline inside the outline, and an iridescent disc in the strip */
 :root[data-style="garden"] .hud,
 :root[data-style="garden"] .modal-panel,
 :root[data-style="garden"] .deck-face,
 :root[data-style="garden"] .todo-card {
-  box-shadow: inset 0 0 0 1px var(--paper), inset 0 0 0 2px color-mix(in srgb, var(--honey) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--paper-hi) 80%, transparent),
+              inset 0 0 0 2px color-mix(in srgb, var(--sage) 60%, transparent);
 }
 :root[data-style="garden"] .hud-head {
-  background-color: var(--head-hi);
+  background-image: radial-gradient(circle at 93% 55%,
+    color-mix(in srgb, var(--khaki) 55%, transparent) 0 6%,
+    color-mix(in srgb, var(--sage) 40%, transparent) 6% 10%, transparent 11%);
+  background-color: transparent;
   letter-spacing: .12em;
-  border-bottom-color: color-mix(in srgb, var(--edge) 55%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--edge) 55%, transparent);
 }
 :root[data-style="garden"] .idx-mark {
   background: var(--brick); color: var(--brick-ink); border-color: transparent;
   border-radius: 4px;
 }
-:root[data-style="garden"] .idx-mark.plain { background: transparent; color: var(--brick); }
-:root[data-style="garden"] .btn { border-color: color-mix(in srgb, var(--edge) 60%, transparent); }
+:root[data-style="garden"] .idx-mark.plain { background: transparent; color: var(--ink); }
+:root[data-style="garden"] .btn { border-color: color-mix(in srgb, var(--edge) 65%, transparent); }
 :root[data-style="garden"] .btn:hover,
 :root[data-style="garden"] .icon-btn:hover {
-  background: color-mix(in srgb, var(--brick) 22%, var(--paper-hi)); color: var(--ink);
+  background: color-mix(in srgb, var(--sage) 30%, var(--paper-hi)); color: var(--ink);
 }
 :root[data-style="garden"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
 :root[data-style="garden"] .reticle { background-image: none; }
 
 /* ==========================================================================
-   MATERIAL: 电蓝海报 / DEEP HOUR  (data-style="p3")
+   MATERIAL: 电蓝海报 / BLUE POSTER  (data-style="p3")
    ==========================================================================
-   Night is this one's native state, so the day palette is the same water lit from
-   above rather than a flipped colour set. Blue carries the structure, so the accent
-   roles the other materials give to red go to cyan, and the only warm thing on screen
-   is time still running — the amber of the Dark Hour. Panels are glass: a hairline rim,
-   a top highlight and a long cool shadow instead of any outline weight. */
+   Not glass and not mist: a screen-printed poster. One saturated electric blue doing
+   the structural work, white and near-black as the only other values, a lime disc for
+   the moon, and halftone where the print build uses paper grain. Flat again — the
+   reference gets its depth from overlapping shapes and hard cuts, not from shadows —
+   so elevation is off and the rules are 2px. */
 
 :root[data-style="p3"] {
-  --paper:      #dce7f5;
-  --paper-hi:   #eef5fc;
-  --paper-lo:   #cbdaee;
-  --paper-dim:  #b8cbe6;
-  --ink:        #0e2242;
-  --ink-2:      #33507a;
-  --ink-3:      #6e88ac;
-  --rule:       color-mix(in srgb, var(--ink) 16%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 34%, transparent);
-  --grid-line:  color-mix(in srgb, var(--ink) 8%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 14%, transparent);
-  --tex-grain: none;
-  --pop-shadow: 0 1px 2px rgba(8, 22, 46, .16), 0 10px 26px rgba(8, 22, 46, .22), 0 30px 60px rgba(8, 22, 46, .18);
-  --pop-shadow-sm: 0 1px 3px rgba(8, 22, 46, .20), 0 6px 14px rgba(8, 22, 46, .18);
-  --ink-glow:   color-mix(in srgb, var(--ink) 90%, transparent);
-  --hit-line:   color-mix(in srgb, var(--ink) 24%, transparent);
-  --wm-ink:     color-mix(in srgb, var(--slate) 30%, transparent);
-  --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
+  --paper:      #eaf3ff;
+  --paper-hi:   #ffffff;
+  --paper-lo:   #d2e5fb;
+  --paper-dim:  #b6d5f6;
+  --ink:        #06121f;
+  --ink-2:      #12395e;
+  --ink-3:      #4c6f92;
+  --rule:       color-mix(in srgb, var(--ink) 22%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 48%, transparent);
+  --grid-line:  color-mix(in srgb, var(--brick) 14%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--brick) 26%, transparent);
+  --pop-shadow: none;
+  --pop-shadow-sm: none;
+  --ink-glow:   color-mix(in srgb, var(--ink) 94%, transparent);
+  --hit-line:   color-mix(in srgb, var(--brick) 45%, transparent);
+  --wm-ink:     color-mix(in srgb, var(--brick) 22%, transparent);
+  --hatch-line: color-mix(in srgb, var(--brick) 10%, transparent);
 
-  --brick:      #2e7fd4;   /* the blue is the structure, not the warning */
-  --brick-ink:  #f2f8ff;
-  --vermillion: #ff6a5e;
-  --honey:      #e0b24a;   /* Dark Hour amber: reserved for running time */
-  --sage:       #58c8de;
-  --teal:       #46b6c8;
-  --forest:     #2e7fd4;
-  --forest-ink: #08162e;
-  --slate:      #6fa8dc;
-  --slate-ink:  #0b1e3e;
-  --khaki:      #e0b24a;
-  --plum:       #8e7cc3;
-  --ochre:      #e0913f;
-  --cream:      #eef5fc;
-  --surface-hi: #eef5fc;
-  --head-hi:    #cbdaee;
-  --field-focus: #f7fbff;
+  --brick:      #0a8cff;   /* the field colour, and the primary */
+  --brick-ink:  #ffffff;
+  --vermillion: #d8341a;
+  --honey:      #c9f24e;   /* the lime moon */
+  --sage:       #35c8ff;
+  --teal:       #0a8cff;
+  --forest:     #0a8cff;
+  --forest-ink: #ffffff;
+  --slate:      #1e5fa8;
+  --slate-ink:  #eaf6ff;
+  --khaki:      #1e5fa8;
+  --plum:       #6a5cff;
+  --ochre:      #b3410a;
+  --cream:      #ffffff;
+  --surface-hi: #ffffff;
+  --head-hi:    #0a8cff;
+  --field-focus: #ffffff;
 
-  --plate-day:     color-mix(in srgb, var(--slate) 18%, var(--paper));
-  --plate-today:   color-mix(in srgb, var(--brick) 24%, var(--paper));
-  --plate-overdue: color-mix(in srgb, var(--vermillion) 20%, var(--paper));
-  --memo-rule:     color-mix(in srgb, var(--slate) 45%, transparent);
+  --plate-day:     #d2e5fb;
+  --plate-today:   color-mix(in srgb, var(--brick) 26%, var(--paper));
+  --plate-overdue: #06121f;
+  --memo-rule:     color-mix(in srgb, var(--brick) 40%, transparent);
 
-  --edge: #7fb6e8;
-  --r-plate: 18px; --r-ctl: 12px; --r-pill: 999px; --r-dot: 50%;
-  --bevel: inset 0 1px 0 rgba(255, 255, 255, .55);
-  --font-ui: "Segoe UI", "Segoe UI Variable Text", Tahoma, sans-serif;
-  --font-display: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --edge: #06121f;
+  --r-plate: 3px; --r-ctl: 2px; --r-pill: 2px; --r-dot: 50%;
+  --bevel: none;
+  --font-ui: "Helvetica Neue", Helvetica, Arial, "Segoe UI", sans-serif;
+  --font-display: "Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-/* the deep hour itself */
+/* the same poster at night: the blue becomes the field, black stays the rule, and the
+   accents invert in role — lime and white carry what blue carried by day */
 :root[data-style="p3"][data-theme="ink"] {
-  --paper:      #0b1e3e;
-  --paper-hi:   #12294e;
-  --paper-lo:   #071731;
-  --paper-dim:  #1a3459;
-  --ink:        #eaf3ff;
-  --ink-2:      #a9c6e8;
-  --ink-3:      #7a9bc4;
-  --edge:       #3e8fd6;
-  --bevel: inset 0 1px 0 rgba(255, 255, 255, .14);
-  --pop-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 10px 26px rgba(0, 0, 0, .55), 0 30px 60px rgba(0, 0, 0, .45);
-  --pop-shadow-sm: 0 1px 3px rgba(0, 0, 0, .5), 0 6px 14px rgba(0, 0, 0, .45);
-  --brick:      #4f9ee8;
-  --brick-ink:  #04101f;
-  --vermillion: #ff7a6e;
-  --honey:      #f0c46a;
-  --sage:       #79dcf0;
-  --teal:       #5fcfe0;
-  --forest:     #4f9ee8;
-  --cream:      #12294e;
-  --surface-hi: #12294e;
-  --head-hi:    #1a3459;
-  --field-focus: #1a3459;
+  /* the field drops to deep blue: #0a8cff is too light a ground for either black or
+     white type to clear 4.5:1, and the reference's dark panels are near-black with the
+     electric blue kept for the strips, the rules and the moon */
+  --paper:      #062a55;
+  --paper-hi:   #0a4a94;
+  --paper-lo:   #031b39;
+  --paper-dim:  #0d5aa8;
+  --ink:        #f2f9ff;
+  --ink-2:      #bcdcf7;
+  --ink-3:      #8fb6dd;
+  --edge:       #04101c;
+  --brick:      #c9f24e;
+  --brick-ink:  #04101c;
+  --ochre:      #ff9a55;
+  --vermillion: #ff8763;
+  --honey:      #c9f24e;
+  --sage:       #35c8ff;
+  --teal:       #7cc4ff;
+  --forest:     #c9f24e;
+  --slate:      #0a8cff;
+  --slate-ink:  #04101c;
+  --khaki:      #9fd0ff;
+  --plum:       #b9c6ff;
+  --cream:      #0a4a94;
+  --surface-hi: #0a4a94;
+  --head-hi:    #0a8cff;
+  --field-focus: #0d5aa8;
+  --plate-day:     #0a4a94;
+  --plate-today:   #0d5aa8;
+  --plate-overdue: #04101c;
 }
 
+/* the screen-print: a dot where the grain was */
+:root[data-style="p3"] {
+  --tex-grain: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ink) 15%, transparent) 1px, transparent 1.7px);
+}
 :root[data-style="p3"] .hud,
 :root[data-style="p3"] .hud-thin,
 :root[data-style="p3"] .modal-panel,
+:root[data-style="p3"] .plan-pop,
 :root[data-style="p3"] .deck-face,
+:root[data-style="p3"] .deck-sheet,
 :root[data-style="p3"] .todo-card {
-  border-width: 1px;
-  box-shadow: var(--bevel), var(--pop-shadow-sm);
+  background-size: 5px 5px;
+  background-blend-mode: normal;
+  border-width: 2px;
 }
 :root[data-style="p3"] .hud-head {
-  /* the diagonal: a light streak cut across the strip, the way the menus wipe by */
+  /* a solid blue block with a hard white shard and a lime cut across it */
   background-image: linear-gradient(112deg,
-    transparent 0 34%, color-mix(in srgb, var(--sage) 26%, transparent) 34% 38%,
-    transparent 38% 62%, color-mix(in srgb, var(--slate) 22%, transparent) 62% 64%, transparent 64%);
+    transparent 0 46%, color-mix(in srgb, var(--paper-hi) 85%, transparent) 46% 49%,
+    transparent 49% 71%, color-mix(in srgb, var(--honey) 70%, transparent) 71% 73%, transparent 73%);
   background-color: var(--head-hi);
-  letter-spacing: .16em;
-  border-bottom-color: color-mix(in srgb, var(--edge) 70%, transparent);
+  color: var(--brick-ink);
+  border-bottom: 2px solid var(--edge);
+  font-weight: 700;
+  letter-spacing: .1em;
 }
-:root[data-style="p3"] .idx-mark {
-  background: color-mix(in srgb, var(--brick) 85%, var(--ink)); color: var(--brick-ink);
-  border-color: transparent; border-radius: 4px;
-}
-:root[data-style="p3"] .idx-mark.plain { background: transparent; color: var(--sage); }
-:root[data-style="p3"] .btn { letter-spacing: .12em; }
+:root[data-style="p3"] .idx-mark { background: var(--honey); color: var(--ink); border-color: var(--edge); }
+:root[data-style="p3"] .idx-mark.plain { background: transparent; color: var(--brick-ink); }
+:root[data-style="p3"] .mod-head { color: var(--brick-ink); }
+:root[data-style="p3"] .btn { font-weight: 700; letter-spacing: .08em; border-width: 2px; }
 :root[data-style="p3"] .btn:hover,
-:root[data-style="p3"] .icon-btn:hover {
-  background: color-mix(in srgb, var(--brick) 26%, var(--paper-hi)); color: var(--ink);
-}
-:root[data-style="p3"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
+:root[data-style="p3"] .icon-btn:hover { background: var(--brick); color: var(--brick-ink); }
+:root[data-style="p3"] .btn.primary { background: var(--ink); color: var(--paper-hi); border-color: var(--edge); }
+:root[data-style="p3"] .day-head { border-width: 2px; }
+:root[data-style="p3"] .day-head.overdue { color: var(--paper-hi); }
+:root[data-style="p3"] .day-head.overdue b { color: var(--honey); }
 :root[data-style="p3"] .reticle { background-image: none; }
 
 /* ==========================================================================
@@ -1181,9 +1238,9 @@ input[type="range"] { accent-color: var(--brick); }
   --forest-ink: #eefaf5;
   --slate:      #3e5c77;
   --slate-ink:  #eef4fa;
-  --khaki:      #b08430;
+  --khaki:      #8a6420;
   --plum:       #7a5c46;
-  --ochre:      #c9772f;
+  --ochre:      #a85c14;
   --cream:      #f4efe3;
   --surface-hi: #f4efe3;
   --head-hi:    #dcd5c4;

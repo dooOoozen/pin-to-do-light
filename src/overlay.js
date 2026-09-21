@@ -320,7 +320,8 @@
   let layerShown = null;
   let lastSummary = '';
 
-  function setShown(want) {
+  function setShown(want, opts) {
+    opts = opts || {};
     if (layerShown === want) return;
     layerShown = want;
     API.setLayerVisible(want);
@@ -328,25 +329,34 @@
        layer off must not also turn off the only signals that can bring it back */
     API.cursorWatch(S.settings.overlay !== false);
     API.foregroundWatch(S.settings.overlay !== false);
-    if (want) onCommand({ type: 'awake' });
+    if (!want) return;
+    tuckGuardUntil = Date.now() + 900;
+    hoverArmed = true;
+    /* coming back on screen is not the same as being woken up. After a film ends the
+       pointer is wherever it was left, and popping the whole deck open there is the
+       opposite of what the user wanted by hiding it in the first place. */
+    if (opts.wake !== false) onCommand({ type: 'awake' });
   }
 
   /* mirrors applyOverlayVisibility(): the user preference wins, then the desktop-only
      rule, and shell UI in front must never change anything or every taskbar click
      would wake the deck */
+  let hiddenBy = '';
+
   function applyVisibility() {
     if (!S) return;
-    if (S.settings.overlay === false) { setShown(false); return; }
+    if (S.settings.overlay === false) { hiddenBy = 'off'; setShown(false); return; }
     const forced = Date.now() < forceUntil;
     /* a film or a game owns the whole screen. The deck is a desktop ornament and has no
        business being topmost over that, whether or not desktop-only is switched on. */
-    if (foregroundFull && !forced) { setShown(false); return; }
+    if (foregroundFull && !forced) { hiddenBy = 'fullscreen'; setShown(false); return; }
     if (S.settings.desktopOnly === true && !forced) {
       if (foregroundKind === 'shell' || foregroundKind === 'dash') return;
       /* an app on the other monitor is not covering this desktop */
-      if (foregroundKind === 'app' && foregroundOver) { setShown(false); return; }
+      if (foregroundKind === 'app' && foregroundOver) { hiddenBy = 'desktop'; setShown(false); return; }
     }
-    setShown(true);
+    setShown(true, { wake: hiddenBy !== 'fullscreen' });
+    hiddenBy = '';
   }
 
   function syncHost() {
@@ -1464,7 +1474,15 @@
        put a 35px ring of swallowed desktop clicks around every chip at rest, and the
        re-cut on pointerover/transitionrun already follows the hover (verified from
        outside the page with WindowFromPoint and the pixel colour at the grown edge). */
-    if (node === hoveredCard && box) {
+    /* The lift is CSS :hover, and the browser can be saying "hovered" a frame before
+       pointerover reaches us — or while the layer is momentarily click-through, when no
+       pointer event arrives at all. Naming only the tracked card leaves every other chip
+       cut at its grown edge, which is the clipped corner. So in the two modes where a
+       card does lift, every card carries the allowance; the cost is a few pixels of
+       swallowed desktop clicks between chips that are already touching each other. */
+    const lifts = node.classList && node.classList.contains('todo-card') &&
+      (node === hoveredCard || mode === 'overview' || mode === 'deployed');
+    if (lifts && box) {
       pad += Math.ceil(Math.max(box.width, box.height) * 0.05);
     }
     return pad;
