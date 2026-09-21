@@ -70,6 +70,15 @@
   --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)' opacity='0.42'/%3E%3C/svg%3E");
   --tex-speck: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cg fill='%2314120d' fill-opacity='0.45'%3E%3Ccircle cx='6' cy='9' r='0.6'/%3E%3Ccircle cx='28' cy='17' r='0.5'/%3E%3Ccircle cx='47' cy='6' r='0.7'/%3E%3Ccircle cx='63' cy='33' r='0.5'/%3E%3Ccircle cx='81' cy='21' r='0.6'/%3E%3Ccircle cx='14' cy='41' r='0.5'/%3E%3Ccircle cx='36' cy='55' r='0.7'/%3E%3Ccircle cx='58' cy='68' r='0.5'/%3E%3Ccircle cx='77' cy='52' r='0.6'/%3E%3Ccircle cx='22' cy='77' r='0.6'/%3E%3Ccircle cx='45' cy='84' r='0.5'/%3E%3Ccircle cx='68' cy='80' r='0.6'/%3E%3Ccircle cx='85' cy='73' r='0.5'/%3E%3C/g%3E%3C/svg%3E");
   --tex-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0h9L4.5 6z' fill='%2314120d'/%3E%3C/svg%3E");
+  /* Where a material's texture sits. Grain is a tile, so the default repeats it; the
+     size differs per surface only because the desk is far larger than a plate.
+     A material whose --tex-grain is a gradient instead of a tile has to flip all
+     three of these, and it has to be tokens rather than a selector list: the ramp
+     needs to span every surface that paints grain, and the panels a material block
+     can enumerate are fewer than the surfaces that actually exist. */
+  --tex-size: 150px 150px;
+  --tex-size-bg: 220px 220px;
+  --tex-blend: multiply;
 }
 
 * { box-sizing: border-box; }
@@ -96,15 +105,15 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background-color: var(--paper);
   background-image: repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px var(--grid-fine)), repeating-linear-gradient(0deg, var(--grid-line) 0 1px, transparent 1px var(--grid-fine)), repeating-linear-gradient(90deg, var(--grid-line-bold) 0 1px, transparent 1px var(--grid-bold)), repeating-linear-gradient(0deg, var(--grid-line-bold) 0 1px, transparent 1px var(--grid-bold)), var(--tex-grain);
-  background-size: auto, auto, auto, auto, 220px 220px;
-  background-blend-mode: normal, normal, normal, normal, multiply;
+  background-size: auto, auto, auto, auto, var(--tex-size-bg);
+  background-blend-mode: normal, normal, normal, normal, var(--tex-blend);
 }
 .paper-age { display: none; }
 .tex {
   background-color: var(--paper);
   background-image: var(--tex-grain);
-  background-size: 150px 150px;
-  background-blend-mode: multiply;
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
 }
 
 /* ---------------------------------------------------------------- type helpers */
@@ -137,14 +146,20 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
   position: relative;
   background-color: var(--paper);
   background-image: var(--tex-grain);
-  background-size: 150px 150px;
-  background-blend-mode: multiply;
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
   border: 1px solid var(--edge);
   clip-path: var(--chamfer);
 }
 .hud-thin {
   border: 1px solid var(--edge);
   background-color: var(--paper-lo);
+  /* it is a plate like any other, so it carries the material's texture: the settings
+     sections and the sidebar meter are .hud-thin, and a material that paints its
+     surface through --tex-grain would otherwise leave them flat */
+  background-image: var(--tex-grain);
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
 }
 .hud-head {
   display: flex; align-items: center; gap: 8px;
@@ -161,17 +176,11 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
 .hud-corner::before { top: 4px; left: 4px; border-right: 0; border-bottom: 0; }
 .hud-corner::after { right: 4px; bottom: 4px; border-left: 0; border-top: 0; }
 
-/* registration crosshairs drawn with explicit 1px rules (no scaled SVG) */
-.reticle {
-  background-size: 11px 1px, 1px 11px, 11px 1px, 1px 11px, 11px 1px, 1px 11px, 11px 1px, 1px 11px;
-  background-position:
-    3px 3px, 3px 3px,
-    calc(100% - 14px) 3px, calc(100% - 14px) 3px,
-    3px calc(100% - 14px), 3px calc(100% - 14px),
-    calc(100% - 14px) calc(100% - 14px), calc(100% - 14px) calc(100% - 14px);
-  background-repeat: no-repeat;
-  background-color: transparent;
-}
+/* .reticle used to declare eight background-size slots and no background-image of its
+   own. Since every plate that carries it also carries .hud, the effect was to squash the
+   material's texture into an 11x1 sliver and switch tiling off — the module plates and
+   the composer were the two surfaces that never showed a material's surface at all. The
+   registration marks are .hud-corner, which is still here. */
 .rule { height: 0; border-top: 1px solid var(--edge); }
 .ruler {
   height: 20px;
@@ -347,8 +356,8 @@ input[type="range"] { accent-color: var(--brick); }
   margin: 8vh auto 0;
   background-color: var(--paper);
   background-image: var(--tex-grain);
-  background-size: 150px 150px;
-  background-blend-mode: multiply;
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
   border: 1px solid var(--edge);
   /* the stacked offset print shadow: two hard edges, no blur, so a lifted panel reads
      as another sheet on the same desk rather than as a glow */
@@ -912,7 +921,6 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="ikb"] .stat,
 :root[data-style="ikb"] .day-head,
 :root[data-style="ikb"] .mini-row { border-width: 1px; }
-:root[data-style="ikb"] .reticle { background-image: none; }
 
 /* Which type a material actually changes. Both default to the monospace stack, so the
    print build is unaffected; a material that wants a different voice sets one of them.
@@ -925,7 +933,7 @@ input[type="range"] { accent-color: var(--brick); }
 .group-title, .nav-title, .style-card b, .set-label, h3 { font-family: var(--font-ui); }
 
 /* ==========================================================================
-   MATERIAL: 晨雾花园 / GARDEN ANTHOLOGY  (data-style="garden")
+   MATERIAL: 晨雾花园 / DAWN GARDEN  (data-style="garden")
    ==========================================================================
    The reference is a lit gradient, not a flat print: rose at the top falling to cream
    at the bottom, acid-mint lattice drawn as glowing line-work over coral silhouettes,
@@ -1014,30 +1022,59 @@ input[type="range"] { accent-color: var(--brick); }
   --plate-overdue: #4a2530;
 }
 
-/* the gradient sky, painted where the grain was */
+/* The gradient sky replaces the grain tile, so the grain geometry has to travel with
+   it: the ramp spans each surface instead of repeating inside it, and multiply is off
+   or the rose would darken against itself. This is token-driven rather than a selector
+   list because the surfaces that paint grain include the sidebar, the stat tiles and
+   the desk paper — a list of panel classes cannot reach them, and the truncated ramps
+   in those three places were exactly that bug. */
 :root[data-style="garden"] {
   --tex-grain: linear-gradient(180deg, #f98ba0 0%, #fbc3ae 34%, #fde8d8 66%, #fffaef 100%);
+  --tex-size: 100% 100%;
+  --tex-size-bg: 100% 100%;
+  --tex-blend: normal;
 }
-:root[data-style="garden"] .hud,
-:root[data-style="garden"] .hud-thin,
-:root[data-style="garden"] .modal-panel,
-:root[data-style="garden"] .plan-pop,
-:root[data-style="garden"] .deck-face,
-:root[data-style="garden"] .deck-sheet,
-:root[data-style="garden"] .todo-card {
-  background-image: var(--tex-grain);
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  background-blend-mode: normal;
+:root[data-style="garden"][data-theme="ink"] {
+  --tex-grain: linear-gradient(180deg, #2a4a44 0%, #1d3632 55%, #12211f 100%);
 }
+/* The garden ramp is not paper grain, it is how the surface is lit, so the night build's
+   "no grain on the big plates" rule above has to be re-armed for it — that rule is what
+   left the module plates, the ledger and the composer flat at night. */
 :root[data-style="garden"][data-theme="ink"] .hud,
-:root[data-style="garden"][data-theme="ink"] .hud-thin,
-:root[data-style="garden"][data-theme="ink"] .modal-panel,
 :root[data-style="garden"][data-theme="ink"] .plan-pop,
-:root[data-style="garden"][data-theme="ink"] .deck-face,
-:root[data-style="garden"][data-theme="ink"] .deck-sheet,
-:root[data-style="garden"][data-theme="ink"] .todo-card {
-  background-image: linear-gradient(180deg, #2a4a44 0%, #1d3632 55%, #12211f 100%);
+:root[data-style="garden"][data-theme="ink"] .modal-panel {
+  background-image: var(--tex-grain);
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
+}
+/* The strips sit on top of a plate, so the ramp they borrow is a sliver of rose and
+   reads as flat. Each gets its own compressed fall instead, and the title bar has to
+   be named explicitly because it never painted grain at all. */
+:root[data-style="garden"] .hud-head {
+  background-image: linear-gradient(180deg,
+      color-mix(in srgb, var(--brick) 34%, transparent) 0%,
+      color-mix(in srgb, var(--brick) 12%, transparent) 62%,
+      color-mix(in srgb, var(--honey) 16%, transparent) 100%),
+    /* the iridescent disc: a coral core, a mint ring, a honey halo. Khaki and sage alone
+       read as a grey smudge once they sit over the rose half. */
+    radial-gradient(circle at 93% 55%,
+      color-mix(in srgb, var(--brick) 42%, transparent) 0 5%,
+      color-mix(in srgb, var(--sage) 46%, transparent) 5% 8%,
+      color-mix(in srgb, var(--honey) 34%, transparent) 8% 10%, transparent 11%);
+  background-size: 100% 100%, 100% 100%;
+  background-blend-mode: normal, normal;
+  background-color: var(--paper-hi);
+  letter-spacing: .12em;
+  border-bottom: 1px solid color-mix(in srgb, var(--edge) 55%, transparent);
+}
+:root[data-style="garden"] .titlebar {
+  background-image: linear-gradient(180deg,
+      color-mix(in srgb, var(--brick) 38%, var(--paper-hi)) 0%,
+      color-mix(in srgb, var(--brick) 14%, var(--paper-hi)) 58%,
+      color-mix(in srgb, var(--honey) 22%, var(--paper-hi)) 100%);
+}
+:root[data-style="garden"][data-theme="ink"] .titlebar {
+  background-image: linear-gradient(180deg, #34564c 0%, #23403a 62%, #2c4a42 100%);
 }
 /* the cartouche: a mint hairline inside the outline, and an iridescent disc in the strip */
 :root[data-style="garden"] .hud,
@@ -1046,14 +1083,6 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="garden"] .todo-card {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--paper-hi) 80%, transparent),
               inset 0 0 0 2px color-mix(in srgb, var(--sage) 60%, transparent);
-}
-:root[data-style="garden"] .hud-head {
-  background-image: radial-gradient(circle at 93% 55%,
-    color-mix(in srgb, var(--khaki) 55%, transparent) 0 6%,
-    color-mix(in srgb, var(--sage) 40%, transparent) 6% 10%, transparent 11%);
-  background-color: transparent;
-  letter-spacing: .12em;
-  border-bottom: 1px solid color-mix(in srgb, var(--edge) 55%, transparent);
 }
 :root[data-style="garden"] .idx-mark {
   background: var(--brick); color: var(--brick-ink); border-color: transparent;
@@ -1066,10 +1095,9 @@ input[type="range"] { accent-color: var(--brick); }
   background: color-mix(in srgb, var(--sage) 30%, var(--paper-hi)); color: var(--ink);
 }
 :root[data-style="garden"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
-:root[data-style="garden"] .reticle { background-image: none; }
 
 /* ==========================================================================
-   MATERIAL: 电蓝海报 / BLUE POSTER  (data-style="p3")
+   MATERIAL: 电蓝海报 / BLUE SCREEN PRINT  (data-style="p3")
    ==========================================================================
    Not glass and not mist: a screen-printed poster. One saturated electric blue doing
    the structural work, white and near-black as the only other values, a lime disc for
@@ -1161,9 +1189,12 @@ input[type="range"] { accent-color: var(--brick); }
   --plate-overdue: #04101c;
 }
 
-/* the screen-print: a dot where the grain was */
+/* the screen-print: a dot where the grain was, at print frequency */
 :root[data-style="p3"] {
   --tex-grain: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ink) 15%, transparent) 1px, transparent 1.7px);
+  --tex-size: 5px 5px;
+  --tex-size-bg: 5px 5px;
+  --tex-blend: normal;
 }
 :root[data-style="p3"] .hud,
 :root[data-style="p3"] .hud-thin,
@@ -1172,8 +1203,6 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="p3"] .deck-face,
 :root[data-style="p3"] .deck-sheet,
 :root[data-style="p3"] .todo-card {
-  background-size: 5px 5px;
-  background-blend-mode: normal;
   border-width: 2px;
 }
 :root[data-style="p3"] .hud-head {
@@ -1197,7 +1226,6 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="p3"] .day-head { border-width: 2px; }
 :root[data-style="p3"] .day-head.overdue { color: var(--paper-hi); }
 :root[data-style="p3"] .day-head.overdue b { color: var(--honey); }
-:root[data-style="p3"] .reticle { background-image: none; }
 
 /* ==========================================================================
    MATERIAL: 指令台 / RETRO-FUTURE CONSOLE  (data-style="unp")
@@ -1313,4 +1341,3 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="unp"] .btn { letter-spacing: .14em; }
 :root[data-style="unp"] .btn:active { transform: translateY(2px); box-shadow: none; }
 :root[data-style="unp"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
-:root[data-style="unp"] .reticle { background-image: none; }

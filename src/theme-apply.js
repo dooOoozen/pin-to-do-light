@@ -55,7 +55,9 @@
 
   /* two independent axes: the material (data-style) and the hour (data-theme). The
      palette the colour lab edits is keyed by theme, so a style swap keeps the user's
-     pinned colours for that day/night half. */
+     pinned colours for that day/night half.
+     Names describe the visual language, not any particular work: `v` stays the stable
+     key persisted in settings, `n` is what the settings card shows. */
   var STYLES = [
     { v: 'print', n: '印刷 1971', d: '方角、硬阴影、纸张颗粒、等宽字',
       sw: ['#ede5d3', '#8d3a27', '#6aa690', '#47597c', '#eba93a'] },
@@ -63,9 +65,9 @@
       sw: ['#f4ece0', '#c74551', '#6fb5a3', '#44607f', '#dcae63'] },
     { v: 'ikb', n: '群青构成 IKB', d: '构成主义平面：纯平、粗黑线、克莱因蓝',
       sw: ['#f4f2ec', '#002fa7', '#d8232a', '#e0c040', '#12141a'] },
-    { v: 'garden', n: '晨雾花园 GARDEN', d: '版画图志：桃红与鼠草绿、金线双框',
+    { v: 'garden', n: '晨雾花园 GARDEN', d: '桃红到奶油的渐变天空、薄荷格线、深青墨',
       sw: ['#f98ba0', '#ef5d76', '#58d99a', '#17342f', '#f5c469'] },
-    { v: 'p3', n: '电蓝海报 POSTER', d: '深海玻璃面板、青色细线、暗时琥珀',
+    { v: 'p3', n: '电蓝海报 POSTER', d: '丝网印刷：电光蓝、酸性黄绿、硬切形状、半调网点',
       sw: ['#eaf3ff', '#0a8cff', '#c9f24e', '#06121f', '#ffffff'] },
     { v: 'unp', n: '指令台 RETRO', d: '复古任务台：橙色安全色、螺钉法兰、扫描线',
       sw: ['#e9e3d5', '#d2601a', '#1f6f8b', '#23251f', '#c9a227'] }

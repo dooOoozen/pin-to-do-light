@@ -11,6 +11,10 @@ resident memory and package size, and both improved by roughly an order of magni
 
 ---
 
+![The same dashboard in six materials](docs/media/materials-morph.gif)
+
+---
+
 ## What it does
 
 **Card layer (`overlay.js`)** — a frameless, transparent, topmost window covering the work
@@ -38,14 +42,40 @@ itself to the edge when idle.
   day and night palette: **印刷 1971** (the terminal sheet — square plates, hard print shadow,
   paper grain), **餐厅 DINER** (Googie console: enamel cream, chrome trim, rounded corners),
   **群青构成 IKB** (constructivist: flat, 2 px rules, International Klein Blue), **晨雾花园 GARDEN**
-  (woodblock anthology: rose and sage, deep teal ink, a double gold cartouche rule), **电蓝海报 POSTER**
-  (glass panels, cyan hairlines, a diagonal light streak, amber reserved for running time) and
-  **指令台 RETRO** (mission console: bolted flange screws, bezel edge, scanline strips).
+  (dawn light: a rose-to-cream ramp on every plate, acid-mint lattice, deep teal-black ink),
+  **电蓝海报 POSTER** (screen print: electric blue doing the structure, acidic lime, hard-cut
+  shapes, halftone dots, no shadows at all) and **指令台 RETRO** (mission console: bolted flange
+  screws, bezel edge, scanline strips). Each is named for its visual language, not for a work.
   Labels take the material's typeface; every readout stays monospaced so the ledger columns
   line up. The colour lab overrides any token live and saves it per day/night.
 
 Dates carry both solar and lunar labels (`9月20日 · 周日 · 农历八月初十`), and a task can
 repeat on the lunar calendar year by year.
+
+## The six materials
+
+A material changes the surface, the outline, the corner radii, the typeface of the labels
+and the day/night palette together — the card deck and the desk follow, not just the panel.
+
+| 印刷 1971 · PRINT | 餐厅 DINER | 群青构成 IKB |
+| --- | --- | --- |
+| ![print](docs/media/material-print.png) | ![diner](docs/media/material-diner.png) | ![ikb](docs/media/material-ikb.png) |
+| **晨雾花园 GARDEN** | **电蓝海报 POSTER** | **指令台 RETRO** |
+| ![garden](docs/media/material-garden.png) | ![poster](docs/media/material-poster.png) | ![console](docs/media/material-console.png) |
+
+| 晨雾花园 · night | 电蓝海报 · night | 指令台 · night |
+| --- | --- | --- |
+| ![garden night](docs/media/material-garden-night.png) | ![poster night](docs/media/material-poster-night.png) | ![console night](docs/media/material-console-night.png) |
+
+## Gestures
+
+| Resize a dashboard module | Hover a ledger row |
+| --- | --- |
+| ![resize](docs/media/module-resize.gif) | ![hover](docs/media/ledger-hover.gif) |
+
+A module's title bar drags it to a new place in the grid; its bottom-right grip resizes it,
+and both snap to whole columns and whole rows. In the ledger, hovering a row inverts it and
+brings out the timer, editor, pin-to-desk and delete buttons beside the title.
 
 ## Numbers
 
@@ -148,6 +178,19 @@ fullscreen window.
 
 The app is single-instance: a second launch signals the first and exits without reading
 any flags, so stop the running instance before every test run.
+
+Two of the probes are worth naming because they caught real bugs.
+`tests/texture-continuity.js` compares every surface's resolved background against the
+material's own `--tex-*` tokens, which is how a rule that squashed the texture into an
+11×1 sliver, and a night rule that switched the garden ramp off the module plates, both
+became visible. `tests/deck-texture.js` does the same in the other window and only
+observes — two scripts driving the same shared setting overwrite each other, and every
+report in both windows then describes whichever material happened to win.
+`tools/ramp-scan.ps1` walks a column of the real screen and reports whether a gradient
+restarts, because the DOM can claim `100% 100%` all day.
+`tools/grab-frames.ps1` records a rectangle while driving the actual cursor, and
+`tools/gif-encode.mjs` turns that dump into an animated GIF with median-cut palettes and
+no third-party dependency — the screenshots and clips in this file came from that pair.
 
 ## Layout
 

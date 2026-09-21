@@ -56,8 +56,8 @@ body.edge-top .deck, body.edge-bottom .deck { width: calc(292px * var(--ds, 1));
   position: absolute; inset: 0;
   background-color: var(--paper-hi);
   background-image: var(--tex-grain);
-  background-size: 150px 150px;
-  background-blend-mode: multiply;
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
   border: 1px solid var(--edge);
   transition: transform .3s cubic-bezier(.2, .8, .2, 1), opacity .2s steps(3);
 }
@@ -73,8 +73,8 @@ body[data-mode="deployed"] .deck-sheet { opacity: 0; }
   display: flex; flex-direction: column; gap: 5px;
   background-color: var(--paper);
   background-image: var(--tex-grain);
-  background-size: 150px 150px;
-  background-blend-mode: multiply;
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
   border: 1px solid var(--edge);
   cursor: pointer;
   transition: background-color .12s steps(2), box-shadow .12s steps(2);
@@ -176,8 +176,8 @@ body.edge-top .gchip .chip-name, body.edge-bottom .gchip .chip-name { display: i
   color: var(--ink);
   background-color: var(--paper);
   background-image: var(--tex-grain);
-  background-size: 150px 150px;
-  background-blend-mode: multiply;
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
   border: 1px solid var(--edge);
   transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(var(--oscale, 1));
   transform-origin: 50% 50%;

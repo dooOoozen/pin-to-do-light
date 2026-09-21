@@ -24,8 +24,8 @@ body.dash { height: 100vh; overflow: hidden; }
   border-right: 1px solid var(--edge);
   background-color: var(--paper-lo);
   background-image: var(--tex-grain);
-  background-size: 150px 150px;
-  background-blend-mode: multiply;
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
   overflow: hidden; /* keep the footer visible no matter how many groups exist */
 }
 .side-scroll {
@@ -174,8 +174,8 @@ body.side-dragging { cursor: col-resize; }
   border: 1px solid var(--edge);
   background-color: var(--paper);
   background-image: var(--tex-grain);
-  background-size: 150px 150px;
-  background-blend-mode: multiply;
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
 }
 .stat-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .stat .k { font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-2); }
@@ -508,8 +508,8 @@ body.side-dragging { cursor: col-resize; }
   width: min(292px, 100%); max-width: 100%; box-sizing: border-box; padding: 8px;
   background-color: var(--paper);
   background-image: var(--tex-grain);
-  background-size: 150px 150px;
-  background-blend-mode: multiply;
+  background-size: var(--tex-size);
+  background-blend-mode: var(--tex-blend);
   border: 1px solid var(--edge);
   box-shadow: var(--pop-shadow);
 }
