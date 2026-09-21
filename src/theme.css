@@ -86,8 +86,8 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
 ::selection { background: var(--ink); color: var(--paper); }
 
 *::-webkit-scrollbar { width: 11px; height: 11px; }
-*::-webkit-scrollbar-track { background: var(--paper-lo); border-left: 1px solid var(--ink); }
-*::-webkit-scrollbar-thumb { background: var(--paper); border: 1px solid var(--ink); }
+*::-webkit-scrollbar-track { background: var(--paper-lo); border-left: 1px solid var(--edge); }
+*::-webkit-scrollbar-thumb { background: var(--paper); border: 1px solid var(--edge); }
 *::-webkit-scrollbar-thumb:hover { background: var(--ink); }
 
 /* ---------------------------------------------------------------- paper layers */
@@ -118,7 +118,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
 .glow { text-shadow: none; }
 .kbd {
   font-size: 10px; letter-spacing: .1em;
-  border: 1px solid var(--ink); background: var(--paper-hi);
+  border: 1px solid var(--edge); background: var(--paper-hi);
   padding: 2px 5px; color: var(--ink);
 }
 .num {
@@ -139,24 +139,24 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
   background-image: var(--tex-grain);
   background-size: 150px 150px;
   background-blend-mode: multiply;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   clip-path: var(--chamfer);
 }
 .hud-thin {
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   background-color: var(--paper-lo);
 }
 .hud-head {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--ink);
+  border-bottom: 1px solid var(--edge);
   background: var(--paper-lo);
   font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase;
 }
 .hud-corner::before,
 .hud-corner::after {
   content: ""; position: absolute; width: 7px; height: 7px;
-  border: 1px solid var(--ink); pointer-events: none;
+  border: 1px solid var(--edge); pointer-events: none;
 }
 .hud-corner::before { top: 4px; left: 4px; border-right: 0; border-bottom: 0; }
 .hud-corner::after { right: 4px; bottom: 4px; border-left: 0; border-top: 0; }
@@ -172,10 +172,10 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
   background-repeat: no-repeat;
   background-color: transparent;
 }
-.rule { height: 0; border-top: 1px solid var(--ink); }
+.rule { height: 0; border-top: 1px solid var(--edge); }
 .ruler {
   height: 20px;
-  border-bottom: 1px solid var(--ink);
+  border-bottom: 1px solid var(--edge);
   background-color: var(--paper-lo);
   background-size: 100% 6px, 100% 12px;
   background-position: 0 bottom, 0 bottom;
@@ -186,7 +186,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
 .block-meter { display: flex; gap: 2px; align-items: flex-end; }
 .block-meter i {
   display: block; width: 6px; height: 11px;
-  border: 1px solid var(--ink); background: transparent;
+  border: 1px solid var(--edge); background: transparent;
 }
 .block-meter i.on { background: var(--ink); }
 .block-meter i.brick.on { background: var(--brick); }
@@ -194,13 +194,13 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
 .block-meter.sm i { width: 4px; height: 8px; }
 
 /* square status marks + indices + stamps */
-.status-mark { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--ink); }
+.status-mark { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--edge); }
 .status-mark.on { background: var(--ink); }
 .status-mark.brick { background: var(--brick); }
 .idx-mark {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 17px; height: 17px; padding: 0 3px;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   background: var(--ink); color: var(--paper);
   font-size: 10px; font-weight: 700; letter-spacing: .04em;
 }
@@ -220,7 +220,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
   white-space: nowrap;
   color: var(--ink);
   background: var(--paper);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   padding: 8px 12px;
   cursor: pointer;
   transition: background .12s steps(2), color .12s steps(2);
@@ -240,7 +240,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
   display: inline-flex; align-items: center; justify-content: center;
   width: 24px; height: 24px;
   color: var(--ink); background: var(--paper);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   font-size: 12px; line-height: 1;
   cursor: pointer;
   transition: background .12s steps(2), color .12s steps(2);
@@ -259,7 +259,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
   font-size: 12.5px; line-height: 1.45;
   color: var(--ink);
   background: var(--paper-hi);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   padding: 7px 8px;
   outline: none;
 }
@@ -286,7 +286,7 @@ input[type="range"] { accent-color: var(--brick); }
   font-size: 12px; line-height: 1;
   color: transparent;
   background: var(--paper-hi);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   cursor: pointer;
   transition: background .1s steps(2), color .1s steps(2);
 }
@@ -296,13 +296,13 @@ input[type="range"] { accent-color: var(--brick); }
 
 .switch {
   position: relative; width: 34px; height: 16px; flex: none;
-  background: var(--paper-hi); border: 1px solid var(--ink);
+  background: var(--paper-hi); border: 1px solid var(--edge);
   cursor: pointer;
 }
 .switch i {
   position: absolute; top: 1px; left: 1px;
   width: 12px; height: 12px;
-  border: 1px solid var(--ink); background: transparent;
+  border: 1px solid var(--edge); background: transparent;
   transition: left .12s steps(3), background .12s steps(2);
 }
 .switch.on { background: var(--paper-lo); }
@@ -314,7 +314,7 @@ input[type="range"] { accent-color: var(--brick); }
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
   padding: 2px 5px;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   background: var(--paper);
   color: var(--ink);
   white-space: nowrap;
@@ -329,7 +329,7 @@ input[type="range"] { accent-color: var(--brick); }
 .badge.group { border-style: dashed; }
 .badge.done { border-style: dashed; color: var(--ink-2); }
 
-.dot { width: 8px; height: 8px; flex: none; border: 1px solid var(--ink); background: var(--brick); }
+.dot { width: 8px; height: 8px; flex: none; border: 1px solid var(--edge); background: var(--brick); }
 
 /* ---------------------------------------------------------------- modal + toast */
 
@@ -349,7 +349,7 @@ input[type="range"] { accent-color: var(--brick); }
   background-image: var(--tex-grain);
   background-size: 150px 150px;
   background-blend-mode: multiply;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   /* the stacked offset print shadow: two hard edges, no blur, so a lifted panel reads
      as another sheet on the same desk rather than as a glow */
   box-shadow: var(--pop-shadow);
@@ -359,7 +359,7 @@ input[type="range"] { accent-color: var(--brick); }
 .modal-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
   padding: 9px 10px;
-  border-bottom: 1px solid var(--ink);
+  border-bottom: 1px solid var(--edge);
   background: var(--paper-lo);
   flex: none;
 }
@@ -383,7 +383,7 @@ input[type="range"] { accent-color: var(--brick); }
 .modal-foot {
   display: flex; align-items: center; justify-content: flex-end; gap: 8px;
   padding: 10px 12px;
-  border-top: 1px solid var(--ink);
+  border-top: 1px solid var(--edge);
   background: var(--paper-lo);
   flex: none;
 }
@@ -404,7 +404,7 @@ input[type="range"] { accent-color: var(--brick); }
   font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
   color: var(--paper);
   background: var(--ink);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   box-shadow: var(--pop-shadow-sm);
   padding: 7px 12px;
   animation: stamp-in .12s steps(3);
@@ -445,7 +445,7 @@ input[type="range"] { accent-color: var(--brick); }
   font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .08em;
   padding: 3px 6px;
   color: var(--ink); background: var(--paper-hi);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   cursor: pointer;
   transition: background .12s steps(2), color .12s steps(2);
 }
@@ -461,7 +461,7 @@ input[type="range"] { accent-color: var(--brick); }
   color: var(--ink-2);
   padding: 6px 7px;
   background: var(--paper-hi);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--edge);
   cursor: pointer;
   transition: background .12s steps(2), color .12s steps(2);
 }
@@ -469,12 +469,12 @@ input[type="range"] { accent-color: var(--brick); }
 .plan-field.on { color: var(--ink); font-weight: 700; background: var(--paper); }
 .select-time { flex: 0 0 62px; min-width: 0; font-size: 10.5px; padding: 6px 20px 6px 6px; }
 
-.plan-cal { border: 1px solid var(--ink); background: var(--paper); padding: 6px; margin-bottom: 5px; }
+.plan-cal { border: 1px solid var(--edge); background: var(--paper); padding: 6px; margin-bottom: 5px; }
 .cal-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 5px; }
 .cal-head .cal-month { flex: 0 0 auto; min-width: 42px; text-align: center; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; }
 .cal-head button {
   font-size: 10px; line-height: 1; padding: 2px 6px;
-  background: var(--paper-hi); border: 1px solid var(--ink); color: var(--ink); cursor: pointer;
+  background: var(--paper-hi); border: 1px solid var(--edge); color: var(--ink); cursor: pointer;
 }
 .cal-head button:hover { background: var(--ink); color: var(--paper); }
 .cal-head .cal-year {
@@ -571,7 +571,7 @@ input[type="range"] { accent-color: var(--brick); }
 .prio-row .pbtn {
   flex: 1; padding: 6px 4px; text-align: center;
   font-size: calc(9.5px * var(--uis, 1)); letter-spacing: .16em; text-transform: uppercase;
-  background: var(--paper-hi); border: 1px solid var(--ink); color: var(--ink);
+  background: var(--paper-hi); border: 1px solid var(--edge); color: var(--ink);
   cursor: pointer;
   transition: background .1s steps(2), color .1s steps(2);
 }
@@ -604,6 +604,8 @@ input[type="range"] { accent-color: var(--brick); }
   --r-ctl: 0px;
   --r-pill: 0px;
   --edge: var(--ink);
+  --r-dot: 0px;
+  --font-display: var(--font-mono);
   --bevel: none;
   --font-ui: var(--font-mono);
   --motif: none;
@@ -780,3 +782,478 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="diner"] .card-dot { border: 0; border-radius: 50%; }
 :root[data-style="diner"] .toast { box-shadow: var(--pop-shadow-sm); font-family: var(--font-ui); }
 :root[data-style="diner"] .card-title { font-family: var(--font-ui); letter-spacing: .01em; }
+
+/* ==========================================================================
+   MATERIAL GEOMETRY
+   ==========================================================================
+   Every surface reads its corner radius from the same four tokens, so a material
+   is defined by the tokens rather than by a pile of per-class overrides. Defaults
+   are 0, which is the 1971 print look; the diner block only has to say "round".
+   Keeping this at the end of the sheet means it wins over the base rules without
+   each of them having to carry a radius. */
+
+.hud, .hud-thin, .modal-panel, .plan-pop { border-radius: var(--r-plate); }
+.hud-head { border-radius: var(--r-plate) var(--r-plate) 0 0; }
+.btn, .icon-btn, .input, .select, .kbd, .stamp, .stat, .day-head, .mini-row,
+.memo-input, .pal-swatch, .mod-span, .cal-day, .field, .set-row { border-radius: var(--r-ctl); }
+.badge, .gchip, .switch, .switch i { border-radius: var(--r-pill); }
+.status-mark, .chip-swatch, .card-dot, .task-dot, .mini-dot, .deck-swatch { border-radius: var(--r-dot); }
+
+/* ==========================================================================
+   MATERIAL: 群青构成 / CONSTRUCTIVIST  (data-style="ikb")
+   ==========================================================================
+   Rational geometry as a devotional tool: a visible grid, primary colour, black
+   rules, no elevation at all. Flatness is the point, so --pop-shadow goes to none
+   rather than to a softer shadow, and the outline gets heavier instead.
+   International Klein Blue carries what the print build's brick red carries. */
+
+:root[data-style="ikb"] {
+  --paper:      #f4f2ec;
+  --paper-hi:   #fbfaf7;
+  --paper-lo:   #e4e2da;
+  --paper-dim:  #d2d5dc;
+  --ink:        #12141a;
+  --ink-2:      #3d4450;
+  --ink-3:      #8c93a1;
+  --rule:       color-mix(in srgb, var(--ink) 22%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 45%, transparent);
+  --grid-line:  color-mix(in srgb, var(--ink) 11%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 22%, transparent);
+  --tex-grain: none;
+  --pop-shadow: none;
+  --pop-shadow-sm: none;
+  --ink-glow:   color-mix(in srgb, var(--ink) 92%, transparent);
+  --hit-line:   color-mix(in srgb, var(--ink) 30%, transparent);
+  --wm-ink:     color-mix(in srgb, var(--ink) 11%, transparent);
+  --hatch-line: color-mix(in srgb, var(--ink) 7%, transparent);
+
+  --brick:      #002fa7;   /* International Klein Blue is the primary */
+  --brick-ink:  #f4f2ec;
+  --vermillion: #d8232a;   /* the red wedge */
+  --honey:      #e0c040;   /* Bauhaus yellow */
+  --sage:       #4a78c2;
+  --teal:       #002fa7;
+  --forest:     #12141a;
+  --forest-ink: #f4f2ec;
+  --slate:      #002fa7;
+  --slate-ink:  #eaf0fb;
+  --khaki:      #e0c040;
+  --plum:       #12141a;
+  --ochre:      #d8232a;
+  --cream:      #fbfaf7;
+  --surface-hi: #fbfaf7;
+  --head-hi:    #e4e2da;
+  --field-focus: #ffffff;
+
+  --plate-day:     #e4e2da;
+  --plate-today:   color-mix(in srgb, var(--brick) 14%, var(--paper));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 16%, var(--paper));
+  --memo-rule:     color-mix(in srgb, var(--ink) 30%, transparent);
+
+  --edge: #12141a;
+  --r-plate: 0px; --r-ctl: 0px; --r-pill: 0px; --r-dot: 0px;
+  --bevel: none;
+  --font-ui: "Helvetica Neue", Helvetica, Arial, "Segoe UI", sans-serif;
+  --font-display: "Helvetica Neue", Helvetica, Arial, "Segoe UI", sans-serif;
+}
+
+:root[data-style="ikb"][data-theme="ink"] {
+  --paper:      #0b0e14;
+  --paper-hi:   #141a24;
+  --paper-lo:   #06080d;
+  --paper-dim:  #1d2530;
+  --ink:        #f2f1ec;
+  --ink-2:      #c3c8d2;
+  --ink-3:      #8e96a5;
+  --edge:       #f2f1ec;
+  --brick:      #2e63d8;
+  --brick-ink:  #0b0e14;
+  --vermillion: #ff4a4a;
+  --honey:      #f2ce55;
+  --sage:       #7ea6e8;
+  --teal:       #2e63d8;
+  --slate:      #2e63d8;
+  --cream:      #141a24;
+  --surface-hi: #141a24;
+  --head-hi:    #1d2530;
+  --field-focus: #1d2530;
+}
+
+/* flat, and outlined harder rather than lifted */
+:root[data-style="ikb"] .hud,
+:root[data-style="ikb"] .hud-thin,
+:root[data-style="ikb"] .btn,
+:root[data-style="ikb"] .icon-btn,
+:root[data-style="ikb"] .input,
+:root[data-style="ikb"] .select,
+:root[data-style="ikb"] .modal-panel,
+:root[data-style="ikb"] .deck-face,
+:root[data-style="ikb"] .deck-sheet,
+:root[data-style="ikb"] .todo-card,
+:root[data-style="ikb"] .tool,
+:root[data-style="ikb"] .gchip { border-width: 2px; }
+:root[data-style="ikb"] .hud-head,
+:root[data-style="ikb"] .btn,
+:root[data-style="ikb"] .idx-mark,
+:root[data-style="ikb"] .card-title,
+:root[data-style="ikb"] .deck-name,
+:root[data-style="ikb"] .stat .v,
+:root[data-style="ikb"] .pd-clock-time { font-family: var(--font-ui); }
+:root[data-style="ikb"] .idx-mark { background: var(--brick); color: var(--brick-ink); border-color: var(--edge); }
+:root[data-style="ikb"] .idx-mark.plain { background: transparent; color: var(--ink); }
+:root[data-style="ikb"] .hud-head {
+  letter-spacing: .18em;
+  background-image: linear-gradient(105deg,
+    color-mix(in srgb, var(--brick) 22%, transparent) 0 12%, transparent 12.4%);
+  background-color: var(--paper-lo);
+}
+:root[data-style="ikb"] .stat,
+:root[data-style="ikb"] .day-head,
+:root[data-style="ikb"] .mini-row { border-width: 1px; }
+:root[data-style="ikb"] .reticle { background-image: none; }
+
+/* Which type a material actually changes. Both default to the monospace stack, so the
+   print build is unaffected; a material that wants a different voice sets one of them.
+   Display is for the readouts a console is looked at from a distance — the clock, the
+   counters, the card title — and ui is for labels. Every time/duration stays monospace
+   regardless, because the ledger columns are aligned by digit width. */
+.pd-clock-time, .deck-count, .stat .v, .today-ring b, #pomoTime,
+.tk-ring-num, .cal-month, .big { font-family: var(--font-display); }
+.hud-head, .btn, .idx-mark, .deck-name, .card-title, .mini-title, .task-title,
+.group-title, .nav-title, .style-card b, .set-label, h3 { font-family: var(--font-ui); }
+
+/* ==========================================================================
+   MATERIAL: 晨雾花园 / GARDEN ANTHOLOGY  (data-style="garden")
+   ==========================================================================
+   Mineral pigment on paper, not light on a screen: rose and sage, a deep teal-black
+   ink instead of any near-black, gold hairlines, and the double-line cartouche of a
+   woodblock title page. The outline is the ink, the inner rule is the gold. */
+
+:root[data-style="garden"] {
+  --paper:      #f6f1ea;
+  --paper-hi:   #fcf7f1;
+  --paper-lo:   #efe6dc;
+  --paper-dim:  #e3d6cb;
+  --ink:        #214e4d;
+  --ink-2:      #46706c;
+  --ink-3:      #7e9a93;
+  --rule:       color-mix(in srgb, var(--ink) 18%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 38%, transparent);
+  --grid-line:  color-mix(in srgb, var(--ink) 8%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 14%, transparent);
+  --tex-grain: none;
+  --pop-shadow: 0 1px 2px rgba(33, 78, 77, .10), 0 8px 20px rgba(33, 78, 77, .12);
+  --pop-shadow-sm: 0 1px 2px rgba(33, 78, 77, .12), 0 4px 10px rgba(33, 78, 77, .12);
+  --ink-glow:   color-mix(in srgb, var(--ink) 88%, transparent);
+  --hit-line:   color-mix(in srgb, var(--ink) 26%, transparent);
+  --wm-ink:     color-mix(in srgb, var(--brick) 26%, transparent);
+  --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
+
+  --brick:      #f37992;   /* rose is the primary, not the warning */
+  --brick-ink:  #fff2f1;
+  --vermillion: #e4607a;
+  --honey:      #e0af62;   /* the gold hairline */
+  --sage:       #5c8578;
+  --teal:       #2e6f62;
+  --forest:     #5c8578;
+  --forest-ink: #f2f7f2;
+  --slate:      #4a7a8c;
+  --slate-ink:  #f0f6f8;
+  --khaki:      #c9a227;
+  --plum:       #c97b7e;
+  --ochre:      #d08a5e;
+  --cream:      #fcf7f1;
+  --surface-hi: #fcf7f1;
+  --head-hi:    #f3e3e0;
+  --field-focus: #fffaf5;
+
+  --plate-day:     #efe6dc;
+  --plate-today:   color-mix(in srgb, var(--brick) 20%, var(--paper));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 26%, var(--paper));
+  --memo-rule:     color-mix(in srgb, var(--brick) 45%, transparent);
+
+  --edge: #214e4d;
+  --r-plate: 16px; --r-ctl: 10px; --r-pill: 999px; --r-dot: 50%;
+  --bevel: none;
+  --font-ui: Georgia, "Noto Serif SC", "Songti SC", SimSun, serif;
+  --font-display: Georgia, "Noto Serif SC", "Songti SC", SimSun, serif;
+}
+
+:root[data-style="garden"][data-theme="ink"] {
+  --paper:      #12211f;
+  --paper-hi:   #1a2c29;
+  --paper-lo:   #0d1817;
+  --paper-dim:  #233935;
+  --ink:        #ede4d8;
+  --ink-2:      #b9c8bf;
+  --ink-3:      #8aa098;
+  --edge:       #7fa79c;
+  --brick:      #f39aad;
+  --brick-ink:  #2a1218;
+  --vermillion: #ef8b9c;
+  --honey:      #e8c079;
+  --sage:       #8fbfa9;
+  --teal:       #7fc4b2;
+  --forest:     #8fbfa9;
+  --plum:       #e0a6a9;
+  --cream:      #1a2c29;
+  --surface-hi: #1a2c29;
+  --head-hi:    #233935;
+  --field-focus: #233935;
+}
+
+/* the cartouche: an inner gold rule set a few pixels inside the ink outline */
+:root[data-style="garden"] .hud,
+:root[data-style="garden"] .modal-panel,
+:root[data-style="garden"] .deck-face,
+:root[data-style="garden"] .todo-card {
+  box-shadow: inset 0 0 0 1px var(--paper), inset 0 0 0 2px color-mix(in srgb, var(--honey) 55%, transparent);
+}
+:root[data-style="garden"] .hud-head {
+  background-color: var(--head-hi);
+  letter-spacing: .12em;
+  border-bottom-color: color-mix(in srgb, var(--edge) 55%, transparent);
+}
+:root[data-style="garden"] .idx-mark {
+  background: var(--brick); color: var(--brick-ink); border-color: transparent;
+  border-radius: 4px;
+}
+:root[data-style="garden"] .idx-mark.plain { background: transparent; color: var(--brick); }
+:root[data-style="garden"] .btn { border-color: color-mix(in srgb, var(--edge) 60%, transparent); }
+:root[data-style="garden"] .btn:hover,
+:root[data-style="garden"] .icon-btn:hover {
+  background: color-mix(in srgb, var(--brick) 22%, var(--paper-hi)); color: var(--ink);
+}
+:root[data-style="garden"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
+:root[data-style="garden"] .reticle { background-image: none; }
+
+/* ==========================================================================
+   MATERIAL: 电蓝海报 / DEEP HOUR  (data-style="p3")
+   ==========================================================================
+   Night is this one's native state, so the day palette is the same water lit from
+   above rather than a flipped colour set. Blue carries the structure, so the accent
+   roles the other materials give to red go to cyan, and the only warm thing on screen
+   is time still running — the amber of the Dark Hour. Panels are glass: a hairline rim,
+   a top highlight and a long cool shadow instead of any outline weight. */
+
+:root[data-style="p3"] {
+  --paper:      #dce7f5;
+  --paper-hi:   #eef5fc;
+  --paper-lo:   #cbdaee;
+  --paper-dim:  #b8cbe6;
+  --ink:        #0e2242;
+  --ink-2:      #33507a;
+  --ink-3:      #6e88ac;
+  --rule:       color-mix(in srgb, var(--ink) 16%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 34%, transparent);
+  --grid-line:  color-mix(in srgb, var(--ink) 8%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 14%, transparent);
+  --tex-grain: none;
+  --pop-shadow: 0 1px 2px rgba(8, 22, 46, .16), 0 10px 26px rgba(8, 22, 46, .22), 0 30px 60px rgba(8, 22, 46, .18);
+  --pop-shadow-sm: 0 1px 3px rgba(8, 22, 46, .20), 0 6px 14px rgba(8, 22, 46, .18);
+  --ink-glow:   color-mix(in srgb, var(--ink) 90%, transparent);
+  --hit-line:   color-mix(in srgb, var(--ink) 24%, transparent);
+  --wm-ink:     color-mix(in srgb, var(--slate) 30%, transparent);
+  --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
+
+  --brick:      #2e7fd4;   /* the blue is the structure, not the warning */
+  --brick-ink:  #f2f8ff;
+  --vermillion: #ff6a5e;
+  --honey:      #e0b24a;   /* Dark Hour amber: reserved for running time */
+  --sage:       #58c8de;
+  --teal:       #46b6c8;
+  --forest:     #2e7fd4;
+  --forest-ink: #08162e;
+  --slate:      #6fa8dc;
+  --slate-ink:  #0b1e3e;
+  --khaki:      #e0b24a;
+  --plum:       #8e7cc3;
+  --ochre:      #e0913f;
+  --cream:      #eef5fc;
+  --surface-hi: #eef5fc;
+  --head-hi:    #cbdaee;
+  --field-focus: #f7fbff;
+
+  --plate-day:     color-mix(in srgb, var(--slate) 18%, var(--paper));
+  --plate-today:   color-mix(in srgb, var(--brick) 24%, var(--paper));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 20%, var(--paper));
+  --memo-rule:     color-mix(in srgb, var(--slate) 45%, transparent);
+
+  --edge: #7fb6e8;
+  --r-plate: 18px; --r-ctl: 12px; --r-pill: 999px; --r-dot: 50%;
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, .55);
+  --font-ui: "Segoe UI", "Segoe UI Variable Text", Tahoma, sans-serif;
+  --font-display: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+}
+
+/* the deep hour itself */
+:root[data-style="p3"][data-theme="ink"] {
+  --paper:      #0b1e3e;
+  --paper-hi:   #12294e;
+  --paper-lo:   #071731;
+  --paper-dim:  #1a3459;
+  --ink:        #eaf3ff;
+  --ink-2:      #a9c6e8;
+  --ink-3:      #7a9bc4;
+  --edge:       #3e8fd6;
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, .14);
+  --pop-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 10px 26px rgba(0, 0, 0, .55), 0 30px 60px rgba(0, 0, 0, .45);
+  --pop-shadow-sm: 0 1px 3px rgba(0, 0, 0, .5), 0 6px 14px rgba(0, 0, 0, .45);
+  --brick:      #4f9ee8;
+  --brick-ink:  #04101f;
+  --vermillion: #ff7a6e;
+  --honey:      #f0c46a;
+  --sage:       #79dcf0;
+  --teal:       #5fcfe0;
+  --forest:     #4f9ee8;
+  --cream:      #12294e;
+  --surface-hi: #12294e;
+  --head-hi:    #1a3459;
+  --field-focus: #1a3459;
+}
+
+:root[data-style="p3"] .hud,
+:root[data-style="p3"] .hud-thin,
+:root[data-style="p3"] .modal-panel,
+:root[data-style="p3"] .deck-face,
+:root[data-style="p3"] .todo-card {
+  border-width: 1px;
+  box-shadow: var(--bevel), var(--pop-shadow-sm);
+}
+:root[data-style="p3"] .hud-head {
+  /* the diagonal: a light streak cut across the strip, the way the menus wipe by */
+  background-image: linear-gradient(112deg,
+    transparent 0 34%, color-mix(in srgb, var(--sage) 26%, transparent) 34% 38%,
+    transparent 38% 62%, color-mix(in srgb, var(--slate) 22%, transparent) 62% 64%, transparent 64%);
+  background-color: var(--head-hi);
+  letter-spacing: .16em;
+  border-bottom-color: color-mix(in srgb, var(--edge) 70%, transparent);
+}
+:root[data-style="p3"] .idx-mark {
+  background: color-mix(in srgb, var(--brick) 85%, var(--ink)); color: var(--brick-ink);
+  border-color: transparent; border-radius: 4px;
+}
+:root[data-style="p3"] .idx-mark.plain { background: transparent; color: var(--sage); }
+:root[data-style="p3"] .btn { letter-spacing: .12em; }
+:root[data-style="p3"] .btn:hover,
+:root[data-style="p3"] .icon-btn:hover {
+  background: color-mix(in srgb, var(--brick) 26%, var(--paper-hi)); color: var(--ink);
+}
+:root[data-style="p3"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
+:root[data-style="p3"] .reticle { background-image: none; }
+
+/* ==========================================================================
+   MATERIAL: 指令台 / RETRO-FUTURE CONSOLE  (data-style="unp")
+   ==========================================================================
+   The mission-console reading of retro-futurism: a bolted flange plate with four
+   screws, a thick bezel that sits down on the desk with its own hard edge, mylar
+   cream in daylight and a powered-down CRT at night where only the readouts glow.
+   Orange is the working colour, cyan the instrument colour, amber the lamp. */
+
+:root[data-style="unp"] {
+  --paper:      #e9e3d5;
+  --paper-hi:   #f4efe3;
+  --paper-lo:   #dcd5c4;
+  --paper-dim:  #c9c2b0;
+  --ink:        #22241e;
+  --ink-2:      #4e5147;
+  --ink-3:      #7e8175;
+  --rule:       color-mix(in srgb, var(--ink) 20%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 42%, transparent);
+  --grid-line:  color-mix(in srgb, var(--ink) 9%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 16%, transparent);
+  --tex-grain: none;
+  /* the hard 3px band under the plate is the bezel edge, not an ambient shadow */
+  --pop-shadow: 0 3px 0 rgba(34, 36, 30, .55), 0 12px 24px rgba(34, 36, 30, .22), 0 28px 52px rgba(34, 36, 30, .18);
+  --pop-shadow-sm: 0 2px 0 rgba(34, 36, 30, .45), 0 6px 14px rgba(34, 36, 30, .20);
+  --ink-glow:   color-mix(in srgb, var(--ink) 92%, transparent);
+  --hit-line:   color-mix(in srgb, var(--ink) 28%, transparent);
+  --wm-ink:     color-mix(in srgb, var(--slate) 34%, transparent);
+  --hatch-line: color-mix(in srgb, var(--ink) 7%, transparent);
+
+  --brick:      #d2601a;   /* safety orange */
+  --brick-ink:  #fff3e6;
+  --vermillion: #e2492b;
+  --honey:      #c9a227;
+  --sage:       #1f6f8b;   /* instrument cyan */
+  --teal:       #1f6f8b;
+  --forest:     #2e7d6b;
+  --forest-ink: #eefaf5;
+  --slate:      #3e5c77;
+  --slate-ink:  #eef4fa;
+  --khaki:      #b08430;
+  --plum:       #7a5c46;
+  --ochre:      #c9772f;
+  --cream:      #f4efe3;
+  --surface-hi: #f4efe3;
+  --head-hi:    #dcd5c4;
+  --field-focus: #fdf9ef;
+
+  --plate-day:     #dcd5c4;
+  --plate-today:   color-mix(in srgb, var(--brick) 20%, var(--paper));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 22%, var(--paper));
+  --memo-rule:     color-mix(in srgb, var(--slate) 40%, transparent);
+
+  --edge: #23251f;
+  --r-plate: 14px; --r-ctl: 9px; --r-pill: 999px; --r-dot: 50%;
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -2px 0 rgba(34, 36, 30, .12);
+  --font-ui: "Bahnschrift", "DIN Alternate", "Trebuchet MS", sans-serif;
+  --font-display: var(--font-mono);
+}
+
+/* powered down: the panel is a dark screen and only the lamps are on */
+:root[data-style="unp"][data-theme="ink"] {
+  --paper:      #17181a;
+  --paper-hi:   #202225;
+  --paper-lo:   #101112;
+  --paper-dim:  #2a2d30;
+  --ink:        #f0ead8;
+  --ink-2:      #b8b3a4;
+  --ink-3:      #8a8779;
+  --edge:       #4a4e52;
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, .10), inset 0 -2px 0 rgba(0, 0, 0, .35);
+  --pop-shadow: 0 3px 0 rgba(0, 0, 0, .6), 0 12px 24px rgba(0, 0, 0, .5), 0 28px 52px rgba(0, 0, 0, .45);
+  --pop-shadow-sm: 0 2px 0 rgba(0, 0, 0, .55), 0 6px 14px rgba(0, 0, 0, .45);
+  --brick:      #f0a83c;
+  --brick-ink:  #1a1206;
+  --vermillion: #ff7048;
+  --honey:      #ffc85a;
+  --sage:       #4fc3d9;
+  --teal:       #37a9c0;
+  --forest:     #4fc3d9;
+  --slate:      #6d93b4;
+  --khaki:      #d8ab4a;
+  --cream:      #202225;
+  --surface-hi: #202225;
+  --head-hi:    #2a2d30;
+  --field-focus: #2a2d30;
+}
+
+/* the flange: four screws at the corners of every plate */
+:root[data-style="unp"] .hud,
+:root[data-style="unp"] .modal-panel,
+:root[data-style="unp"] .deck-face,
+:root[data-style="unp"] .todo-card {
+  border-width: 2px;
+  background-image:
+    radial-gradient(circle at 8px 8px, var(--edge) 0 1.6px, transparent 2.2px),
+    radial-gradient(circle at calc(100% - 8px) 8px, var(--edge) 0 1.6px, transparent 2.2px),
+    radial-gradient(circle at 8px calc(100% - 8px), var(--edge) 0 1.6px, transparent 2.2px),
+    radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), var(--edge) 0 1.6px, transparent 2.2px);
+  background-size: 100% 100%;
+  box-shadow: var(--bevel), var(--pop-shadow-sm);
+}
+:root[data-style="unp"] .hud-head {
+  letter-spacing: .2em;
+  /* scanline across the strip, and it is the lamp that lights it */
+  background-image: repeating-linear-gradient(180deg,
+    transparent 0 3px, color-mix(in srgb, var(--ink) 7%, transparent) 3px 4px);
+  background-color: var(--head-hi);
+  border-bottom: 2px solid var(--edge);
+}
+:root[data-style="unp"] .idx-mark { background: var(--slate); color: var(--slate-ink); border-color: transparent; }
+:root[data-style="unp"] .idx-mark.plain { background: transparent; color: var(--ink); }
+:root[data-style="unp"] .btn { letter-spacing: .14em; }
+:root[data-style="unp"] .btn:active { transform: translateY(2px); box-shadow: none; }
+:root[data-style="unp"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
+:root[data-style="unp"] .reticle { background-image: none; }

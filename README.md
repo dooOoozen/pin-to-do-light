@@ -34,11 +34,15 @@ itself to the edge when idle.
   filter and sort.
 - **Quick add** — one line of Chinese or English natural language: `明天三点 开会 高`
   becomes a titled, scheduled, prioritised task.
-- **Pomodoro, memo, reminders, sound, tray, autostart**, two materials — **印刷 1971** (the
-  terminal sheet: square plates, hard print shadow, paper grain) and **餐厅 DINER** (a Googie
-  console: enamel cream, chrome trim, rounded corners, soft shadow, geometric labels with the
-  numbers still monospaced so the ledger columns line up) — each with its own day and night
-  palette, and a colour lab that overrides any token live and saves it per theme.
+- **Pomodoro, memo, reminders, sound, tray, autostart**, and six materials, each with its own
+  day and night palette: **印刷 1971** (the terminal sheet — square plates, hard print shadow,
+  paper grain), **餐厅 DINER** (Googie console: enamel cream, chrome trim, rounded corners),
+  **群青构成 IKB** (constructivist: flat, 2 px rules, International Klein Blue), **晨雾花园 GARDEN**
+  (woodblock anthology: rose and sage, deep teal ink, a double gold cartouche rule), **电蓝海报 POSTER**
+  (glass panels, cyan hairlines, a diagonal light streak, amber reserved for running time) and
+  **指令台 RETRO** (mission console: bolted flange screws, bezel edge, scanline strips).
+  Labels take the material's typeface; every readout stays monospaced so the ledger columns
+  line up. The colour lab overrides any token live and saves it per day/night.
 
 Dates carry both solar and lunar labels (`9月20日 · 周日 · 农历八月初十`), and a task can
 repeat on the lunar calendar year by year.

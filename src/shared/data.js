@@ -837,7 +837,7 @@
       if (EDGES.indexOf(s.settings.edge) < 0) s.settings.edge = 'right';
       /* the material is a closed set like the edge: a typo would leave the sheet with a
          data-style nothing matches, which reads as a half-styled window */
-      if (['print', 'diner'].indexOf(s.settings.style) < 0) s.settings.style = 'print';
+      if (['print', 'diner', 'ikb', 'garden', 'p3', 'unp'].indexOf(s.settings.style) < 0) s.settings.style = 'print';
       s.settings.opacity = Math.min(1, Math.max(0.3, Number(s.settings.opacity) || 1));
       s.settings.dockScale = Math.min(2, Math.max(0.6, Number(s.settings.dockScale) || 1));
       s.settings.dockPos = Math.min(1, Math.max(0, isFinite(s.settings.dockPos) ? Number(s.settings.dockPos) : 0.5));
