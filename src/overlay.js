@@ -1424,6 +1424,7 @@
   let shapeTimer = null;
   let shapeReq = 0;         /* counts requests so a trailing re-run can be detected */
   let lastPushed = null;      /* the spans actually handed to SetWindowRgn */
+  let shapePushed = false;    /* whether lastPushed means anything yet */
   let settleTimer = null;     /* re-cut the region once the wide pads expire */
   let dragSweep = null;       /* union of where the dragged box has been this grab */
   let hoveredCard = null;     /* the card the browser reports as :hover */
@@ -1693,6 +1694,7 @@
        rect the size of the window is the same shape without it */
     API.setShape(spans === null ? [{ x: 0, y: 0, width: area.width, height: area.height }] : spans);
     lastPushed = spans;
+    shapePushed = true;
     setIgnore(spans !== null && spans.length === 0);
   }
 
@@ -1706,7 +1708,13 @@
      that fall outside, instead of guessing which child overflows. */
   function regionLeaks(all) {
     if (!shapeOn) return 'off';
-    const spans = buildSpans();
+    /* The region that was actually handed to Windows, not one built just now. Comparing
+       live boxes against spans recomputed from those same live boxes is tautologically
+       tight, so this could never report a leak, the watchdog below never fired, and a
+       region that went stale while a card grew under the cursor stayed stale until
+       something else happened to move. Before the first push there is nothing to
+       compare against, so fall back to the live build. */
+    const spans = shapePushed ? lastPushed : buildSpans();
     if (spans === null) return 'full-window';
     const hit = (x, y) => spans.some((r) =>
       x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height);
@@ -1760,13 +1768,19 @@
      interaction. So ask the question directly, from the painted boxes, on a slow timer
      while nothing is moving. applyShape() no-ops when the signature has not changed, so
      a healthy layer pays one buildSpans() per tick and no SetWindowRgn at all. */
+  /* The self-heal. It has to ask pushedLag(), not regionLeaks(): the latter used to
+     rebuild the spans from live geometry and compare them with the same live geometry,
+     which always agreed, so this watchdog could never fire and a region left stale by a
+     card growing under the cursor stayed stale until something else moved. pushedLag
+     only reads the spans already handed over, so the check is cheap enough to run at a
+     cadence short enough that a stale region is a blink rather than a permanent notch. */
   setInterval(() => {
     if (!shapeOn || drag || deckDrag || modalOpen) return;
     if (movingNow()) return;
-    if (regionLeaks(false).indexOf('LEAK') !== 0) return;
+    if (pushedLag().indexOf('LAG') !== 0) return;
     markRectsDirty(400);
     refreshHitRects(true);
-  }, 1200);
+  }, 400);
 
   /* The invariant the user can actually see: is everything being painted right now
      inside the region the OS was *told about*? Comparing live geometry against live

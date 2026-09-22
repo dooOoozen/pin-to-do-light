@@ -15,6 +15,7 @@
   const VIEWS = [
     { id: 'dash', label: '仪表盘', en: 'DASHBOARD' },
     { id: 'tracking', label: '时间轴', en: 'TRACKING' },
+    { id: 'report', label: '时间账本', en: 'REPORT' },
     { id: 'timeline', label: '时间线', en: 'TIMELINE' },
     { id: 'calendar', label: '月历', en: 'MONTH' },
     { id: 'all', label: '全部任务', en: 'ALL OPEN' },
@@ -34,7 +35,8 @@
   const S = {
     state: null, view: 'all', groupId: null, q: '', prio: 'all', sort: 'smart',
     miniGroup: null, lastDone: null, calMonth: null, calDay: null,
-    tkDay: null, tkMode: 'week', tkScroll: null
+    tkDay: null, tkMode: 'week', tkScroll: null,
+    rpRange: 'week'
   };
   const el = {};
   let rowDrag = null;
@@ -1130,7 +1132,8 @@
   function renderList() {
     const list = visibleTodos();
     el.countLabel.textContent = String(list.length).padStart(3, '0') + ' ITEMS · ' + viewLabel();
-    const special = S.view === 'timeline' || S.view === 'calendar' || S.view === 'tracking';
+    const special = S.view === 'timeline' || S.view === 'calendar' ||
+      S.view === 'tracking' || S.view === 'report';
     if (el.viewPanel) el.viewPanel.classList.toggle('u-hidden', !special);
     const listWrap = el.list.closest('.list-wrap');
     if (listWrap) listWrap.classList.toggle('u-hidden', special);
@@ -1143,6 +1146,7 @@
     if (special) {
       if (S.view === 'timeline') renderTimeline(list);
       else if (S.view === 'tracking') renderTracking();
+      else if (S.view === 'report') renderReport();
       else renderCalendar(list);
       return;
     }
@@ -1481,16 +1485,31 @@
     renderTrackingFigures(now);
   }
 
-  /* Text on a group-coloured fill. The palette is mostly deep print colours, so the
-     light ink is the common case, but honey and cream would swallow dark type. */
-  function inkOn(hex) {
+  /* Text on a group-coloured fill. A coloured block carries its own contrast pair: a
+     cream block wants dark type at noon and at midnight alike, and `var(--ink)` is the
+     *light* ink after dark — which is how a pale group's title went unreadable on the
+     night axis. So the pair is literal rather than themed, and the fill is pulled toward
+     black at night so a bright accent stops glaring against a dark panel. */
+  function hexRGB(hex) {
     const h = String(hex || '').replace('#', '');
-    if (h.length < 6) return 'var(--paper)';
-    const r = parseInt(h.slice(0, 2), 16);
-    const g = parseInt(h.slice(2, 4), 16);
-    const b = parseInt(h.slice(4, 6), 16);
-    if (!(isFinite(r) && isFinite(g) && isFinite(b))) return 'var(--paper)';
-    return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? 'var(--ink)' : 'var(--paper)';
+    if (h.length < 6) return null;
+    const v = [h.slice(0, 2), h.slice(2, 4), h.slice(4, 6)].map((x) => parseInt(x, 16));
+    return v.every((n) => isFinite(n)) ? v : null;
+  }
+  const lumOf = (rgb) => 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+  const mixOf = (a, b, k) => a.map((c, i) => Math.round(c * (1 - k) + b[i] * k));
+  const hexOf = (rgb) => '#' + rgb.map((c) => ('0' + c.toString(16)).slice(-2)).join('');
+
+  function blockInk(hex, night) {
+    const rgb = hexRGB(hex);
+    if (!rgb) return { fill: hex, ink: 'var(--ink)', edge: 'var(--edge)' };
+    const fill = night ? mixOf(rgb, [10, 9, 7], 0.34) : rgb;
+    const pale = lumOf(fill) > 145;
+    return {
+      fill: hexOf(fill),
+      ink: pale ? '#17140e' : '#fbf6ea',
+      edge: hexOf(mixOf(fill, pale ? [0, 0, 0] : [255, 255, 255], 0.34)),
+    };
   }
 
   /* one run on the axis */
@@ -1507,12 +1526,11 @@
     b.style.height = Math.max(14, hpx) + 'px';
     /* the whole block wears its group's colour, so a week of columns reads as one
        glanceable picture of where the hours went */
-    const fill = g ? (D.PALETTE[g.color] || D.PALETTE.brick) : 'var(--paper-dim)';
-    b.style.background = fill;
-    b.style.color = inkOn(fill);
-    b.style.borderColor = inkOn(fill) === 'var(--paper)'
-      ? 'color-mix(in srgb, ' + fill + ' 60%, #000)'
-      : 'color-mix(in srgb, ' + fill + ' 70%, #000)';
+    const raw = g ? (D.PALETTE[g.color] || D.PALETTE.brick) : 'var(--paper-dim)';
+    const pair = blockInk(raw, document.documentElement.dataset.theme === 'ink');
+    b.style.background = pair.fill;
+    b.style.color = pair.ink;
+    b.style.borderColor = pair.edge;
     /* width follows the overlap cluster this run was placed in (tkLanes) */
     const lanes = r.lanes || 1;
     if (lanes > 1) {
@@ -1801,6 +1819,177 @@
           .then((res) => { if (res && res.ok) toast('已删除记录'); });
       }
     });
+  }
+
+  /* ---------------------------------------------------------------- 时间账本 */
+
+  /* The axis answers "what did I do at 15:20"; this answers "where did the week go",
+     which is a question about totals rather than about positions. Everything is derived
+     from what is already stored — the time entries and completedAt — so there is no new
+     state to keep in sync and nothing to migrate. */
+  const DAY_MS = 86400000;
+  /* D.startOfDay hands back a Date, and Date + number is string concatenation, which is
+     how the 日均 figure came out as NaN on the first run of this view */
+  const dayStart = (d) => D.startOfDay(d || new Date()).getTime();
+
+  function rpRange() {
+    const today = dayStart();
+    if (S.rpRange === 'day') return { from: today, to: today + DAY_MS, label: '今天 TODAY' };
+    if (S.rpRange === 'month') {
+      const now = new Date();
+      return { from: dayStart(new Date(now.getFullYear(), now.getMonth(), 1)),
+               to: today + DAY_MS, label: '本月 MONTH' };
+    }
+    /* Monday first, so the report's week is the same seven days the axis shows */
+    const dow = (new Date().getDay() + 6) % 7;
+    return { from: today - dow * DAY_MS, to: today + DAY_MS, label: '本周 WEEK' };
+  }
+
+  function rpMs(ms) {
+    const t = Math.max(0, Math.round(ms / 1000));
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    return h ? h + 'h' + ('0' + m).slice(-2) : m + 'm' + ('0' + s).slice(-2);
+  }
+
+  function rpLive(e) {
+    if (e.end) return Math.max(0, Number(e.ms) || 0);
+    const started = new Date(e.start).getTime();
+    return isFinite(started) ? Math.max(0, Date.now() - started) : 0;
+  }
+
+  function rpEl(cls, text, title) {
+    const n = doc.createElement('div');
+    n.className = cls;
+    if (text != null) n.textContent = text;
+    if (title) n.title = title;
+    return n;
+  }
+
+  function renderReport() {
+    const st = S.state, rg = rpRange();
+    const wrap = rpEl('rp');
+
+    /* ---- range switch ---- */
+    const bar = rpEl('rp-bar');
+    [['day', '今天'], ['week', '本周'], ['month', '本月']].forEach((p) => {
+      const b = doc.createElement('button');
+      b.className = 'btn ghost sm' + (S.rpRange === p[0] ? ' on' : '');
+      b.textContent = p[1];
+      b.addEventListener('click', () => { S.rpRange = p[0]; renderList(); });
+      bar.appendChild(b);
+    });
+    bar.appendChild(rpEl('rp-range-label', rg.label));
+    const print = doc.createElement('button');
+    print.className = 'btn ghost sm';
+    print.textContent = '打小票';
+    print.title = '把今天打成一张小票，可保存分享';
+    print.addEventListener('click', () => { if (window.Receipt) window.Receipt.open(st); });
+    bar.appendChild(print);
+    wrap.appendChild(bar);
+
+    const inRange = (st.timeEntries || []).filter((e) => {
+      const t = new Date(e.start).getTime();
+      return isFinite(t) && t >= rg.from && t < rg.to;
+    });
+    const doneInRange = st.todos.filter((t) => {
+      const c = t.completedAt ? new Date(t.completedAt).getTime() : 0;
+      return c >= rg.from && c < rg.to;
+    });
+    const totalMs = inRange.reduce((s, e) => s + rpLive(e), 0);
+    const days = Math.max(1, Math.round((rg.to - rg.from) / DAY_MS));
+
+    /* ---- figures ---- */
+    const figs = rpEl('rp-figs');
+    [
+      ['TOTAL / 专注总时长', rpMs(totalMs)],
+      ['RUNS / 专注次数', String(inRange.length)],
+      ['DONE / 完成任务', String(doneInRange.length)],
+      ['AVG / 日均', rpMs(totalMs / days)]
+    ].forEach((f, i) => {
+      const box = rpEl('rp-fig');
+      box.appendChild(rpEl('rp-fig-k', ('0' + (i + 1)) + ' ' + f[0]));
+      const v = rpEl('rp-fig-v', f[1]);
+      box.appendChild(v);
+      figs.appendChild(box);
+    });
+    wrap.appendChild(figs);
+
+    /* ---- where the hours went, by group ---- */
+    const byGroup = {};
+    inRange.forEach((e) => {
+      const t = D.todoById(st, e.todoId);
+      const gid = t ? t.groupId : '__gone';
+      byGroup[gid] = (byGroup[gid] || 0) + rpLive(e);
+    });
+    const groups = Object.keys(byGroup).sort((a, b) => byGroup[b] - byGroup[a]);
+    wrap.appendChild(rpEl('rp-h2', 'GROUPS / 按分组'));
+    const gbox = rpEl('rp-rows');
+    const gmax = groups.length ? byGroup[groups[0]] : 1;
+    if (!groups.length) gbox.appendChild(rpEl('rp-empty', '这个区间还没有计时记录'));
+    groups.forEach((gid) => {
+      const g = D.groupById(st, gid);
+      const row = rpEl('rp-row');
+      row.appendChild(rpEl('rp-row-k', g ? g.name : '（已删除）'));
+      const track = rpEl('rp-track');
+      const fill = rpEl('rp-fill');
+      fill.style.width = Math.max(2, (byGroup[gid] / gmax) * 100) + '%';
+      fill.style.background = g ? (D.PALETTE[g.color] || D.PALETTE.brick) : 'var(--ink-3)';
+      track.appendChild(fill);
+      row.appendChild(track);
+      row.appendChild(rpEl('rp-row-v', rpMs(byGroup[gid])));
+      gbox.appendChild(row);
+    });
+    wrap.appendChild(gbox);
+
+    /* ---- the last 14 days, regardless of the switch above: it is the shape of the
+       habit that people come back to look at, not the number for one week ---- */
+    wrap.appendChild(rpEl('rp-h2', 'DAYS / 最近 14 天'));
+    const cols = rpEl('rp-cols');
+    const today = dayStart();
+    const perDay = [];
+    for (let i = 13; i >= 0; i--) {
+      const from = today - i * DAY_MS;
+      const ms = (st.timeEntries || []).reduce((s, e) => {
+        const t = new Date(e.start).getTime();
+        return (t >= from && t < from + DAY_MS) ? s + rpLive(e) : s;
+      }, 0);
+      const done = st.todos.reduce((s, t) => {
+        const c = t.completedAt ? new Date(t.completedAt).getTime() : 0;
+        return (c >= from && c < from + DAY_MS) ? s + 1 : s;
+      }, 0);
+      perDay.push({ from, ms, done });
+    }
+    const dmax = Math.max(1, ...perDay.map((d) => d.ms));
+    perDay.forEach((d) => {
+      const col = rpEl('rp-col');
+      const stem = rpEl('rp-stem');
+      stem.style.height = Math.round((d.ms / dmax) * 100) + '%';
+      if (d.from === today) col.classList.add('today');
+      col.appendChild(stem);
+      const dt = new Date(d.from);
+      col.title = (dt.getMonth() + 1) + '/' + dt.getDate() + ' · ' + rpMs(d.ms) +
+        ' · 完成 ' + d.done;
+      col.appendChild(rpEl('rp-col-x', String(dt.getDate())));
+      cols.appendChild(col);
+    });
+    wrap.appendChild(cols);
+
+    /* ---- the longest runs, which is the part that reads as an achievement ---- */
+    const top = inRange.slice().sort((a, b) => rpLive(b) - rpLive(a)).slice(0, 5);
+    wrap.appendChild(rpEl('rp-h2', 'TOP 5 / 最长专注'));
+    const tbox = rpEl('rp-rows');
+    if (!top.length) tbox.appendChild(rpEl('rp-empty', '这个区间没有专注记录'));
+    top.forEach((e) => {
+      const t = D.todoById(st, e.todoId);
+      const row = rpEl('rp-row rp-row-list');
+      row.appendChild(rpEl('rp-row-k', t ? t.title : '（已删除）'));
+      row.appendChild(rpEl('rp-row-v', rpMs(rpLive(e))));
+      tbox.appendChild(row);
+    });
+    wrap.appendChild(tbox);
+
+    el.viewPanel.innerHTML = '';
+    el.viewPanel.appendChild(wrap);
   }
 
   function renderTimeline(list) {
@@ -2379,6 +2568,9 @@
       toast(on ? '桌面卡片层已开启 // OVERLAY ON' : '桌面卡片层已隐藏 // OVERLAY OFF');
     });
     $('#btnSettings').addEventListener('click', openSettings);
+    $('#btnReceipt').addEventListener('click', function () {
+      if (window.Receipt) window.Receipt.open(S.state);
+    });
     if (el.btnTheme) {
       el.btnTheme.addEventListener('click', () => {
         const next = S.state.settings.theme === 'ink' ? 'paper' : 'ink';
