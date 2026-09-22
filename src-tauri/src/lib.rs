@@ -1001,6 +1001,94 @@ fn notify(app: AppHandle, title: String, body: String) -> Result<(), String> {
     Ok(())
 }
 
+/// A receipt is worth keeping only if the user can find it again, so the writer lives
+/// here rather than in an `<a download>` that silently drops files into wherever the
+/// webview feels like putting them. It reports the path back so the renderer can say
+/// where the file went.
+#[tauri::command]
+fn save_png(app: AppHandle, data_url: String, name: String) -> Result<serde_json::Value, String> {
+    let comma = data_url.find(',').ok_or("not a data url")?;
+    let bytes = b64_decode(&data_url[comma + 1..])?;
+    if bytes.len() < 8 || &bytes[0..8] != b"\x89PNG\r\n\x1a\n" {
+        return Err("payload is not a PNG".into());
+    }
+    let dir = receipts_dir(&app)?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    /* Windows will not accept these in a filename, and the day's receipt is named after
+       the day, so replacing rather than rejecting keeps the timed print from failing
+       on a machine with an odd user name */
+    let safe: String = name
+        .chars()
+        .map(|c| match c {
+            '\\' | '/' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+            _ => c,
+        })
+        .collect();
+    let path = dir.join(safe);
+    std::fs::write(&path, &bytes).map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({
+        "path": path.display().to_string(),
+        "dir": dir.display().to_string(),
+    }))
+}
+
+#[tauri::command]
+fn open_dir(path: String) -> Result<(), String> {
+    let dir = std::path::PathBuf::from(&path);
+    if !dir.is_dir() {
+        return Err("not a folder".into());
+    }
+    // explorer.exe reports failure through its exit code even when it worked, so the
+    // spawn is the only signal worth checking
+    std::process::Command::new("explorer")
+        .arg(&dir)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn receipts_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    let dl = win32::known_folder(&win32::FOLDERID_DOWNLOADS);
+    Ok(match dl {
+        Some(p) if p.is_dir() => p.join("Pin To-Do"),
+        _ => config_dir(app)?.join("receipts"),
+    })
+}
+
+/// base64 by hand: the alternative was a new direct dependency on a crate that is only
+/// already in the tree because something else pulls it in, and this is 25 lines that
+/// cannot change under us.
+fn b64_decode(s: &str) -> Result<Vec<u8>, String> {
+    fn val(c: u8) -> Result<u32, String> {
+        match c {
+            b'A'..=b'Z' => Ok((c - b'A') as u32),
+            b'a'..=b'z' => Ok((c - b'a') as u32 + 26),
+            b'0'..=b'9' => Ok((c - b'0') as u32 + 52),
+            b'+' => Ok(62),
+            b'/' => Ok(63),
+            _ => Err("bad base64 character".into()),
+        }
+    }
+    let mut out = Vec::with_capacity(s.len() / 4 * 3 + 3);
+    let mut acc: u32 = 0;
+    let mut bits = 0u32;
+    for &c in s.as_bytes() {
+        if c == b'=' {
+            break;
+        }
+        if c == b'\n' || c == b'\r' || c == b' ' {
+            continue;
+        }
+        acc = (acc << 6) | val(c)?;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push(((acc >> bits) & 0xFF) as u8);
+        }
+    }
+    Ok(out)
+}
+
 #[tauri::command]
 fn boot_note(app: AppHandle, note: String) -> Result<(), String> {
     use std::io::Write;
@@ -1074,6 +1162,8 @@ pub fn run() {
             set_webview_zoom,
             sync_host,
             notify,
+            save_png,
+            open_dir,
             boot_note,
             app_info
         ])

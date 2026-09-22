@@ -38,6 +38,13 @@ itself to the edge when idle.
   filter and sort.
 - **Quick add** — one line of Chinese or English natural language: `明天三点 开会 高`
   becomes a titled, scheduled, prioritised task.
+- **Time report** — totals for today, the week or the month, the split by group, the last
+  fourteen days as columns stacked in the order the day actually happened (earliest at the
+  bottom, each band wearing its group's colour), and the five longest runs.
+- **Daily receipt** — the same day printed as a thermal slip: completed count, tracked
+  time, task names on or off, a stamp, a barcode and a torn edge. It feeds out of the slot
+  in stuttering pulls with the motor running and a ding when it stops, saves as the PNG you
+  would post, and can print itself at a set hour beside the deck with the panel closed.
 - **Pomodoro, memo, reminders, sound, tray, autostart**, and six materials, each with its own
   day and night palette: **印刷 1971** (the terminal sheet — square plates, hard print shadow,
   paper grain), **餐厅 DINER** (Googie console: enamel cream, chrome trim, rounded corners),

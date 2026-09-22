@@ -103,6 +103,64 @@ pub fn rect_of(hwnd: Hwnd) -> Option<(i32, i32, i32, i32)> {
     Some((r.left, r.top, r.right, r.bottom))
 }
 
+/// The Downloads folder as the shell sees it. `USERPROFILE` + "Downloads" is wrong on
+/// any machine where the known folder has been redirected (OneDrive does this on setup),
+/// and wrong in the other direction on machines that have no Downloads at all, which is
+/// what the first version of the receipt writer found in practice.
+#[repr(C)]
+pub struct KnownFolderId {
+    pub l: u32,
+    pub w1: u16,
+    pub w2: u16,
+    pub w3: [u8; 8],
+}
+
+pub const FOLDERID_DOWNLOADS: KnownFolderId = KnownFolderId {
+    l: 0x7d83_ee9d,
+    w1: 0xaf62,
+    w2: 0x49da,
+    w3: [0x89, 0x40, 0xa2, 0xbc, 0xa4, 0x21, 0x83, 0x0e],
+};
+
+#[link(name = "shell32")]
+extern "system" {
+    pub fn SHGetKnownFolderPath(id: *const KnownFolderId, flags: u32, token: *mut c_void, out: *mut *mut u16) -> i32;
+}
+
+#[link(name = "ole32")]
+extern "system" {
+    pub fn CoTaskMemFree(p: *mut c_void);
+}
+
+/// # Safety
+/// Wraps a shell call that hands back an allocated wide string, which is freed here.
+pub fn known_folder(id: &KnownFolderId) -> Option<std::path::PathBuf> {
+    unsafe {
+        let mut raw: *mut u16 = std::ptr::null_mut();
+        if SHGetKnownFolderPath(id, 0, std::ptr::null_mut(), &mut raw) < 0 || raw.is_null() {
+            return None;
+        }
+        let mut units = Vec::new();
+        let mut i = 0usize;
+        loop {
+            let c = unsafe { *raw.add(i) };
+            if c == 0 {
+                break;
+            }
+            units.push(c);
+            i += 1;
+            if i > 4096 {
+                break;
+            }
+        }
+        unsafe { CoTaskMemFree(raw as *mut c_void) };
+        if units.is_empty() {
+            return None;
+        }
+        Some(std::path::PathBuf::from(String::from_utf16_lossy(&units)))
+    }
+}
+
 pub const RGN_OR: i32 = 2;
 
 #[link(name = "user32")]

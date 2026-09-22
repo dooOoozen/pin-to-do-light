@@ -354,6 +354,9 @@ input[type="range"] { accent-color: var(--brick); }
   max-height: 92vh;
   display: flex; flex-direction: column;
   margin: 8vh auto 0;
+  /* the head and the foot carry their own --paper-lo fill, and a square child over a
+     rounded panel is what made the four corners poke out under a rounded material */
+  overflow: hidden;
   background-color: var(--paper);
   background-image: var(--tex-grain);
   background-size: var(--tex-size);
@@ -1341,3 +1344,67 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="unp"] .btn { letter-spacing: .14em; }
 :root[data-style="unp"] .btn:active { transform: translateY(2px); box-shadow: none; }
 :root[data-style="unp"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
+
+/* ---------------------------------------------------------------- 今日小票 printer */
+
+/* The machine is the one element that is deliberately not themed from --paper: a printer
+   body is dark in every material, and it is the contrast that makes the pale paper read
+   as paper. Everything the paper itself uses — ink, brick, the material's own typefaces —
+   is read from the tokens inside receipt.js, so a receipt printed under another material
+   comes out on that material's stock.
+   The rig is a fixed-size column and the paper is absolutely positioned inside the slot,
+   which is what stops the machine and the buttons from walking upward as the sheet feeds:
+   the slot used to grow with the paper, and the backdrop centres its child. */
+.rcp-backdrop {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  overflow: auto; padding: 18px 0;
+  background: color-mix(in srgb, #0a0907 62%, transparent);
+}
+.rcp { margin: auto; display: flex; flex-direction: row; align-items: flex-start; gap: 12px; }
+
+/* the buttons live beside the machine, not under it, so nothing below the printer moves
+   when the paper length changes */
+.rcp-side {
+  display: flex; flex-direction: column; gap: 6px; width: 122px; flex: none;
+  padding: 8px; border: 1px solid var(--edge); border-radius: var(--r-plate);
+  background: color-mix(in srgb, var(--ink) 82%, #000);
+}
+.rcp-side .btn { justify-content: center; background: var(--paper-hi); color: var(--ink); }
+.rcp-side .btn:hover { background: var(--paper-dim); }
+.rcp-side .btn.primary { background: var(--brick); color: var(--brick-ink); }
+.rcp-side .btn.rcp-close { background: var(--paper-lo); color: var(--ink); border-color: var(--edge); }
+.rcp-side .btn.rcp-close:hover { background: var(--vermillion); color: var(--brick-ink); }
+.rcp-timer {
+  display: flex; flex-direction: column; align-items: stretch; gap: 5px;
+  padding: 7px 6px; border-top: 1px dashed color-mix(in srgb, var(--paper-hi) 40%, transparent);
+  font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-hi);
+}
+.rcp-timer .switch { align-self: flex-start; }
+.rcp-at { width: 100%; font-size: 12px; padding: 2px 4px; }
+
+.rcp-rig { display: flex; flex-direction: column; align-items: center; flex: none; }
+.rcp-machine {
+  position: relative; z-index: 2;
+  width: 344px; box-sizing: border-box;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 13px 18px 11px;
+  background: linear-gradient(180deg, var(--ink), color-mix(in srgb, var(--ink) 82%, #000));
+  color: var(--paper-hi);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-plate) var(--r-plate) 3px 3px;
+  box-shadow: var(--pop-shadow);
+}
+.rcp-brand { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; }
+.rcp-led { font-size: 9px; letter-spacing: .2em; color: var(--brick); white-space: nowrap; }
+.rcp-led::before { content: "CF"; margin-right: 6px; font-size: 8px; }
+.rcp-slot {
+  position: relative; width: 300px; overflow: hidden;
+  margin-top: -2px;
+}
+.rcp-paper {
+  position: absolute; top: 0; left: 50%; margin-left: -150px; display: block;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .3));
+}
+/* the timed print arrives uninvited, so it does not darken the whole desk */
+.rcp-backdrop.rcp-auto { background: transparent; pointer-events: none; }
