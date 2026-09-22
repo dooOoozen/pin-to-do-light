@@ -1006,13 +1006,13 @@ fn notify(app: AppHandle, title: String, body: String) -> Result<(), String> {
 /// webview feels like putting them. It reports the path back so the renderer can say
 /// where the file went.
 #[tauri::command]
-fn save_png(app: AppHandle, data_url: String, name: String) -> Result<serde_json::Value, String> {
+fn save_png(app: AppHandle, data_url: String, name: String, dir: String) -> Result<serde_json::Value, String> {
     let comma = data_url.find(',').ok_or("not a data url")?;
     let bytes = b64_decode(&data_url[comma + 1..])?;
     if bytes.len() < 8 || &bytes[0..8] != b"\x89PNG\r\n\x1a\n" {
         return Err("payload is not a PNG".into());
     }
-    let dir = receipts_dir(&app)?;
+    let dir = if dir.trim().is_empty() { receipts_dir(&app)? } else { PathBuf::from(dir.trim()) };
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     /* Windows will not accept these in a filename, and the day's receipt is named after
        the day, so replacing rather than rejecting keeps the timed print from failing
@@ -1032,9 +1032,19 @@ fn save_png(app: AppHandle, data_url: String, name: String) -> Result<serde_json
     }))
 }
 
+/// An empty path means "the folder you decided on", not "no folder": the receipt's own
+/// 打开文件夹 button has nothing to name until a save has told it where the file went,
+/// and a button that answers "not a folder" on a machine that has never printed is the
+/// button the user judges the app by.
 #[tauri::command]
-fn open_dir(path: String) -> Result<(), String> {
-    let dir = std::path::PathBuf::from(&path);
+fn open_dir(app: AppHandle, path: String) -> Result<(), String> {
+    let dir = if path.trim().is_empty() {
+        let d = receipts_dir(&app)?;
+        std::fs::create_dir_all(&d).map_err(|e| e.to_string())?;
+        d
+    } else {
+        PathBuf::from(path.trim())
+    };
     if !dir.is_dir() {
         return Err("not a folder".into());
     }
@@ -1045,6 +1055,16 @@ fn open_dir(path: String) -> Result<(), String> {
         .spawn()
         .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// The settings panel shows the folder it would actually write to, so it asks rather
+/// than re-deriving the Downloads path in JavaScript (where OneDrive redirection makes
+/// a hand-written guess wrong).
+#[tauri::command]
+fn receipt_dir(app: AppHandle) -> Result<String, String> {
+    let dir = receipts_dir(&app)?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.display().to_string())
 }
 
 fn receipts_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
@@ -1164,6 +1184,7 @@ pub fn run() {
             notify,
             save_png,
             open_dir,
+            receipt_dir,
             boot_note,
             app_info
         ])

@@ -342,7 +342,11 @@
        time is a real HH:MM. */
     var rp = settings.receipt && typeof settings.receipt === 'object' ? settings.receipt : {};
     var atOk = /^\d{2}:\d{2}$/.test(String(rp.at || ''));
-    settings.receipt = { on: rp.on === true && atOk, at: atOk ? String(rp.at) : '21:30' };
+    settings.receipt = {
+      on: rp.on === true && atOk,
+      at: atOk ? String(rp.at) : '21:30',
+      dir: typeof rp.dir === 'string' ? rp.dir.slice(0, 260) : ''
+    };
     /* v2 settings: dock position + split deck/card sizes + interface scale */
     if (s.settings && typeof s.settings === 'object' &&
       s.settings.cardScale === undefined && s.settings.deckScale === undefined && s.settings.dockScale !== undefined) {

@@ -313,19 +313,35 @@
     } catch (e) { /* no audio */ }
   }
 
+  /* A waiter's bell, not a chime: a steel dome struck once. That means partials well
+     above the fundamental and *inharmonic* — a real dome rings at ratios like 1 : 1.5 :
+     2.24 : 3.1 rather than the octave stack of a tuned note — with a near-instant attack
+     and a decay under half a second. The first version used 1568/2093/3136 Hz over 0.9 s,
+     which is a soft two-note chime and reads as nothing in a room. */
   function ding() {
     if (!soundOn) return;
     try {
       var ctx = audioCtx(), t0 = ctx.currentTime;
-      [[1568, 0.06], [2093, 0.035], [3136, 0.014]].forEach(function (p) {
-        var o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sine'; o.frequency.value = p[0];
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(p[1], t0 + 0.008);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
-        o.connect(g); g.connect(ctx.destination);
-        o.start(t0); o.stop(t0 + 0.95);
-      });
+      [[2637, 0.10, 0.42], [3941, 0.055, 0.32], [5900, 0.03, 0.22], [8260, 0.012, 0.12]]
+        .forEach(function (p) {
+          var o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'triangle';
+          o.frequency.setValueAtTime(p[0], t0);
+          o.frequency.exponentialRampToValueAtTime(p[0] * 0.995, t0 + p[2]);
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(p[1], t0 + 0.002);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + p[2]);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(t0); o.stop(t0 + p[2] + 0.02);
+        });
+      /* the strike itself: a two-millisecond tick of bright noise on the attack */
+      var len = Math.floor(ctx.sampleRate * 0.004);
+      var buf = ctx.createBuffer(1, len, ctx.sampleRate), ch = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      var n = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), ng = ctx.createGain();
+      n.buffer = buf; hp.type = 'highpass'; hp.frequency.value = 4200; ng.gain.value = 0.09;
+      n.connect(hp); hp.connect(ng); ng.connect(ctx.destination);
+      n.start(t0);
     } catch (e) { /* no audio */ }
   }
 
@@ -373,15 +389,55 @@
     setTimeout(done, 260);
   }
 
-  /* ---- the schedule ---- */
+  /* ---- the schedule and the folder ---- */
   function receiptSettings(state) {
     var r = (state && state.settings && state.settings.receipt) || {};
-    return { on: !!r.on, at: r.at || '21:30' };
+    return {
+      on: !!r.on,
+      at: /^\d{2}:\d{2}$/.test(String(r.at || '')) ? r.at : '21:30',
+      dir: r.dir || ''
+    };
   }
+
+  function patchReceipt(next) {
+    window.API.op({ type: 'settings:update', patch: { receipt: next } });
+    /* both windows hold a copy of the settings and the host fans the write out, but the
+       local object is what the knobs read back on the next repaint */
+    if (lastState && lastState.settings) lastState.settings.receipt = next;
+  }
+
+  /* The plate is a control panel, not a toolbar: a knurled knob for each of the two
+     toggles, a domed push button for re-feed, key caps for save and exit, and a lever in
+     a recessed slot for the folder. Everything is built from the material tokens — bevel,
+     edge, paper, brick — so another material re-skins the hardware instead of leaving
+     grey plastic sitting on top of a screen print. */
+  function plate(sched) {
+    function ctl(body, label, cls) {
+      return '<div class="rc-ctl ' + (cls || '') + '">' + body + '<label>' + label + '</label></div>';
+    }
+    var names = window.__rcpNames !== false;
+    return '<div class="rcp-plate">' +
+      ctl('<i class="rc-led' + (names ? ' on' : '') + '" data-led="names"></i>' +
+        '<button class="rc-knob' + (names ? ' a-on' : ' a-off') + '" data-rcp="names">' +
+        '<span class="rc-knob-face"><b></b></span></button>', '任务名 NAMES') +
+      ctl('<button class="rc-push" data-rcp="again" title="重打一张"><span>FEED</span></button>', '重打 AGAIN') +
+      ctl('<button class="rc-key" data-rcp="save" title="保存 PNG"><span>PNG</span></button>', '保存 SAVE') +
+      ctl('<span class="rc-slot"><i class="rc-lever" data-rcp="folder" title="打开保存文件夹"></i></span>',
+        '文件夹 FOLDER', 'rc-ctl-lever') +
+      ctl('<i class="rc-led' + (sched.on ? ' on' : '') + '" data-led="timer"></i>' +
+        '<button class="rc-knob' + (sched.on ? ' a-on' : ' a-off') + '" data-rcp="timer">' +
+        '<span class="rc-knob-face"><b></b></span></button>', '定时 TIMER') +
+      ctl('<input type="time" class="rcp-at" value="' + sched.at + '" />', '时间 AT') +
+      ctl('<button class="rc-key rc-key-exit" data-rcp="close"><span>EXIT</span></button>', '退出 EXIT') +
+      '</div>';
+  }
+
+  var lastState = null, lastPath = '', lastDir = '';
 
   function build(state, showNames, opts) {
     opts = opts || {};
     close();
+    lastState = state;
     soundOn = !(state && state.settings && state.settings.sound === false);
     var d = collect(state, showNames);
     var sched = receiptSettings(state);
@@ -390,16 +446,7 @@
     host.className = 'rcp-backdrop' + (opts.auto ? ' rcp-auto' : '');
     host.innerHTML =
       '<div class="rcp">' +
-      '  <div class="rcp-side">' +
-      '    <button class="btn sm" data-rcp="names">' + (showNames ? '隐藏任务名' : '显示任务名') + '</button>' +
-      '    <button class="btn sm" data-rcp="again">重打一张</button>' +
-      '    <button class="btn primary sm" data-rcp="save">保存 PNG</button>' +
-      '    <button class="btn sm" data-rcp="folder">打开文件夹</button>' +
-      '    <label class="rcp-timer"><span>定时出票</span>' +
-      '      <span class="switch' + (sched.on ? ' on' : '') + '"><i></i></span>' +
-      '      <input type="time" class="rcp-at" value="' + sched.at + '" /></label>' +
-      '    <button class="btn sm rcp-close" data-rcp="close">关闭</button>' +
-      '  </div>' +
+      (opts.auto ? '' : plate(sched)) +
       '  <div class="rcp-rig">' +
       '    <div class="rcp-machine">' +
       '      <span class="rcp-brand">◆ PIN TO-DO 收银台</span>' +
@@ -409,62 +456,116 @@
       '  </div>' +
       '</div>';
     doc.body.appendChild(host);
-    /* a scheduled print lands beside the deck rather than in the middle of the screen:
-       the user is looking at the deck, and a machine that appears somewhere else reads
-       as somebody else's window */
+
+    var rig = host.querySelector('.rcp');
+    /* a scheduled print lands beside the deck rather than in the middle of the screen */
     if (opts.pos) {
-      var rig = host.querySelector('.rcp');
       rig.style.position = 'absolute';
       rig.style.margin = '0';
-      rig.style.left = Math.max(8, Math.min(opts.pos.x, (window.innerWidth - 480))) + 'px';
+      rig.style.left = Math.max(8, Math.min(opts.pos.x, Math.max(8, window.innerWidth - 480))) + 'px';
       rig.style.top = Math.max(8, Math.min(opts.pos.y, Math.max(8, window.innerHeight - 420))) + 'px';
     }
     var canvas = host.querySelector('.rcp-paper');
     var h = paint(canvas, d);
     eject(canvas, h);
     lastCanvas = canvas;
+    bind(host, state, showNames, opts);
+    /* Nothing else in this window knows the machine exists until something moves: the
+       card layer builds its region from nodes it has a reason to look at, so a machine
+       that appears while the deck is asleep is drawn outside the region and shows up as
+       an empty patch of desk. Measured: the four corners of the head were outside the
+       pushed spans for the whole first feed. */
+    chase();
+    requestAnimationFrame(chase);
+  }
 
-    host.addEventListener('click', function (ev) {
-      var sw = ev.target.closest && ev.target.closest('.rcp-timer .switch');
-      if (sw) { toggleSchedule(state, sw); return; }
+  /* In the timed mode there is nothing on screen to click except the receipt itself, and
+     the only reason to keep it up is to photograph it — so it stays pinned until touched,
+     and the machine body is the handle for shuffling it out of the way first. */
+  function bind(root, state, showNames, opts) {
+    var moved = 0, grab = null;
+    var rig = root.querySelector('.rcp');
+    var machine = root.querySelector('.rcp-machine');
+
+    machine.addEventListener('pointerdown', function (ev) {
+      if (!opts.auto) return;
+      grab = { x: ev.clientX, y: ev.clientY, l: rig.offsetLeft, t: rig.offsetTop };
+      moved = 0;
+      try { machine.setPointerCapture(ev.pointerId); } catch (e) { /* no capture */ }
+    });
+    machine.addEventListener('pointermove', function (ev) {
+      if (!grab) return;
+      var dx = ev.clientX - grab.x, dy = ev.clientY - grab.y;
+      moved = Math.max(moved, Math.abs(dx) + Math.abs(dy));
+      if (moved < 4) return;
+      ev.preventDefault();
+      rig.style.position = 'absolute';
+      rig.style.margin = '0';
+      rig.style.left = Math.max(0, Math.min(grab.l + dx, window.innerWidth - 90)) + 'px';
+      rig.style.top = Math.max(0, Math.min(grab.t + dy, window.innerHeight - 70)) + 'px';
+      chase();
+    });
+    ['pointerup', 'pointercancel'].forEach(function (k) {
+      machine.addEventListener(k, function () { grab = null; });
+    });
+
+    root.addEventListener('click', function (ev) {
+      if (opts.auto) {
+        /* a drag ends in a click as well, and that must not throw the receipt away */
+        if (moved > 4) { moved = 0; return; }
+        tearOff(lastCanvas, function () { setTimeout(close, 240); });
+        return;
+      }
       var b = ev.target.closest && ev.target.closest('[data-rcp]');
-      if (!b) { if (ev.target === host && !opts.auto) close(); return; }
+      if (!b) { if (ev.target === root) close(); return; }
       var k = b.getAttribute('data-rcp');
       if (k === 'close') close();
-      else if (k === 'save') save(canvas);
+      else if (k === 'save') save(lastCanvas);
       else if (k === 'folder') openFolder();
       else if (k === 'again' || k === 'names') {
         var next = k === 'names' ? !showNames : showNames;
         window.__rcpNames = next;
-        tearOff(canvas, function () { build(state, next, opts); });
+        if (k === 'names') {
+          setKnob(root, 'names', next);
+          /* re-printing a sheet that is already the right length would only be a flash,
+             so the toggle re-feeds and the reader watches the names appear */
+          tearOff(lastCanvas, function () { build(state, next, opts); });
+        } else {
+          tearOff(lastCanvas, function () { build(state, next, opts); });
+        }
+      } else if (k === 'timer') {
+        var sched = receiptSettings(state);
+        var want = !sched.on;
+        setKnob(root, 'timer', want);
+        patchReceipt({ on: want, at: sched.at, dir: sched.dir });
+        toast(want ? '定时出票：每天 ' + sched.at : '定时出票已关闭');
       }
     });
-    var at = host.querySelector('.rcp-at');
-    at.addEventListener('change', function () { writeSchedule(state, null, at.value); });
+    var at = root.querySelector('.rcp-at');
+    if (at) at.addEventListener('change', function () {
+      var sched = receiptSettings(state);
+      patchReceipt({ on: sched.on, at: at.value, dir: sched.dir });
+      toast('定时出票 ' + (sched.on ? '开' : '关') + ' · 每天 ' + at.value);
+    });
   }
 
-  function toggleSchedule(state, node) {
-    var want = !receiptSettings(state).on;
-    if (want) {
-      var v = state.settings.receipt && state.settings.receipt.at;
-      var today = new Date().toTimeString().slice(0, 5);
-      if (!v || v <= today) {
-        toast('定时已开：' + (v || '21:30') + ' 之前不会触发，改时间或等明天');
-      }
+  function setKnob(root, which, on) {
+    var knob = root.querySelector('[data-rcp="' + which + '"]');
+    if (knob) {
+      knob.classList.toggle('a-on', on);
+      knob.classList.toggle('a-off', !on);
     }
-    writeSchedule(state, want, null);
+    var led = root.querySelector('[data-led="' + which + '"]');
+    if (led) led.classList.toggle('on', on);
   }
 
-  function writeSchedule(state, on, at) {
-    var cur = receiptSettings(state);
-    var next = { on: on === null ? cur.on : on, at: at || cur.at };
-    state.settings.receipt = next;
-    window.API.op({ type: 'settings:update', patch: { receipt: next } });
-    toast(next.on ? '定时出票：每天 ' + next.at : '定时出票已关闭');
+  /* A dragged machine in the card layer moves inside a window whose region clips drawing,
+     so the region has to be re-cut behind it. The overlay exposes the same nudge the
+     animation listeners use. */
+  function chase() {
+    try { if (window.__rcpChase) window.__rcpChase(); } catch (e) { /* panel side */ }
   }
 
-  /* the panel has its own toast strip; the card layer does not, and there a system
-     notification is the only thing the user can actually see */
   function toast(text) {
     if (window.__toast) { try { window.__toast(text, 'info'); return; } catch (e) { /* fall through */ } }
     try { window.API.notify('小票机', text); } catch (e) { /* no notifier */ }
@@ -476,20 +577,72 @@
       '-' + ('0' + n.getHours()).slice(-2) + ('0' + n.getMinutes()).slice(-2);
   }
 
-  function dataUrl(canvas) { try { return canvas.toDataURL('image/png'); } catch (e) { return ''; } }
+  function roundRect(c, x, y, w, h, r) {
+    if (c.roundRect) { c.beginPath(); c.roundRect(x, y, w, h, r); return; }
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+  }
 
-  /* Saving goes through the host so the user is told where the file landed, and so the
-     timed print can write the same way with no window in front of it. The anchor path is
-     the fallback when the command is unavailable. */
+  /* The shared image carries the machine, because the brand line on the head is the only
+     thing on a receipt that says which software made it. Paper alone is just a list. */
+  function composite(paper) {
+    var pw = paper.width / SCALE, ph = paper.height / SCALE;
+    var padX = 26, mH = 52, gap = 3;
+    var w = pw + padX * 2, h = mH + gap + ph + 6;
+    var c = doc.createElement('canvas');
+    c.width = Math.round(w * SCALE);
+    c.height = Math.round(h * SCALE);
+    var x = c.getContext('2d');
+    x.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    var ink = colour('--ink', '#14120d');
+    var hi = colour('--paper-hi', '#fffaf4');
+    var brick = colour('--brick', '#8d3a27');
+    var disp = token('--font-display', token('--font-mono', 'monospace'));
+    var mono = token('--font-mono', 'monospace');
+
+    x.fillStyle = ink;
+    roundRect(x, 0, 0, w, mH, [10, 10, 3, 3]);
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.07)';
+    x.fillRect(16, 9, w - 32, 2);
+    x.textBaseline = 'middle';
+    x.textAlign = 'left';
+    x.fillStyle = hi;
+    x.font = '14px ' + disp;
+    x.fillText('◆ PIN TO-DO 收银台', 18, mH / 2);
+    x.textAlign = 'right';
+    x.fillStyle = brick;
+    x.font = '10px ' + mono;
+    x.fillText('● ONLINE', w - 18, mH / 2);
+    x.fillStyle = 'rgba(0,0,0,.55)';
+    x.fillRect(padX + 6, mH - 4, pw - 12, 4);
+    x.textAlign = 'left';
+    x.drawImage(paper, padX, mH + gap, pw, ph);
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    return c.toDataURL('image/png');
+  }
+
+  function dataUrl(canvas) {
+    try { return composite(canvas); } catch (e) {
+      try { return canvas.toDataURL('image/png'); } catch (e2) { return ''; }
+    }
+  }
+
   function save(canvas, quiet) {
     var url = dataUrl(canvas);
     if (!url) { toast('这张纸画不出来，没保存'); return; }
     var name = '今日小票-' + stamp() + '.png';
+    var dir = receiptSettings(lastState).dir;
     if (window.API && window.API.savePng) {
-      window.API.savePng(url, name).then(function (res) {
-        if (res && res.path && !quiet) toast('已保存到 ' + res.path);
-        if (res && res.dir) lastDir = res.dir;
-      }).catch(function () { anchorSave(url, name); });
+      window.API.savePng(url, name, dir).then(function (r) {
+        if (r && r.path) { lastPath = r.path; lastDir = r.dir; }
+        if (r && r.path && !quiet) toast('已保存到 ' + r.path);
+      }).catch(function (e) { toast('存不进去：' + (e && e.message ? e.message : e)); });
     } else anchorSave(url, name);
   }
 
@@ -502,8 +655,9 @@
   }
 
   function openFolder() {
+    var want = lastDir || receiptSettings(lastState).dir || '';
     if (window.API && window.API.openDir) {
-      window.API.openDir(lastDir).catch(function () { toast('打不开那个文件夹'); });
+      window.API.openDir(want).catch(function () { toast('打不开那个文件夹'); });
     } else toast('这台构建还不能打开文件夹');
   }
 
@@ -513,25 +667,22 @@
     host = null; lastCanvas = null;
   }
 
-  /* A timed print has nobody to click 关闭: it feeds, saves, tears itself off and goes
-     away, so the desk is not left holding a machine the user walked past. */
+  /* A timed print feeds, saves, and then stays put on the desk until the user touches it. */
   function autoPrint(state, pos) {
     build(state, window.__rcpNames !== false, { auto: true, pos: pos });
     var total = 0;
     PULLS.forEach(function (p) { total += p.at + 10; });
-    setTimeout(function () {
-      save(lastCanvas, true);
-      tearOff(lastCanvas, function () { setTimeout(close, 240); });
-    }, total + 700);
+    setTimeout(function () { save(lastCanvas, true); }, total + 700);
   }
 
   window.Receipt = {
     open: function (state) { build(state, window.__rcpNames !== false); },
     auto: autoPrint,
     active: function () { return !!host; },
-    close: close,
-    /* the overlay window owns the clock: it is the only one that is always there, and a
-     scheduled print must not have to open the task panel to happen */
+    settings: receiptSettings,
+    patch: patchReceipt,
+    /* the card layer owns the clock: it is the only window always open, and a scheduled
+       print must not have to raise the task panel to happen */
     due: function (state, now, fired) {
       var r = state && state.settings && state.settings.receipt;
       if (!r || !r.on) return null;

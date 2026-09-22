@@ -1363,25 +1363,124 @@ input[type="range"] { accent-color: var(--brick); }
 }
 .rcp { margin: auto; display: flex; flex-direction: row; align-items: flex-start; gap: 12px; }
 
-/* the buttons live beside the machine, not under it, so nothing below the printer moves
-   when the paper length changes */
-.rcp-side {
-  display: flex; flex-direction: column; gap: 6px; width: 122px; flex: none;
-  padding: 8px; border: 1px solid var(--edge); border-radius: var(--r-plate);
-  background: color-mix(in srgb, var(--ink) 82%, #000);
+/* The control plate. Reference is the soft-plastic instrument look: a bevelled panel,
+   knurled knobs with an indicator notch and a pilot lamp above each, a domed push button,
+   key caps, and a lever sitting in a recessed slot. Every one of those is built from the
+   material tokens — --paper-hi/--paper-lo for the moulding, --edge for the seam, --brick
+   for the lamp — so switching material re-skins the hardware instead of leaving grey
+   plastic pasted on top of a screen print. */
+.rcp-plate {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px 10px;
+  width: 172px; padding: 13px 12px 11px; flex: none; align-self: flex-start;
+  background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
+  border: 1px solid var(--edge); border-radius: var(--r-plate);
+  box-shadow: var(--bevel), var(--pop-shadow);
 }
-.rcp-side .btn { justify-content: center; background: var(--paper-hi); color: var(--ink); }
-.rcp-side .btn:hover { background: var(--paper-dim); }
-.rcp-side .btn.primary { background: var(--brick); color: var(--brick-ink); }
-.rcp-side .btn.rcp-close { background: var(--paper-lo); color: var(--ink); border-color: var(--edge); }
-.rcp-side .btn.rcp-close:hover { background: var(--vermillion); color: var(--brick-ink); }
-.rcp-timer {
-  display: flex; flex-direction: column; align-items: stretch; gap: 5px;
-  padding: 7px 6px; border-top: 1px dashed color-mix(in srgb, var(--paper-hi) 40%, transparent);
-  font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-hi);
+.rc-ctl { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.rc-ctl label {
+  font-size: 7.5px; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--ink-3); white-space: nowrap;
 }
-.rcp-timer .switch { align-self: flex-start; }
-.rcp-at { width: 100%; font-size: 12px; padding: 2px 4px; }
+.rc-ctl-lever { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: 9px; }
+
+/* pilot lamp */
+.rc-led {
+  width: 7px; height: 7px; border-radius: 50%; display: block;
+  border: 1px solid var(--edge); background: var(--paper-dim);
+}
+.rc-led.on {
+  background: var(--brick);
+  border-color: color-mix(in srgb, var(--brick) 70%, #000);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--brick) 65%, transparent);
+}
+
+/* knurled knob: the face turns, the knurl does not */
+.rc-knob {
+  position: relative; width: 40px; height: 40px; padding: 0; cursor: pointer;
+  border: 1px solid var(--edge); border-radius: 50%;
+  background: radial-gradient(circle at 34% 26%,
+    var(--paper-hi) 0 30%, var(--paper-lo) 62%, var(--paper-dim) 100%);
+  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, .18),
+              inset 0 2px 2px color-mix(in srgb, var(--paper-hi) 85%, transparent),
+              0 2px 5px rgba(0, 0, 0, .3);
+}
+.rc-knob::after {
+  content: ""; position: absolute; inset: -1px; border-radius: 50%; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg,
+    color-mix(in srgb, var(--ink) 20%, transparent) 0 3deg, transparent 3deg 9deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 63%, #000 64%);
+  mask: radial-gradient(circle, transparent 0 63%, #000 64%);
+  opacity: .55;
+}
+.rc-knob-face {
+  position: absolute; inset: 6px; display: block; border-radius: 50%;
+  transition: transform .22s cubic-bezier(.2, .8, .2, 1);
+}
+.rc-knob-face b {
+  position: absolute; left: 50%; top: 2px; width: 3px; height: 10px; margin-left: -1.5px;
+  border-radius: 2px; background: var(--ink);
+}
+.rc-knob.a-on .rc-knob-face { transform: rotate(46deg); }
+.rc-knob.a-off .rc-knob-face { transform: rotate(-46deg); }
+.rc-knob:active { box-shadow: inset 0 2px 4px rgba(0, 0, 0, .3); }
+
+/* domed push button */
+.rc-push {
+  width: 44px; height: 44px; padding: 0; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--brick) 70%, #000); border-radius: 50%;
+  background: radial-gradient(circle at 36% 28%,
+    color-mix(in srgb, var(--brick) 72%, #fff) 0 26%, var(--brick) 58%,
+    color-mix(in srgb, var(--brick) 62%, #000) 100%);
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, .35), inset 0 -3px 5px rgba(0, 0, 0, .3),
+              0 3px 6px rgba(0, 0, 0, .34);
+  color: var(--brick-ink); font-size: 8.5px; letter-spacing: .1em;
+}
+.rc-push span { position: relative; top: 1px; text-shadow: 0 1px 0 rgba(0, 0, 0, .3); }
+.rc-push:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .45);
+}
+
+/* key caps */
+.rc-key {
+  min-width: 52px; height: 30px; padding: 0 8px; cursor: pointer;
+  border: 1px solid var(--edge); border-radius: var(--r-ctl);
+  background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--paper-hi) 90%, transparent),
+              inset 0 -2px 3px rgba(0, 0, 0, .16), 0 2px 4px rgba(0, 0, 0, .26);
+  color: var(--ink); font-size: 9px; letter-spacing: .12em;
+}
+.rc-key:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .3); }
+.rc-key-exit { background: linear-gradient(180deg, var(--paper-lo), var(--paper-dim)); }
+
+/* lever in a slot */
+.rc-slot {
+  position: relative; width: 26px; height: 54px; display: block;
+  border: 1px solid var(--edge); border-radius: 13px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ink) 26%, var(--paper-lo)), var(--paper-lo));
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .35);
+}
+.rc-lever {
+  position: absolute; left: 3px; bottom: 3px; width: 18px; height: 18px; display: block;
+  border: 1px solid var(--edge); border-radius: 50%; cursor: pointer;
+  background: radial-gradient(circle at 36% 28%, var(--paper-hi) 0 34%, var(--paper-dim) 100%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .34);
+  transition: bottom .16s cubic-bezier(.2, .8, .2, 1);
+}
+.rc-lever:hover, .rc-lever:active { bottom: 31px; }
+
+/* the native time field, brought onto the panel instead of sitting on it */
+.rcp-at {
+  width: 66px; height: 26px; padding: 0 5px; box-sizing: border-box;
+  border: 1px solid var(--edge); border-radius: var(--r-ctl);
+  background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
+  color: var(--ink); font-family: var(--font-mono); font-size: 12px; text-align: center;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .18);
+  color-scheme: light;
+}
+:root[data-theme="ink"] .rcp-at { color-scheme: dark; }
+.rcp-at::-webkit-calendar-picker-indicator { opacity: .45; filter: invert(1); }
+:root[data-theme="ink"] .rcp-at::-webkit-calendar-picker-indicator { filter: none; }
 
 .rcp-rig { display: flex; flex-direction: column; align-items: center; flex: none; }
 .rcp-machine {
