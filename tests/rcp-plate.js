@@ -1,9 +1,9 @@
-/* Batch K put real hardware on the receipt machine: a control plate that must exist in
-   the manual mode and be absent in the timed one, a machine that must not walk away from
-   the slot while the paper feeds, a body that can be dragged, and an export that carries
-   the machine head. All of that is measurable without looking at it — except the paper
-   itself, which moves, so that one is for the user to watch. Logs geometry only; restores
-   the schedule it toggles. */
+/* The receipt machine, checked without looking at it.
+   The bug this fixture exists to catch is the one a synthetic event used to hide: the
+   machine was drawn inside the window region but absent from hitRects, and had no
+   .interactive ancestor, so hitTest() answered "empty desktop" and set WS_EX_TRANSPARENT —
+   a receipt you could see but not touch. nd.probe() runs the same two gates the real
+   pointer runs, so this time the answer means something. */
 (function () {
   var API = window.API, nd = window.__nd;
   function note(s) { try { API.bootNote('[R] ' + s); } catch (e) { /* no bridge */ } }
@@ -15,104 +15,117 @@
     var b = el.getBoundingClientRect();
     return Math.round(b.left) + ',' + Math.round(b.top) + ' ' + Math.round(b.width) + 'x' + Math.round(b.height);
   }
-
-  function insideRegion(tag, el) {
-    var spans = nd && nd.pushed ? nd.pushed() : null;
-    if (!el || !spans) { note(tag + ' noSpans'); return; }
+  function probeAt(tag, el, dx, dy) {
     var b = el.getBoundingClientRect();
-    var pts = [[b.left, b.top], [b.right - 1, b.top], [b.left, b.bottom - 1], [b.right - 1, b.bottom - 1]];
-    var miss = [];
-    pts.forEach(function (p, i) {
-      var hit = spans.some(function (r) {
-        return p[0] >= r.x && p[0] < r.x + r.width && p[1] >= r.y && p[1] < r.y + r.height;
-      });
-      if (!hit) miss.push(i + '@' + Math.round(p[0]) + ',' + Math.round(p[1]));
-    });
-    note(tag + ' corners ' + (miss.length ? 'MISSING ' + miss.join(' ') : 'shown') + ' spans=' + spans.length);
-  }
-
-  function geom(tag) {
-    note(tag + ' machine=' + box(q('.rcp-machine')) + ' plate=' + box(q('.rcp-plate')) +
-      ' slot=' + box(q('.rcp-slot')) + ' paperTop=' + (q('.rcp-paper') ? Math.round(q('.rcp-paper').getBoundingClientRect().top) : '-') +
-      ' paperPx=' + (q('.rcp-paper') ? q('.rcp-paper').width + 'x' + q('.rcp-paper').height : '-'));
+    var p = nd.probe(b.left + (dx === undefined ? b.width / 2 : dx), b.top + (dy === undefined ? b.height / 2 : dy));
+    note(tag + ' probe=' + p.x + ',' + p.y + ' node=' + p.node +
+      ' interactive=' + p.interactive + ' inRect=' + p.inRect + ' rects=' + p.rects.length);
   }
 
   setTimeout(function () {
     var schedBefore = null;
-    var origin = null;
     API.getState().then(function (st) {
       schedBefore = JSON.parse(JSON.stringify(st.settings.receipt));
-      note('state receipt=' + JSON.stringify(schedBefore) + ' sound=' + st.settings.sound);
+      note('state receipt=' + JSON.stringify(schedBefore));
       window.Receipt.open(st);
-      note('plate ctl=' + n('.rc-ctl') + ' knobs=' + n('.rc-knob') + ' push=' + n('.rc-push') +
-        ' keys=' + n('.rc-key') + ' lever=' + n('.rc-lever') + ' leds=' + n('.rc-led') +
-        ' time=' + n('.rcp-at') + ' knobFace=' + n('.rc-knob-face') +
+      return wait(60);
+    }).then(function () {
+      note('plate btns=' + n('.rc-btn') + ' roller=' + n('.rc-roller') + ' drums=' + n('.rc-drum b') +
+        ' leds=' + n('.rc-led') + ' prev=' + n('.rcp-prev') +
+        ' order=' + Array.prototype.map.call(document.querySelectorAll('.rcp-plate [data-rcp]'),
+          function (b) { return b.getAttribute('data-rcp'); }).join(',') +
+        ' firstIsRoller2=' + (q('.rcp-plate .rc-ctl:nth-child(2) [data-roller]') ? 'yes' : 'no') +
         ' plateLeftOfRig=' + (function () {
           var p = q('.rcp-plate'), r = q('.rcp-rig');
           return p && r ? (p.getBoundingClientRect().right <= r.getBoundingClientRect().left + 2) : '-';
-        })());
-      geom('feed t0');
-      insideRegion('t0', q('.rcp-machine'));
-      return wait(1400);
+        })() + ' plate=' + box(q('.rcp-plate')) + ' rig=' + box(q('.rcp-rig')));
+      window.__rigBefore = q('.rcp').getBoundingClientRect().left;
+      /* the two gates that used to fail, at the machine head and at the plate */
+      probeAt('machine', q('.rcp-machine'));
+      probeAt('plate', q('.rcp-plate'));
+      return wait(3200);
     }).then(function () {
-      geom('feed t1400');
-      return wait(1600);
-    }).then(function () {
-      geom('feed t3000');
-      insideRegion('settled', q('.rcp-machine'));
-      /* the timer knob must write the whole triple, not just the switch */
-      var knob = q('[data-rcp="timer"]');
-      knob.click();
-      return wait(500);
+      probeAt('settled', q('.rcp-machine'));
+      note('slot=' + box(q('.rcp-slot')) + ' paper=' + box(q('.rcp-paper')) +
+        ' paperPx=' + q('.rcp-paper').width + 'x' + q('.rcp-paper').height);
+      /* the drum: a wheel over the left half is hours, over the right half is minutes */
+      var roller = q('.rc-roller');
+      var rb = roller.getBoundingClientRect();
+      var before = q('.rcp-at').value;
+      roller.dispatchEvent(new WheelEvent('wheel', {
+        bubbles: true, cancelable: true, deltaY: -100, clientX: rb.left + rb.width * 0.25, clientY: rb.top + 10
+      }));
+      return wait(300).then(function () {
+        note('wheelH ' + before + ' -> ' + q('.rcp-at').value + ' drum=' +
+          Array.prototype.map.call(document.querySelectorAll('.rc-drum b'), function (b) { return b.textContent; }).join(':'));
+        roller.dispatchEvent(new WheelEvent('wheel', {
+          bubbles: true, cancelable: true, deltaY: 100, clientX: rb.left + rb.width * 0.8, clientY: rb.top + 10
+        }));
+        return wait(320);
+      });
     }).then(function () { return API.getState(); })
       .then(function (st) {
-        note('afterKnob receipt=' + JSON.stringify(st.settings.receipt) +
-          ' knobClass=' + q('[data-rcp="timer"]').className +
-          ' led=' + q('[data-led="timer"]').className);
-        /* the export is the one item here that can be checked arithmetically: the head
-           adds a known 52+3 above and 26 each side, at SCALE 2 */
-        var p = q('.rcp-paper');
-        note('paperPx=' + p.width + 'x' + p.height + ' expectPng=' +
-          (p.width + 104) + 'x' + (p.height + 122));
+        note('afterWheels receipt=' + JSON.stringify(st.settings.receipt));
+        /* 保存 now opens the share preview instead of writing straight out */
         q('[data-rcp="save"]').click();
-        return wait(1200);
+        return wait(400);
       })
       .then(function () {
+        var prev = q('.rcp-prev');
+        var shot = prev ? prev.querySelector('canvas') : null;
+        note('prev=' + !!prev + ' chips=' + n('.rc-bg') + ' on=' +
+          (function () { var c = q('.rc-bg.on'); return c ? c.getAttribute('data-bg') : '-'; })() +
+          ' shot=' + (shot ? shot.width + 'x' + shot.height + ' css=' + shot.style.width + '/' + shot.style.height : '-') +
+          ' prevBox=' + box(prev) +
+          ' opacity=' + (prev ? getComputedStyle(prev).opacity : '-') +
+          ' transform=' + (prev ? getComputedStyle(prev).transform : '-') +
+          ' inClass=' + (prev ? prev.className : '-') +
+          /* the complaint being fixed: opening the preview must not move the machine */
+          ' rigMoved=' + (q('.rcp').getBoundingClientRect().left - window.__rigBefore).toFixed(1));
+        probeAt('prev', prev);
+        var rose = q('.rc-bg[data-bg="rose"]');
+        if (rose) rose.click();
         return wait(200).then(function () {
-          note('manualStillUp active=' + window.Receipt.active());
-          return API.getState();
+          var c2 = q('.rcp-prev canvas');
+          note('afterRose on=' + (function () { var c = q('.rc-bg.on'); return c ? c.getAttribute('data-bg') : '-'; })() +
+            ' shot=' + c2.width + 'x' + c2.height +
+            ' rigMoved=' + (q('.rcp').getBoundingClientRect().left - window.__rigBefore).toFixed(1));
+          var sv = q('[data-prev="save"]');
+          if (sv) sv.click();
+          return wait(400);
         });
       })
+      .then(function () {
+        note('afterSave prev=' + n('.rcp-prev') + ' active=' + window.Receipt.active() +
+          ' rigMoved=' + (q('.rcp').getBoundingClientRect().left - window.__rigBefore).toFixed(1));
+        return API.getState();
+      })
       .then(function (st) {
+        note('bgSaved=' + JSON.stringify(st.settings.receipt));
+        /* now the timed mode: no plate, still touchable, and the desk beside it is not */
         window.Receipt.auto(st, { x: 420, y: 260 });
-        origin = { l: q('.rcp').offsetLeft, t: q('.rcp').offsetTop };
-        note('auto plate=' + n('.rcp-plate') + ' backClass=' + (q('.rcp-backdrop') || {}).className +
-          ' machine=' + box(q('.rcp-machine')) + ' active=' + window.Receipt.active());
-        insideRegion('auto', q('.rcp-machine'));
-        var rig = q('.rcp');
-        var m = q('.rcp-machine');
-        var r = m.getBoundingClientRect();
-        var pd = new PointerEvent('pointerdown', { bubbles: true, pointerId: 7, clientX: r.left + 30, clientY: r.top + 12 });
-        m.dispatchEvent(pd);
-        m.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 7, clientX: r.left + 150, clientY: r.top + 80 }));
-        var movedTo = { l: rig.offsetLeft, t: rig.offsetTop };
-        m.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 7 }));
-        note('drag from=' + origin.l + ',' + origin.t + ' to=' + movedTo.l + ',' + movedTo.t +
-          ' chaseHook=' + (typeof window.__rcpChase) + ' style=' + rig.style.left + '/' + rig.style.top);
-        insideRegion('afterDrag', q('.rcp-machine'));
-        return wait(4200);
+        return wait(400);
       })
       .then(function () {
-        note('pinned active=' + window.Receipt.active() + ' paperTop=' +
-          (q('.rcp-paper') ? Math.round(q('.rcp-paper').getBoundingClientRect().top) : '-'));
-        /* one touch anywhere tears it off */
-        q('.rcp-machine').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 9, clientX: 40, clientY: 10 }));
-        q('.rcp-machine').dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 9, clientX: 40, clientY: 10 }));
-        q('.rcp').click();
-        return wait(1400);
+        note('auto plate=' + n('.rcp-plate') + ' back=' + (q('.rcp-backdrop') || {}).className);
+        probeAt('autoMachine', q('.rcp-machine'));
+        probeAt('autoPaper', q('.rcp-paper'));
+        var far = nd.probe(60, 60);
+        note('far node=' + far.node + ' interactive=' + far.interactive + ' inRect=' + far.inRect);
+        return wait(3000);
       })
       .then(function () {
-        note('afterTear active=' + window.Receipt.active());
+        /* pull the sheet: it should follow, then come off */
+        var paper = q('.rcp-paper');
+        var b = paper.getBoundingClientRect();
+        paper.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 3, clientX: b.left + 60, clientY: b.top + 8 }));
+        paper.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 3, clientX: b.left + 60, clientY: b.top + 90 }));
+        note('pull transform=' + paper.style.transform);
+        paper.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 3 }));
+        return wait(900);
+      })
+      .then(function () {
+        note('afterPull active=' + window.Receipt.active());
         return API.op({ type: 'settings:update', patch: { receipt: schedBefore } });
       })
       .then(function () { return wait(400); })

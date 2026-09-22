@@ -114,6 +114,16 @@
     var pageH = layout(d);
     ctx.fillStyle = paper;
     ctx.fillRect(0, 0, W, pageH);
+    /* One vertical shade rising from the bottom edge, and nothing on the sides. A thermal
+       sheet is lit from the machine: what it actually carries is a heavier bottom where it
+       hung free, fading upward. The first version darkened all four edges inward, which is
+       a vignette — it makes the paper look like a photograph of a receipt rather than one. */
+    var curl = ctx.createLinearGradient(0, pageH, 0, pageH - Math.min(pageH * 0.55, 190));
+    curl.addColorStop(0, 'rgba(0,0,0,.14)');
+    curl.addColorStop(0.45, 'rgba(0,0,0,.05)');
+    curl.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = curl;
+    ctx.fillRect(0, 0, W, pageH);
     ctx.fillStyle = ink;
 
     function rule(y, dash) {
@@ -298,6 +308,48 @@
     } catch (e) { /* already stopped */ }
   }
 
+  /* A dome switch makes a snap, not a beep: the contact blade loads up and releases, which
+     is a few milliseconds of broadband noise with a resonant tick on top. Kept separate
+     from ratchet() because the head ratchet is louder and lower — the same sound on every
+     control would make the panel read as one object rather than several. */
+  function press() {
+    if (!soundOn) return;
+    try {
+      var ctx = audioCtx(), t0 = ctx.currentTime;
+      var len = Math.floor(ctx.sampleRate * 0.022);
+      var buf = ctx.createBuffer(1, len, ctx.sampleRate), ch = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+      var n = ctx.createBufferSource(); n.buffer = buf;
+      var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 1.1;
+      var g = ctx.createGain(); g.gain.value = 0.13;
+      n.connect(bp); bp.connect(g); g.connect(ctx.destination);
+      var o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(1750, t0);
+      o.frequency.exponentialRampToValueAtTime(880, t0 + 0.02);
+      og.gain.setValueAtTime(0.05, t0);
+      og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.03);
+      o.connect(og); og.connect(ctx.destination);
+      n.start(t0); o.start(t0); o.stop(t0 + 0.05);
+    } catch (e) { /* no audio */ }
+  }
+
+  /* The detent under a roller: one click per notch, quieter and drier than a key, because
+     it fires six times a second while the wheel spins. */
+  function detent() {
+    if (!soundOn) return;
+    try {
+      var ctx = audioCtx(), t0 = ctx.currentTime;
+      var len = Math.floor(ctx.sampleRate * 0.012);
+      var buf = ctx.createBuffer(1, len, ctx.sampleRate), ch = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+      var n = ctx.createBufferSource(); n.buffer = buf;
+      var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400;
+      var g = ctx.createGain(); g.gain.value = 0.07;
+      n.connect(hp); hp.connect(g); g.connect(ctx.destination);
+      n.start(t0);
+    } catch (e) { /* no audio */ }
+  }
+
   function ratchet() {
     if (!soundOn) return;
     try {
@@ -356,15 +408,19 @@
   /* The slot is sized to the finished paper BEFORE the feed starts. It used to grow with
      the paper, and because the whole rig is centred in the backdrop, growing it walked the
      machine and the buttons upward as the receipt came out — a printer that flinches. */
+  var feeding = false;
+
   function eject(canvas, height) {
     var slot = canvas.parentNode;
     slot.style.height = (height + 26) + 'px';
     canvas.style.transform = 'translateY(' + (-height) + 'px)';
     canvas.style.opacity = '1';
     var i = 0;
+    feeding = true;
     startMotor();
     function step() {
       if (i >= PULLS.length) {
+        feeding = false;
         stopMotor();
         setTimeout(ding, 90);
         return;
@@ -378,24 +434,40 @@
     setTimeout(step, 160);
   }
 
-  /* taking the old one off: down and round a little, then out. Re-printing without this
-     just swapped the picture under the reader's eye. */
-  function tearOff(canvas, done) {
+  /* Taking the sheet off is two beats, because paper does not leave in one motion: it
+     first gives at the tooth — a short jerk back with the sound of the edge parting — and
+     then it falls and turns. The first version translated and faded in a single 240 ms
+     ease, which read as a dissolve. `from` is however far the hand had already pulled it,
+     so a release mid-drag continues that position instead of snapping to it. */
+  function rip(from, canvas, done) {
     if (!canvas) { done(); return; }
+    var slot = canvas.parentNode;
     var h = canvas.getBoundingClientRect().height;
-    canvas.style.transition = 'transform 240ms cubic-bezier(.3,.7,.2,1), opacity 240ms ease-in';
-    canvas.style.transform = 'translateY(' + (h * 0.22) + 'px) rotate(2.4deg)';
-    canvas.style.opacity = '0';
-    setTimeout(done, 260);
+    /* the slot clips, and a sheet that is leaving must be allowed to */
+    slot.style.overflow = 'visible';
+    ratchet();
+    canvas.style.transition = 'transform 90ms ease-out';
+    canvas.style.transform = 'translateY(' + (from - 6) + 'px) rotate(-1deg)';
+    setTimeout(function () {
+      canvas.style.transition = 'transform 430ms cubic-bezier(.42, .04, .74, .36), opacity 400ms ease-in';
+      canvas.style.transform = 'translateY(' + (from + h * 0.8) + 'px) translateX(16px) rotate(4.4deg)';
+      canvas.style.opacity = '0';
+      setTimeout(done, 450);
+    }, 95);
   }
+
+  function tearOff(done) { rip(0, lastCanvas, done); }
 
   /* ---- the schedule and the folder ---- */
   function receiptSettings(state) {
     var r = (state && state.settings && state.settings.receipt) || {};
+    var ok = false;
+    for (var i = 0; i < BGS.length; i++) if (BGS[i].id === r.bg) ok = true;
     return {
       on: !!r.on,
       at: /^\d{2}:\d{2}$/.test(String(r.at || '')) ? r.at : '21:30',
-      dir: r.dir || ''
+      dir: r.dir || '',
+      bg: ok ? r.bg : 'rose'
     };
   }
 
@@ -406,29 +478,37 @@
     if (lastState && lastState.settings) lastState.settings.receipt = next;
   }
 
-  /* The plate is a control panel, not a toolbar: a knurled knob for each of the two
-     toggles, a domed push button for re-feed, key caps for save and exit, and a lever in
-     a recessed slot for the folder. Everything is built from the material tokens — bevel,
-     edge, paper, brick — so another material re-skins the hardware instead of leaving
-     grey plastic sitting on top of a screen print. */
+  /* One column of round buttons, like the panel of a real machine: a light plastic bezel
+     with a dome inside it that sinks when it is latched. No outlines — a border on a
+     circle reads as a ring drawn on top of the button, which is what made the first plate
+     look cheap. NAMES and TIMER hold their pressed state until pressed again; the rest are
+     momentary. The time is a drum, not a text field: two rollers with an index bar, moved
+     with the wheel, and clicking one still opens the system's fine editor. */
   function plate(sched) {
-    function ctl(body, label, cls) {
-      return '<div class="rc-ctl ' + (cls || '') + '">' + body + '<label>' + label + '</label></div>';
-    }
     var names = window.__rcpNames !== false;
+    function round(key, cn, en, latched) {
+      /* a lamp only means something on a control that has a state to hold; six dim dots
+         would just be decoration competing with the two that report something */
+      var lamp = latched === undefined ? '' :
+        '<i class="rc-led' + (latched ? ' on' : '') + '" data-led="' + key + '"></i>';
+      return '<div class="rc-ctl">' +
+        '<button class="rc-btn' + (latched ? ' on' : '') + '" data-rcp="' + key + '"><i></i></button>' +
+        '<label><span>' + cn + '</span><em>' + en + '</em>' + lamp + '</label>' +
+        '</div>';
+    }
+    var hm = String(sched.at || '21:30').split(':');
     return '<div class="rcp-plate">' +
-      ctl('<i class="rc-led' + (names ? ' on' : '') + '" data-led="names"></i>' +
-        '<button class="rc-knob' + (names ? ' a-on' : ' a-off') + '" data-rcp="names">' +
-        '<span class="rc-knob-face"><b></b></span></button>', '任务名 NAMES') +
-      ctl('<button class="rc-push" data-rcp="again" title="重打一张"><span>FEED</span></button>', '重打 AGAIN') +
-      ctl('<button class="rc-key" data-rcp="save" title="保存 PNG"><span>PNG</span></button>', '保存 SAVE') +
-      ctl('<span class="rc-slot"><i class="rc-lever" data-rcp="folder" title="打开保存文件夹"></i></span>',
-        '文件夹 FOLDER', 'rc-ctl-lever') +
-      ctl('<i class="rc-led' + (sched.on ? ' on' : '') + '" data-led="timer"></i>' +
-        '<button class="rc-knob' + (sched.on ? ' a-on' : ' a-off') + '" data-rcp="timer">' +
-        '<span class="rc-knob-face"><b></b></span></button>', '定时 TIMER') +
-      ctl('<input type="time" class="rcp-at" value="' + sched.at + '" />', '时间 AT') +
-      ctl('<button class="rc-key rc-key-exit" data-rcp="close"><span>EXIT</span></button>', '退出 EXIT') +
+      round('timer', '定时', 'TIMER', !!sched.on) +
+      '<div class="rc-ctl rc-ctl-roll"><div class="rc-roller" data-roller>' +
+      '<span class="rc-drum"><b data-d="h">' + (hm[0] || '21') + '</b></span>' +
+      '<span class="rc-drum"><b data-d="m">' + (hm[1] || '30') + '</b></span>' +
+      '<input type="time" class="rcp-at" value="' + sched.at + '" title="滚轮调时间，点击精细调节" />' +
+      '</div><label><span>时间</span><em>AT</em></label></div>' +
+      round('names', '任务名', 'NAMES', names) +
+      round('again', '重打', 'FEED') +
+      round('save', '保存', 'PNG') +
+      round('folder', '文件夹', 'FOLDER') +
+      round('close', '退出', 'EXIT') +
       '</div>';
   }
 
@@ -445,7 +525,7 @@
     host = doc.createElement('div');
     host.className = 'rcp-backdrop' + (opts.auto ? ' rcp-auto' : '');
     host.innerHTML =
-      '<div class="rcp">' +
+      '<div class="rcp interactive">' +
       (opts.auto ? '' : plate(sched)) +
       '  <div class="rcp-rig">' +
       '    <div class="rcp-machine">' +
@@ -483,9 +563,11 @@
      the only reason to keep it up is to photograph it — so it stays pinned until touched,
      and the machine body is the handle for shuffling it out of the way first. */
   function bind(root, state, showNames, opts) {
-    var moved = 0, grab = null;
+    var moved = 0, grab = null, pull = null;
     var rig = root.querySelector('.rcp');
     var machine = root.querySelector('.rcp-machine');
+    var paper = root.querySelector('.rcp-paper');
+    var slot = paper.parentNode;
 
     machine.addEventListener('pointerdown', function (ev) {
       if (!opts.auto) return;
@@ -509,52 +591,128 @@
       machine.addEventListener(k, function () { grab = null; });
     });
 
+    /* Pulling the sheet is the gesture the object asks for, and in the timed mode it is
+       the way to get rid of it. The paper follows the pointer with rubber on it — half
+       travel, and it stops a third of the way down the sheet — because 1:1 makes a long
+       receipt need a long arm. Past a short pull it comes off; short of that it goes back
+       into the slot. */
+    paper.addEventListener('pointerdown', function (ev) {
+      if (feeding) return;
+      pull = { y: ev.clientY, h: paper.getBoundingClientRect().height, give: 0 };
+      try { paper.setPointerCapture(ev.pointerId); } catch (e) { /* no capture */ }
+    });
+    paper.addEventListener('pointermove', function (ev) {
+      if (!pull) return;
+      var dy = ev.clientY - pull.y;
+      if (dy <= 0) return;
+      ev.preventDefault();
+      moved = Math.max(moved, dy);
+      pull.give = Math.min(pull.h * 0.3, dy * 0.5);
+      slot.style.overflow = 'visible';
+      paper.style.transition = 'none';
+      paper.style.transform = 'translateY(' + pull.give + 'px) rotate(' + (pull.give * 0.01).toFixed(2) + 'deg)';
+    });
+    ['pointerup', 'pointercancel'].forEach(function (k) {
+      paper.addEventListener(k, function () {
+        if (!pull) return;
+        var give = pull.give;
+        pull = null;
+        if (give > 14) {
+          rip(give, paper, function () { if (opts.auto) close(); });
+        } else {
+          slot.style.overflow = 'hidden';
+          paper.style.transition = 'transform 200ms cubic-bezier(.2, .8, .2, 1)';
+          paper.style.transform = 'translateY(0)';
+        }
+      });
+    });
+
     root.addEventListener('click', function (ev) {
       if (opts.auto) {
         /* a drag ends in a click as well, and that must not throw the receipt away */
         if (moved > 4) { moved = 0; return; }
-        tearOff(lastCanvas, function () { setTimeout(close, 240); });
+        rip(0, lastCanvas, function () { setTimeout(close, 120); });
         return;
       }
       var b = ev.target.closest && ev.target.closest('[data-rcp]');
       if (!b) { if (ev.target === root) close(); return; }
+      press();
       var k = b.getAttribute('data-rcp');
       if (k === 'close') close();
-      else if (k === 'save') save(lastCanvas);
+      else if (k === 'save') preview(lastCanvas);
       else if (k === 'folder') openFolder();
-      else if (k === 'again' || k === 'names') {
-        var next = k === 'names' ? !showNames : showNames;
+      else if (k === 'again') tearOff(function () { build(state, showNames, opts); });
+      else if (k === 'names') {
+        var next = !showNames;
         window.__rcpNames = next;
-        if (k === 'names') {
-          setKnob(root, 'names', next);
-          /* re-printing a sheet that is already the right length would only be a flash,
-             so the toggle re-feeds and the reader watches the names appear */
-          tearOff(lastCanvas, function () { build(state, next, opts); });
-        } else {
-          tearOff(lastCanvas, function () { build(state, next, opts); });
-        }
+        setLatch(root, 'names', next);
+        /* re-printing a sheet that is already the right length would only be a flash, so
+           the toggle re-feeds and the reader watches the names appear */
+        tearOff(function () { build(state, next, opts); });
       } else if (k === 'timer') {
         var sched = receiptSettings(state);
         var want = !sched.on;
-        setKnob(root, 'timer', want);
-        patchReceipt({ on: want, at: sched.at, dir: sched.dir });
+        setLatch(root, 'timer', want);
+        patchReceipt({ on: want, at: sched.at, dir: sched.dir, bg: sched.bg });
         toast(want ? '定时出票：每天 ' + sched.at : '定时出票已关闭');
       }
     });
+
+    /* ---- the time drum ----
+       The wheel is the adjuster (hours on the left roller, minutes on the right), and the
+       invisible native field on top still owns the click, so the system's fine editor is
+       one press away and the digits can still be typed into. */
+    var roller = root.querySelector('[data-roller]');
     var at = root.querySelector('.rcp-at');
-    if (at) at.addEventListener('change', function () {
+    function showAt(v) {
+      var hm = String(v || '').split(':');
+      var b = root.querySelectorAll('.rc-drum b');
+      if (b.length === 2) { b[0].textContent = hm[0]; b[1].textContent = hm[1]; }
+    }
+    function bumpAt(unit, dir) {
+      detent();
+      var hm = String(at.value || receiptSettings(state).at).split(':');
+      var h = (Number(hm[0]) + (unit === 'h' ? dir : 0) + 24) % 24;
+      var m = (Number(hm[1]) + (unit === 'm' ? dir : 0) + 60) % 60;
+      var v = ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+      at.value = v;
+      var drum = root.querySelector(unit === 'h' ? '.rc-drum:nth-child(1)' : '.rc-drum:nth-child(2)');
+      if (drum) {
+        /* the number slides in the direction it is going, so the wheel feels like it is
+           turning something rather than redrawing a label */
+        drum.classList.add('tick');
+        setTimeout(function () { drum.classList.remove('tick'); }, 20);
+      }
+      showAt(v);
       var sched = receiptSettings(state);
-      patchReceipt({ on: sched.on, at: at.value, dir: sched.dir });
-      toast('定时出票 ' + (sched.on ? '开' : '关') + ' · 每天 ' + at.value);
-    });
+      patchReceipt({ on: sched.on, at: v, dir: sched.dir, bg: sched.bg });
+      toast('定时出票 ' + (sched.on ? '开' : '关') + ' · 每天 ' + v);
+    }
+    if (roller && at) {
+      roller.addEventListener('wheel', function (ev) {
+        ev.preventDefault();
+        var r = roller.getBoundingClientRect();
+        var unit = (ev.clientX - r.left) < r.width * 0.5 ? 'h' : 'm';
+        var step = ev.shiftKey ? 6 : 1;
+        bumpAt(unit, ev.deltaY < 0 ? step : -step);
+      }, { passive: false });
+      roller.addEventListener('click', function () {
+        try { if (at.showPicker) at.showPicker(); } catch (e) { /* not a gesture it likes */ }
+      });
+      at.addEventListener('change', function () {
+        if (!/^\d{2}:\d{2}$/.test(String(at.value))) { showAt(receiptSettings(state).at); return; }
+        var sched = receiptSettings(state);
+        showAt(at.value);
+        patchReceipt({ on: sched.on, at: at.value, dir: sched.dir, bg: sched.bg });
+        toast('定时出票 ' + (sched.on ? '开' : '关') + ' · 每天 ' + at.value);
+      });
+      showAt(at.value);
+    }
   }
 
-  function setKnob(root, which, on) {
-    var knob = root.querySelector('[data-rcp="' + which + '"]');
-    if (knob) {
-      knob.classList.toggle('a-on', on);
-      knob.classList.toggle('a-off', !on);
-    }
+  function setLatch(root, which, on) {
+    var btn = root.querySelector('[data-rcp="' + which + '"]');
+    if (btn) btn.classList.toggle('on', on);
     var led = root.querySelector('[data-led="' + which + '"]');
     if (led) led.classList.toggle('on', on);
   }
@@ -589,52 +747,193 @@
   }
 
   /* The shared image carries the machine, because the brand line on the head is the only
-     thing on a receipt that says which software made it. Paper alone is just a list. */
-  function composite(paper) {
+     thing on a receipt that says which software made it. Paper alone is just a list.
+     The sheet starts 2 px *under* the head rather than 3 px below it: with a gap the
+     background colour showed through as a seam between the machine and its own printout,
+     which is unmistakable once anyone zooms in. */
+  var SHOT = { padX: 26, mH: 52, lip: 2, foot: 10 };
+
+  function renderShot(paper, bg, scale) {
     var pw = paper.width / SCALE, ph = paper.height / SCALE;
-    var padX = 26, mH = 52, gap = 3;
-    var w = pw + padX * 2, h = mH + gap + ph + 6;
+    var padX = SHOT.padX, mH = SHOT.mH;
+    var w = pw + padX * 2, h = mH + ph + SHOT.foot;
     var c = doc.createElement('canvas');
-    c.width = Math.round(w * SCALE);
-    c.height = Math.round(h * SCALE);
+    var k = SCALE * (scale || 1);
+    c.width = Math.round(w * k);
+    c.height = Math.round(h * k);
     var x = c.getContext('2d');
-    x.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    x.setTransform(k, 0, 0, k, 0, 0);
     var ink = colour('--ink', '#14120d');
     var hi = colour('--paper-hi', '#fffaf4');
     var brick = colour('--brick', '#8d3a27');
     var disp = token('--font-display', token('--font-mono', 'monospace'));
     var mono = token('--font-mono', 'monospace');
 
+    if (bg) {
+      x.fillStyle = bg;
+      x.fillRect(0, 0, w, h);
+      /* the sheet has to sit *on* that colour, not be pasted into it */
+      x.save();
+      x.shadowColor = 'rgba(0,0,0,.34)';
+      x.shadowBlur = 20; x.shadowOffsetY = 10;
+      x.fillStyle = bg;
+      x.fillRect(padX, mH - SHOT.lip, pw, ph);
+      x.restore();
+    }
+
+    var head = pw - 0;                       /* the head is the width of the slot */
     x.fillStyle = ink;
-    roundRect(x, 0, 0, w, mH, [10, 10, 3, 3]);
+    roundRect(x, padX - 22, 0, head + 44, mH, [10, 10, 3, 3]);
+    x.fill();
+    var bodyGrad = x.createLinearGradient(0, 0, 0, mH);
+    bodyGrad.addColorStop(0, 'rgba(255,255,255,.10)');
+    bodyGrad.addColorStop(0.55, 'rgba(255,255,255,0)');
+    bodyGrad.addColorStop(1, 'rgba(0,0,0,.22)');
+    x.fillStyle = bodyGrad;
+    roundRect(x, padX - 22, 0, head + 44, mH, [10, 10, 3, 3]);
     x.fill();
     x.fillStyle = 'rgba(255,255,255,.07)';
-    x.fillRect(16, 9, w - 32, 2);
+    x.fillRect(padX - 6, 9, head + 12, 2);
     x.textBaseline = 'middle';
     x.textAlign = 'left';
     x.fillStyle = hi;
     x.font = '14px ' + disp;
-    x.fillText('◆ PIN TO-DO 收银台', 18, mH / 2);
+    x.fillText('◆ PIN TO-DO 收银台', padX - 2, mH / 2);
     x.textAlign = 'right';
     x.fillStyle = brick;
     x.font = '10px ' + mono;
-    x.fillText('● ONLINE', w - 18, mH / 2);
-    x.fillStyle = 'rgba(0,0,0,.55)';
-    x.fillRect(padX + 6, mH - 4, pw - 12, 4);
+    x.fillText('● ONLINE', w - padX + 2, mH / 2);
     x.textAlign = 'left';
-    x.drawImage(paper, padX, mH + gap, pw, ph);
+    x.drawImage(paper, padX, mH - SHOT.lip, pw, ph);
+    /* the mouth of the slot, drawn over the sheet so the paper comes out *of* the machine */
+    x.fillStyle = 'rgba(0,0,0,.62)';
+    x.fillRect(padX - 14, mH - 5, pw + 28, 5);
     x.setTransform(1, 0, 0, 1, 0, 0);
-    return c.toDataURL('image/png');
+    return c;
   }
 
-  function dataUrl(canvas) {
-    try { return composite(canvas); } catch (e) {
-      try { return canvas.toDataURL('image/png'); } catch (e2) { return ''; }
+  function composite(paper, bg) {
+    try { return renderShot(paper, bg, 1).toDataURL('image/png'); }
+    catch (e) { return ''; }
+  }
+
+  /* ---- the share background ----
+     A receipt pasted into a chat is a rectangle of whatever the paper colour is, and on a
+     white timeline it disappears. The reference the user gave is a rose sheet behind the
+     paper, so that is the default; transparent is offered because people paste these into
+     their own layouts. Two of the choices come from the material so the export at least
+     can be made to match the desk it was printed on. */
+  var BGS = [
+    { id: 'none', cn: '透明', en: 'NONE', tok: null, hex: '' },
+    { id: 'rose', cn: '玫瑰', en: 'ROSE', tok: null, hex: '#efa3ab' },
+    { id: 'cream', cn: '奶油', en: 'CREAM', tok: null, hex: '#f4e7d3' },
+    { id: 'paper', cn: '纸色', en: 'PAPER', tok: '--paper-hi', hex: '#fffaf4' },
+    { id: 'brick', cn: '砖红', en: 'BRICK', tok: '--brick', hex: '#8d3a27' },
+    { id: 'ink', cn: '墨黑', en: 'INK', tok: '--ink', hex: '#14120d' }
+  ];
+
+  function bgHex(id) {
+    for (var i = 0; i < BGS.length; i++) {
+      if (BGS[i].id === id) {
+        return BGS[i].tok ? colour(BGS[i].tok, BGS[i].hex) : BGS[i].hex;
+      }
     }
+    return '#efa3ab';
   }
 
-  function save(canvas, quiet) {
-    var url = dataUrl(canvas);
+  function shotBg() { return bgHex(receiptSettings(lastState).bg); }
+
+  /* The preview is a panel pinned beside the machine, not a third column in its flex row:
+     as a row member it widened the group, and because the backdrop centres its child the
+     whole machine and plate slid left the moment 保存 was pressed — a printer moving out
+     from under the paper it is printing. Fixed beside it, nothing moves; the card layer
+     adds this element to the window region by name (.rcp-prev) so a panel outside the rig's
+     box is still drawn and still takes the pointer. */
+  function preview(paper) {
+    if (!paper) return;
+    var rig = host.querySelector('.rcp');
+    var old = host.querySelector('.rcp-prev');
+    if (old) old.parentNode.removeChild(old);
+    var cur = receiptSettings(lastState).bg;
+    var box = doc.createElement('div');
+    box.className = 'rcp-prev interactive';
+    box.innerHTML =
+      '<div class="rcp-prev-head">预览 <em>SHARE</em></div>' +
+      '<div class="rcp-prev-shot"><canvas></canvas></div>' +
+      '<div class="rcp-prev-bgs">' + BGS.map(function (b) {
+        return '<button class="rc-bg' + (b.id === 'none' ? ' rc-bg-none' : '') + (b.id === cur ? ' on' : '') +
+          '" data-bg="' + b.id + '" title="' + b.cn + ' ' + b.en + '"' +
+          (b.tok || b.hex ? ' style="--chip:' + (b.tok ? 'var(' + b.tok + ')' : b.hex) + '"' : '') + '></button>';
+      }).join('') + '</div>' +
+      '<div class="rcp-prev-ops">' +
+      '<div class="rc-ctl"><button class="rc-btn" data-prev="save"><i></i></button>' +
+      '<label><span>保存</span><em>PNG</em></label></div>' +
+      '<div class="rc-ctl"><button class="rc-btn" data-prev="back"><i></i></button>' +
+      '<label><span>返回</span><em>BACK</em></label></div>' +
+      '</div>';
+    host.appendChild(box);
+    var rb = rig.getBoundingClientRect();
+    var PW = 212;
+    var left = rb.right + 16;
+    if (left + PW > window.innerWidth - 14) left = Math.max(14, rb.left - PW - 16);
+    box.style.left = Math.round(left) + 'px';
+    box.style.top = '16px';
+    box.style.maxHeight = Math.max(240, window.innerHeight - 32) + 'px';
+
+    var shot = box.querySelector('canvas');
+    function paintShot() {
+      var bg = bgHex(cur);
+      /* half size on screen, but rendered at SCALE*0.5 = 1 device px per CSS px of the
+         sheet, so the preview shows the real pixels rather than a resampled thumbnail */
+      var c = renderShot(paper, bg, 0.5);
+      shot.width = c.width; shot.height = c.height;
+      shot.style.width = Math.round(c.width / SCALE) + 'px';
+      shot.style.height = Math.round(c.height / SCALE) + 'px';
+      shot.getContext('2d').drawImage(c, 0, 0);
+      var chips = box.querySelectorAll('.rc-bg');
+      for (var i = 0; i < chips.length; i++) {
+        chips[i].classList.toggle('on', chips[i].getAttribute('data-bg') === cur);
+      }
+    }
+    paintShot();
+    chase();
+    /* Commit the start style with a reflow and then set the end style, rather than waiting
+       for a frame: a rAF callback can be late or absent in a window that is composited but
+       not focused, and if it never runs the panel is left sitting at opacity 0 — a 保存
+       button that appears to do nothing. */
+    void box.offsetWidth;
+    box.classList.add('in');
+    chase();
+    function dismiss() {
+      box.classList.remove('in');
+      setTimeout(function () {
+        if (box.parentNode) box.parentNode.removeChild(box);
+        chase();
+      }, 180);
+    }
+
+    box.addEventListener('click', function (ev) {
+      var b = ev.target.closest && ev.target.closest('[data-bg],[data-prev]');
+      if (!b) return;
+      if (b.hasAttribute('data-bg')) {
+        detent();
+        cur = b.getAttribute('data-bg');
+        paintShot();
+        return;
+      }
+      press();
+      if (b.getAttribute('data-prev') === 'save') {
+        var sched = receiptSettings(lastState);
+        patchReceipt({ on: sched.on, at: sched.at, dir: sched.dir, bg: cur });
+        save(paper, false, bgHex(cur));
+      }
+      dismiss();
+    });
+  }
+
+  function save(canvas, quiet, bg) {
+    var url = canvas ? composite(canvas, bg === undefined ? shotBg() : bg) : '';
+    if (!url && canvas) { try { url = canvas.toDataURL('image/png'); } catch (e) { url = ''; } }
     if (!url) { toast('这张纸画不出来，没保存'); return; }
     var name = '今日小票-' + stamp() + '.png';
     var dir = receiptSettings(lastState).dir;

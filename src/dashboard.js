@@ -491,12 +491,12 @@
     { id: 'pomo', span: 2 }, { id: 'today', span: 2 }, { id: 'memo', span: 2 },
     { id: 'heat', span: 3 }, { id: 'mini', span: 3 }
   ];
-  /* how many of the six columns a module may claim, and how many rows it may take */
-  const SPANS = [2, 3, 4, 6];
-  /* Six rows, not two. A module sized to fill a maximised window is four or five rows
-     tall, and the cap used to stop at 2, which left the grip dead long before the screen
-     was full. The grid scrolls by wheel (see body.view-dash), so a tall layout is usable. */
-  const ROWS = [1, 2, 3, 4, 5, 6];
+  /* How many of the six columns a module may claim, and how many rows it may take. These
+     come from the data module rather than being repeated here: the reducer validates a
+     saved layout against the same two lists, and when the two disagreed a module dragged
+     to three rows was accepted by the page and rewritten to two on the way to disk. */
+  const SPANS = D.DASH_SPANS;
+  const ROWS = D.DASH_ROWS;
   const GRID_GAP = 10;
 
   /* free dragging lands anywhere; the grid only has these sizes, so the pointer is
@@ -582,7 +582,13 @@
       span[el.dataset.mod] = (parseInt(el.style.gridColumn.replace(/\D/g, ''), 10) || 2);
       row[el.dataset.mod] = (parseInt(el.style.gridRow.replace(/\D/g, ''), 10) || 1);
     });
-    API.op({ type: 'settings:update', patch: { dashLayout: { order: order, span: span, row: row } } });
+    const next = { order: order, span: span, row: row };
+    API.op({ type: 'settings:update', patch: { dashLayout: next } });
+    /* Write the local copy too. The host's answer arrives a beat later, and in between
+       anything that re-applies the layout — endSize does, on every release — reads the
+       stale object and puts the module straight back where it started. That is the whole
+       "拉到 3 行自己变回 2" complaint, and it is why the grip felt dead rather than small. */
+    S.state.settings.dashLayout = next;
   }
 
   function bindDashLayout() {
@@ -1735,11 +1741,20 @@
           ' · ' + hm(Math.max(TK_MIN, b - a));
       };
       paint();
-      const move = (e2) => { cur = snap(yToTime(col, e2.clientY)); paint(); };
+      /* Only a drag asks for a session. A click on the axis is the same gesture the user
+         makes to dismiss the popover or to find a spot, and it used to open the assign
+         box every time. */
+      const y0 = ev.clientY;
+      let laid = false;
+      const move = (e2) => {
+        if (Math.abs(e2.clientY - y0) > 3) laid = true;
+        cur = snap(yToTime(col, e2.clientY)); paint();
+      };
       const up = (e2) => {
         doc.removeEventListener('pointermove', move);
         doc.removeEventListener('pointerup', up);
         draft.classList.add('u-hidden');
+        if (!laid) return;
         let a = Math.min(start, cur), b = Math.max(start, cur);
         if (b - a < TK_MIN) b = a + TK_MIN;
         openAssign(col, a, b);

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<!-- 小票机操作面板：六个候选方案。用的是 theme.css 里印刷 / 餐厅两套材质的真实 token 值，
+     所以这里看到的就是 app 里会出现的。点一下任何键都能切换按下状态。
+     选好了告诉我字母即可（例如「A，但凹口不要」）。 -->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>小票机按键 · 候选</title>
+<style>
+  :root {
+    --f-mono: "JetBrains Mono", "Cascadia Mono", Consolas, "Courier New", monospace;
+    --f-disp: "Segoe UI Variable Display", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 26px 26px 60px;
+    font-family: var(--f-disp); color: #14120d;
+    background: #dcd6c8;
+  }
+  h1 { font-size: 17px; letter-spacing: .04em; margin: 0 0 4px; }
+  .lede { font-size: 12px; color: #4b4536; margin: 0 0 22px; }
+  .variant { margin-bottom: 26px; }
+  .variant > h2 {
+    font-size: 12.5px; letter-spacing: .1em; margin: 0 0 3px;
+    font-family: var(--f-mono);
+  }
+  .variant > p { font-size: 11.5px; color: #4b4536; margin: 0 0 10px; max-width: 78ch; }
+  .row { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .plate {
+    display: flex; flex-direction: column; gap: 8px;
+    width: 148px; padding: 14px 12px 13px;
+    font-family: var(--f-disp);
+  }
+  .ctl { display: flex; align-items: center; gap: 9px; }
+  .lab { flex: 1 1 auto; display: flex; align-items: baseline; gap: 4px; font-size: 9.5px; letter-spacing: .04em; white-space: nowrap; }
+  .lab em { font-style: normal; font-size: 7px; letter-spacing: .14em; text-transform: uppercase; opacity: .55; }
+  .lamp { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .tag { font-family: var(--f-mono); font-size: 8.5px; letter-spacing: .1em; opacity: .5; }
+
+  /* ---- materials ---- */
+  .m-print {
+    --paper:#ede5d3; --hi:#f7f0e1; --lo:#e5dbc3; --dim:#dacdb1;
+    --ink:#14120d; --ink2:#4b4536; --ink3:#7d735d;
+    --brick:#8d3a27; --brickink:#f5ecda; --honey:#c08a2a;
+    --rplate:0px; --rctl:0px; --edge:#14120d;
+    --pop: 0 1px 1px rgba(20,18,13,.05), 0 6px 16px rgba(20,18,13,.10), 0 22px 44px rgba(20,18,13,.12);
+    background: linear-gradient(180deg, var(--hi), var(--lo));
+    border-radius: var(--rplate); box-shadow: var(--pop); color: var(--ink);
+  }
+  .m-diner {
+    --paper:#f4ece0; --hi:#fbf5ea; --lo:#e7dcca; --dim:#d8ccb8;
+    --ink:#2c3444; --ink2:#4d5665; --ink3:#77808f;
+    --brick:#c74551; --brickink:#fdf3ec; --honey:#dcae63;
+    --rplate:18px; --rctl:11px; --edge:#b9c3cd;
+    --pop: 0 2px 3px rgba(28,34,46,.07), 0 10px 22px rgba(28,34,46,.11), 0 26px 52px rgba(28,34,46,.12);
+    background: linear-gradient(180deg, var(--hi), var(--lo));
+    border-radius: var(--rplate); box-shadow: var(--pop); color: var(--ink);
+  }
+  .m-print .lamp { background: var(--dim); box-shadow: inset 0 1px 1px rgba(0,0,0,.22); }
+  .m-diner .lamp { background: var(--dim); box-shadow: inset 0 1px 1px rgba(0,0,0,.18); }
+  .lamp.on { background: var(--brick); box-shadow: 0 0 6px color-mix(in srgb, var(--brick) 65%, transparent); }
+
+  button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+
+  /* ================= A · 大圆 + 斜面圈 + 三凹口（你给的图1） ================= */
+  .A .k {
+    position: relative; width: 36px; height: 36px; flex: none; border-radius: 50%;
+    background: radial-gradient(circle at 38% 24%, var(--hi) 0 44%, var(--dim) 100%);
+    box-shadow: 0 3px 7px rgba(0,0,0,.20), inset 0 -2px 3px rgba(0,0,0,.09),
+                inset 0 2px 2px color-mix(in srgb, var(--hi) 70%, transparent);
+  }
+  .A .k::before {           /* the three notches around the ring */
+    content:""; position:absolute; inset:0; border-radius:50%;
+    background: repeating-conic-gradient(from -55deg,
+      color-mix(in srgb, var(--ink) 34%, transparent) 0 5deg, transparent 5deg 120deg);
+    -webkit-mask: radial-gradient(circle, transparent 0 60%, #000 61% 74%, transparent 75%);
+            mask: radial-gradient(circle, transparent 0 60%, #000 61% 74%, transparent 75%);
+  }
+  .A .k i {
+    position: absolute; inset: 7px; border-radius: 50%; display: block;
+    background: radial-gradient(circle at 40% 30%,
+      color-mix(in srgb, var(--brick) 52%, #fff) 0 26%, var(--brick) 66%,
+      color-mix(in srgb, var(--brick) 82%, #000) 100%);
+    box-shadow: 0 2px 3px rgba(0,0,0,.24), inset 0 1px 2px rgba(255,255,255,.28);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .A .k:active i, .A .k.on i {
+    transform: translateY(1px) scale(.93);
+    box-shadow: inset 0 3px 6px rgba(0,0,0,.46), inset 0 -1px 1px rgba(255,255,255,.10);
+  }
+
+  /* ================= B · 齐平面板键（键帽与面板同高，字在帽上） ================= */
+  .B .k {
+    position: relative; width: 40px; height: 30px; flex: none;
+    border-radius: var(--rctl);
+    background: linear-gradient(180deg, var(--lo), var(--dim));
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.26), inset 0 -1px 0 color-mix(in srgb, var(--hi) 60%, transparent);
+    display: grid; place-items: center;
+  }
+  .B .k i {
+    position: absolute; inset: 3px; border-radius: calc(var(--rctl) - 2px);
+    background: linear-gradient(180deg, var(--hi), var(--paper));
+    box-shadow: 0 1px 2px rgba(0,0,0,.20);
+    display: grid; place-items: center;
+    font-family: var(--f-mono); font-size: 8px; letter-spacing: .1em; color: var(--ink2);
+    transition: transform .1s ease, box-shadow .1s ease, color .1s ease;
+  }
+  .B .k:active i, .B .k.on i {
+    transform: translateY(1px);
+    background: var(--brick); color: var(--brickink);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.35);
+  }
+
+  /* ================= C · 硬边印刷键（实心 + 位移硬阴影） ================= */
+  .C .k {
+    position: relative; width: 34px; height: 34px; flex: none;
+    border-radius: var(--rctl);
+    background: var(--brick); color: var(--brickink);
+    box-shadow: 3px 3px 0 color-mix(in srgb, var(--ink) 82%, transparent);
+    display: grid; place-items: center;
+    font-family: var(--f-mono); font-size: 9px; letter-spacing: .06em;
+    transition: transform .07s ease, box-shadow .07s ease;
+  }
+  .C .k:active, .C .k.on { transform: translate(3px, 3px); box-shadow: 0 0 0 color-mix(in srgb, var(--ink) 82%, transparent); }
+  .C .k.on { background: var(--ink); color: var(--hi); }
+
+  /* ================= D · 圆顶 + 光环（按下时环亮） ================= */
+  .D .k {
+    position: relative; width: 36px; height: 36px; flex: none; border-radius: 50%;
+    background: radial-gradient(circle at 36% 26%, var(--hi) 0 40%, var(--dim) 100%);
+    box-shadow: 0 3px 6px rgba(0,0,0,.20);
+  }
+  .D .k::before {
+    content:""; position:absolute; inset:2px; border-radius:50%;
+    background: conic-gradient(from 210deg, var(--brick), color-mix(in srgb, var(--brick) 30%, var(--honey)), var(--brick));
+    opacity: .12; transition: opacity .16s ease;
+  }
+  .D .k i {
+    position: absolute; inset: 6px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 28%,
+      color-mix(in srgb, var(--ink) 6%, var(--hi)) 0 24%, var(--paper) 62%, var(--lo) 100%);
+    box-shadow: 0 1px 2px rgba(0,0,0,.22), inset 0 -1px 2px rgba(0,0,0,.12);
+    transition: transform .12s ease;
+  }
+  .D .k:active i, .D .k.on i { transform: scale(.94); box-shadow: inset 0 2px 5px rgba(0,0,0,.28); }
+  .D .k.on::before { opacity: 1; }
+
+  /* ================= E · 胶囊键（文字在键上，按下反色） ================= */
+  .E .k {
+    position: relative; height: 26px; min-width: 74px; padding: 0 11px;
+    border-radius: 13px;
+    background: linear-gradient(180deg, var(--hi), var(--paper));
+    box-shadow: inset 0 0 0 1px transparent, 0 2px 4px rgba(0,0,0,.18), inset 0 -2px 3px rgba(0,0,0,.10);
+    display: grid; place-items: center;
+    font-size: 10px; letter-spacing: .05em; color: var(--ink2);
+    transition: background .12s ease, color .12s ease, box-shadow .12s ease;
+  }
+  .E .k small { font-family: var(--f-mono); font-size: 7px; letter-spacing: .12em; opacity: .6; margin-left: 5px; }
+  .E .k:active, .E .k.on {
+    background: var(--brick); color: var(--brickink);
+    box-shadow: inset 0 2px 5px rgba(0,0,0,.34);
+  }
+
+  /* ================= F · 拨杆（只给两个有状态的键）+ 滚轮 ================= */
+  .F .k {
+    position: relative; width: 26px; height: 40px; flex: none;
+    border-radius: 7px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--ink) 22%, var(--lo)), var(--dim));
+    box-shadow: inset 0 2px 5px rgba(0,0,0,.34);
+  }
+  .F .k i {
+    position: absolute; left: 2px; right: 2px; top: 2px; height: 20px; border-radius: 5px;
+    background: linear-gradient(180deg, var(--hi), var(--paper));
+    box-shadow: 0 2px 3px rgba(0,0,0,.30);
+    transition: top .13s cubic-bezier(.3,1.4,.5,1);
+  }
+  .F .k.on i { top: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--brick) 60%, #fff), var(--brick)); }
+  .F .roll {
+    position: relative; display: flex; gap: 2px; width: 100%; padding: 6px 5px;
+    border-radius: var(--rctl);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--ink) 22%, var(--lo)), var(--hi) 24% 76%, color-mix(in srgb, var(--ink) 22%, var(--lo)));
+    box-shadow: inset 0 2px 5px rgba(0,0,0,.28);
+  }
+  .F .drum {
+    position: relative; flex: 1 1 0; height: 40px; overflow: hidden; border-radius: 3px;
+    background: linear-gradient(180deg, var(--dim), var(--hi) 30% 70%, var(--dim));
+    display: grid; place-items: center;
+    font-family: var(--f-mono); font-size: 17px; font-weight: 600;
+  }
+  .F .drum::after { content:""; position:absolute; left:4px; right:4px; bottom:3px; height:2px; background: var(--brick); opacity:.85; border-radius:1px; }
+  .F .scale { flex: none; width: 9px; background: repeating-linear-gradient(180deg, var(--ink3) 0 1px, transparent 1px 8px); opacity: .5; }
+</style>
+</head>
+<body>
+  <h1>小票机按键 · 六版候选</h1>
+  <p class="lede">左：印刷 1971 材质 · 右：餐厅 DINER 材质。每组第一个是未按下，第二个是按下并保持。<br>
+     键位顺序按你说的：定时、时间在最上面，然后任务名 / 重打 / 保存 / 文件夹 / 退出。</p>
+  <div id="out"></div>
+
+<script>
+  var KEYS = [
+    { id: 'timer', cn: '定时', en: 'TIMER', latch: true },
+    { id: 'at',    cn: '时间', en: 'AT',    roller: true },
+    { id: 'names', cn: '任务名', en: 'NAMES', latch: true },
+    { id: 'again', cn: '重打', en: 'FEED' },
+    { id: 'save',  cn: '保存', en: 'PNG' },
+    { id: 'folder',cn: '文件夹', en: 'FOLDER' },
+    { id: 'close', cn: '退出', en: 'EXIT' }
+  ];
+  var VARIANTS = [
+    { k: 'A', n: 'A · 大圆 + 斜面圈 + 三凹口', d: '最接近你给的图1：浅色斜面外圈，里面一个纯平橙红圆顶，无描边，外圈上三个凹口。按下时圆顶下沉、内阴影变深。' },
+    { k: 'B', n: 'B · 齐平面板键', d: '面板上开一个浅孔，键帽与面板基本齐平，字印在帽上。按下时帽下沉并反色。整体最薄、最不抢戏。' },
+    { k: 'C', n: 'C · 硬边印刷键', d: '实心砖红方块 + 3px 位移硬阴影，和这个软件里其它按钮的「硬阴影」语言一致。按下时阴影塌掉、键帽位移 3px。最扁平、最不像拟物。' },
+    { k: 'D', n: 'D · 圆顶 + 光环', d: '奶白圆顶，外圈一圈渐变光环，只有按下保持时环才亮。状态最醒目，但颜色不靠实心反色。' },
+    { k: 'E', n: 'E · 胶囊键', d: '文字直接写在键上，不再另配一行标签，一列下来最短。按下整条反色。适合不想看到一排圆片的场合。' },
+    { k: 'F', n: 'F · 拨杆 + 滚轮', d: '只有状态的键用上下拨杆（定时 / 任务名），动作键仍用 A 的圆键；时间是你给的第二张图那种滚轮。' }
+  ];
+
+  function keyFor(v, k, pressed) {
+    if (k.roller) {
+      if (v === 'F') {
+        return '<div class="roll"><span class="drum">21</span><span class="scale"></span><span class="drum">30</span></div>';
+      }
+      return '<div class="roll" style="display:flex;gap:2px;width:100%;padding:6px 5px;border-radius:var(--rctl);background:linear-gradient(180deg,color-mix(in srgb,var(--ink) 22%,var(--lo)),var(--hi) 24% 76%,color-mix(in srgb,var(--ink) 22%,var(--lo)));box-shadow:inset 0 2px 5px rgba(0,0,0,.28)">' +
+        '<span style="flex:1;height:34px;display:grid;place-items:center;font-family:var(--f-mono);font-size:16px;border-radius:3px;background:linear-gradient(180deg,var(--dim),var(--hi) 30% 70%,var(--dim))">21</span>' +
+        '<span style="flex:1;height:34px;display:grid;place-items:center;font-family:var(--f-mono);font-size:16px;border-radius:3px;background:linear-gradient(180deg,var(--dim),var(--hi) 30% 70%,var(--dim))">30</span></div>';
+    }
+    var inner = v === 'B' ? '<i>' + k.en + '</i>' : '<i></i>';
+    var cls = 'k' + (pressed ? ' on' : '');
+    if (v === 'E') {
+      return '<button class="k' + (pressed ? ' on' : '') + '">' + k.cn + '<small>' + k.en + '</small></button>';
+    }
+    if (v === 'C') {
+      return '<button class="' + cls + '">' + k.en.slice(0, 3) + '</button>';
+    }
+    return '<button class="' + cls + '">' + inner + '</button>';
+  }
+
+  function plate(v, material, pressedOnly) {
+    var html = '<div class="plate m-' + material + ' ' + v + '">';
+    KEYS.forEach(function (k) {
+      var on = pressedOnly ? true : false;
+      html += '<div class="ctl">' + keyFor(v, k, on);
+      if (v !== 'E') {
+        html += '<span class="lab"><span>' + k.cn + '</span><em>' + k.en + '</em>' +
+          (k.latch ? '<i class="lamp' + (on ? ' on' : '') + '"></i>' : '') + '</span>';
+      }
+      html += '</div>';
+    });
+    return html + '</div>';
+  }
+
+  var out = document.getElementById('out');
+  VARIANTS.forEach(function (v) {
+    var sec = document.createElement('div');
+    sec.className = 'variant';
+    sec.innerHTML = '<h2>' + v.n + '</h2><p>' + v.d + '</p>' +
+      '<div class="row">' +
+      '<div><div class="tag">印刷 · 未按下</div>' + plate(v.k, 'print', false) + '</div>' +
+      '<div><div class="tag">印刷 · 全部按下</div>' + plate(v.k, 'print', true) + '</div>' +
+      '<div><div class="tag">餐厅 · 未按下</div>' + plate(v.k, 'diner', false) + '</div>' +
+      '<div><div class="tag">餐厅 · 全部按下</div>' + plate(v.k, 'diner', true) + '</div>' +
+      '</div>';
+    out.appendChild(sec);
+  });
+  out.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button.k');
+    if (!b) return;
+    b.classList.toggle('on');
+    var lamp = b.parentNode.querySelector('.lamp');
+    if (lamp) lamp.classList.toggle('on', b.classList.contains('on'));
+  });
+</script>
+</body>
+</html>

@@ -96,7 +96,7 @@
   setTimeout(function () {
     var chain = Promise.resolve();
     [['print', 'paper'], ['print', 'ink'], ['garden', 'paper'], ['garden', 'ink'],
-     ['p3', 'paper'], ['p3', 'ink'], ['ikb', 'paper'], ['unp', 'paper'], ['diner', 'paper']]
+     ['poster', 'paper'], ['poster', 'ink'], ['ikb', 'paper'], ['console', 'paper'], ['diner', 'paper']]
       .forEach(function (pair) {
         chain = chain.then(function () { return visit(pair[0], pair[1]); });
       });
