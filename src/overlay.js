@@ -686,6 +686,7 @@
     }
     defaultCache.clear();
     setMode('deployed');
+    if (window.UISound) UISound.scatter();
     toast('卡片已散布 // DEPLOYED');
   }
   function recall() {
@@ -864,6 +865,11 @@
     doc.body.style.setProperty('--uis', String(Math.min(2, Math.max(0.8, Number(st.uiScale) || 1.3))));
     doc.body.style.setProperty('--fontk', String(Math.min(1.6, Math.max(0.8, Number(st.cardFontScale) || 1))));
     doc.body.style.setProperty('--chipk', String(Math.min(1.6, Math.max(0.8, Number(st.chipFontScale) || 1))));
+    /* Simplified cards: the scattered sheet carries nothing but its title. The badges are
+       what makes a card three lines tall, and at a distance on a second monitor the title
+       is the only thing that survives anyway — so give the title the room instead. */
+    doc.body.classList.toggle('simple', st.simple === true);
+    if (window.UISound) window.__uiMuted = st.muted === true;
     computeScale();
   }
 
@@ -927,8 +933,13 @@
       el.index.style.background = accent;
       el.index.title = g.name;
     }
-    /* the DECK band carries the group colour in every mode */
-    if (el.dock) el.dock.style.setProperty('--accent', accent);
+    /* the DECK band carries the group colour in every mode — so its ink has to be chosen
+       against that colour, or a cream group paints cream text on cream */
+    if (el.dock) {
+      el.dock.style.setProperty('--accent', accent);
+      el.dock.style.setProperty('--accent-ink',
+        window.NeonTheme ? NeonTheme.inkOn(accent) : '#fbf6ea');
+    }
     if (el.count) el.count.textContent = String(open);
     if (el.name) el.name.textContent = g.name;
     if (el.ratio) {

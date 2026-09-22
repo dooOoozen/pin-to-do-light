@@ -142,6 +142,19 @@
     return toHex(resolveColour('var(' + token + ')'));
   }
 
+  /* Ink for text sitting *on* a filled block. The group palette contains cream and honey,
+     and the deck band paints its head with the group colour while the label used to stay
+     the light brick-ink — pale on pale, unreadable. Choose by the block's own luminance. */
+  function inkOn(hex) {
+    var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(hex || ''));
+    if (!m) return '#fbf6ea';
+    var s = m[1];
+    if (s.length === 3) s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
+    var n = parseInt(s, 16);
+    var lum = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+    return lum > 145 ? '#17140e' : '#fbf6ea';
+  }
+
   g.NeonTheme = {
     TOKENS: TOKENS,
     STYLES: STYLES,
@@ -150,6 +163,7 @@
     styleOf: styleOf,
     current: current,
     toHex: toHex,
+    inkOn: inkOn,
     isHex: function (v) { return HEX.test(v); }
   };
 })(window);

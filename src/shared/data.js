@@ -55,6 +55,7 @@
   var SETTING_KEYS = [
     'edge', 'overlay', 'alwaysOnTop', 'launchAtLogin', 'reminders', 'opacity',
     'animations', 'shortcuts', 'hideCompleted', 'pinned', 'activeGroupId', 'hotkey',
+    'simple', 'muted', 'deckMonitor',
     'dockScale', 'autoScale',
     'desktopOnly', 'dockPos', 'deckScale', 'cardScale', 'uiScale', 'dockMovable', 'sideWidth', 'sideCollapsed', 'sound',
     'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'theme', 'style', 'palette',
@@ -358,6 +359,16 @@
     settings.autoScale = settings.autoScale !== false;
     settings.desktopOnly = settings.desktopOnly === true;
     settings.pinned = !!settings.pinned;
+    /* Simplified cards: the scattered sheet keeps only its title, in a larger face. The
+       badges (priority, repeat, due, group) are the interesting thing to hide, so the flag
+       lives with the deck rather than with each card. */
+    settings.simple = settings.simple === true;
+    /* the interface mute. The receipt machine's own sounds are not under it: a printer that
+       goes quiet because the UI did is not a printer. */
+    settings.muted = settings.muted === true;
+    /* which display the deck lives on. -1 means "wherever the work area is", so a machine
+       that has never picked a screen keeps behaving as it always did. */
+    settings.deckMonitor = Number.isFinite(Number(settings.deckMonitor)) ? Math.floor(Number(settings.deckMonitor)) : -1;
     /* The timed print must never fire from a schedule that cannot be parsed, and never
        from a half-written setting left by an older build: 开关 only means 开关 when the
        time is a real HH:MM. */

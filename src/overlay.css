@@ -679,3 +679,23 @@ body[data-mode="deployed"] .todo-card:hover { z-index: 80 !important; }
 .deck-face, .deck-sheet, .todo-card { border-radius: var(--r-plate); }
 .tool, .card-pin, .card-tools .icon-btn, .dock .icon-btn, .deck-head { border-radius: var(--r-ctl); }
 .gchip, .group-chips .gchip { border-radius: var(--r-pill); }
+
+/* ---------------------------------------------------------------- batch O */
+
+/* The deck head is painted with the group colour, so its ink has to be chosen against
+   that colour: a cream group with the light brick-ink label is unreadable. --accent-ink
+   is computed in paintDeck() from the accent's own luminance. */
+.deck-head { color: var(--accent-ink, var(--brick-ink)); }
+.deck-head .deck-tag { color: var(--accent-ink, var(--brick-ink)); }
+.deck-head .idx-mark { background: var(--accent-ink, var(--brick-ink)); color: var(--accent, var(--brick)); }
+.deck-head .status-mark { border-color: var(--accent-ink, var(--brick-ink)); background: var(--accent-ink, var(--brick-ink)); }
+
+/* Simplified cards. The badges are the reason a scattered sheet is three lines tall, and
+   at arm's length on a second monitor the title is the only one of them you can read
+   anyway — so drop them and give the whole card over to the title. */
+body.simple .todo-card .card-bot { display: none; }
+body.simple .todo-card .card-title {
+  font-size: calc(19px * var(--cs, 1) * var(--fontk, 1));
+  line-height: 1.25;
+  -webkit-line-clamp: 3;
+}
