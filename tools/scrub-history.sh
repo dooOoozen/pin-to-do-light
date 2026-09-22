@@ -20,7 +20,8 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-SEDF='s/电蓝海报/电蓝海报/g; s/电蓝海报/电蓝海报/g; s/群青构成/群青构成/g; s/晨雾花园/晨雾花园/g; s/晨雾花园/晨雾花园/g; s/电蓝海报/电蓝海报/g; s/指令台/指令台/g; s/POSTER/POSTER/g'
+# The substitution itself lives in tools/scrub-tree.sh and tools/scrub-msg.sh — one copy of
+# the mapping, not one here and one inside a quoted filter argument.
 GREPF='群青构成\|晨雾花园\|电蓝海报\|指令台\|电蓝海报'
 BACKUP=.git/scrub-backup.bundle
 
@@ -37,9 +38,14 @@ BEFORE_HEAD=$(git rev-parse HEAD)
 git bundle create "$BACKUP" --all
 echo "backup: $BACKUP (old HEAD $(git rev-parse --short HEAD), tree $BEFORE_TREE)"
 
+# Absolute POSIX paths, resolved from the shell rather than from $0 inside the filter:
+# filter-branch runs the tree filter with the cwd set to a temporary checkout, and the
+# first attempt of this script died because the sed program was nested inside the
+# --tree-filter argument and git read part of it as its own options.
+HERE="$(pwd)"
 FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --all \
-  --tree-filter "files=\$(git grep -Il -e 群青构成 -e 晨雾花园 -e 电蓝海报 -e 指令台 -e 电蓝海报 -- . 2>/dev/null | sort -u); for f in \$files; do sed -i '$SEDF' \"\$f\"; done;" \
-  --msg-filter "sed '$SEDF'" \
+  --tree-filter "sh '$HERE/tools/scrub-tree.sh'" \
+  --msg-filter "sh '$HERE/tools/scrub-msg.sh'" \
   --tag-name-filter cat
 
 AFTER_TREE=$(git rev-parse 'HEAD^{tree}')
