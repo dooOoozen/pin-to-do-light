@@ -286,6 +286,8 @@
        a deep scroll position shows a scrollbar for a frame before it is clamped back */
     const scroller = el.pageDash.closest('.main');
     if (scroller) scroller.scrollTop = 0;
+    const grid = doc.getElementById('dashGrid');
+    if (grid && dash) grid.scrollTop = 0;
   }
 
   function renderNav() {
@@ -491,7 +493,10 @@
   ];
   /* how many of the six columns a module may claim, and how many rows it may take */
   const SPANS = [2, 3, 4, 6];
-  const ROWS = [1, 2];
+  /* Six rows, not two. A module sized to fill a maximised window is four or five rows
+     tall, and the cap used to stop at 2, which left the grip dead long before the screen
+     was full. The grid scrolls by wheel (see body.view-dash), so a tall layout is usable. */
+  const ROWS = [1, 2, 3, 4, 5, 6];
   const GRID_GAP = 10;
 
   /* free dragging lands anywhere; the grid only has these sizes, so the pointer is
@@ -3031,6 +3036,14 @@
       '    <div id="styleHour"></div>' +
       '    <div class="set-hint" style="margin-top:7px">风格决定材质（圆角、铬条、阴影、字体），昼夜只决定颜色。两者互不干涉，随时可切；调色台里钉住的颜色仍按昼/夜分别保存。</div>' +
       '  </div>' +
+      '  <div class="panel hud-thin" id="panelReceipt">' +
+      '    <h3>小票机 / RECEIPT <span class="tiny faint" id="rcpNow"></span></h3>' +
+      '    <div id="rcpRows"></div>' +
+      '    <div class="divider"></div>' +
+      '    <label class="label">保存位置 / SAVE FOLDER</label>' +
+      '    <div class="row"><input class="input" id="rcpDir" placeholder="留空 = 使用默认文件夹" /><button class="btn sm" id="rcpDirUse">用这个</button></div>' +
+      '    <div class="row" style="margin-top:6px"><span class="set-hint" id="rcpDirHint">定时出票会把 PNG 直接写进这个文件夹</span><span class="spacer"></span><button class="btn sm" id="rcpDirOpen">打开文件夹</button></div>' +
+      '  </div>' +
       '  <div class="panel hud-thin" id="panelPalette">' +
       '    <h3>调色台 / COLOUR LAB <span class="tiny faint" id="palTheme"></span></h3>' +
       '    <div class="row" style="margin-bottom:6px">' +
@@ -3191,6 +3204,70 @@
           API.op({ type: 'settings:update', patch: { dockMovable: v } });
           toast(v ? '已解锁：可拖动卡盒 // UNLOCKED' : '已锁定卡盒位置 // LOCKED');
         }));
+      }
+      /* The receipt schedule is three values that only mean something together (the
+         normaliser refuses to arm the timer unless the time parses), so the row always
+         writes the whole object back rather than patching one key at a time. */
+      const rcpHost = $('#rcpRows', root);
+      if (rcpHost && window.Receipt) {
+        const rset = () => window.Receipt.settings(S.state);
+        const rsave = (patch) => {
+          const next = Object.assign({}, rset(), patch);
+          next.on = !!next.on && /^\d{2}:\d{2}$/.test(String(next.at));
+          window.Receipt.patch(next);
+          S.state.settings.receipt = next;
+          paintRcp();
+        };
+        function paintRcp() {
+          const cur = rset();
+          const tag = $('#rcpNow', root);
+          if (tag) tag.textContent = cur.on ? '// 每天 ' + cur.at : '// OFF';
+          rcpHost.innerHTML = '';
+          rcpHost.appendChild(switchRow('定时出票', '到点在桌面卡片堆旁自动打印一张并存档，不打开任务面板；点小票即撕掉', cur.on, (v) => {
+            rsave({ on: v });
+            toast(v ? '定时出票：每天 ' + cur.at : '定时出票已关闭');
+          }));
+          const row = doc.createElement('div');
+          row.className = 'set-row';
+          row.innerHTML = '<div><div class="set-label">每天时间</div><div class="set-hint">24 小时制 · 以电脑时间为准</div></div>';
+          const at = doc.createElement('input');
+          at.type = 'time';
+          at.className = 'rcp-at';
+          at.value = cur.at;
+          at.addEventListener('change', () => {
+            if (!/^\d{2}:\d{2}$/.test(String(at.value))) {
+              toast('时间没改：请填写完整的 时:分', 'warn');
+              at.value = cur.at;
+              return;
+            }
+            rsave({ at: at.value });
+            toast('定时出票已设为每天 ' + at.value + (rset().on ? '' : '（开关未开）'), rset().on ? '' : 'warn');
+          });
+          row.appendChild(at);
+          rcpHost.appendChild(row);
+        }
+        paintRcp();
+        const dirBox = $('#rcpDir', root);
+        let rcpDefault = '';
+        if (dirBox) {
+          dirBox.value = rset().dir || '';
+          Promise.resolve(API.receiptDir()).then((p) => {
+            rcpDefault = String(p && p.path ? p.path : (p || ''));
+            if (!dirBox.value) dirBox.placeholder = rcpDefault;
+            const hint = $('#rcpDirHint', root);
+            if (hint) hint.textContent = '留空即写到 ' + (rcpDefault || '默认文件夹');
+          }).catch(() => {});
+          $('#rcpDirUse', root).addEventListener('click', () => {
+            const v = String(dirBox.value || '').trim();
+            rsave({ dir: v });
+            toast(v ? '小票保存到：' + v : '已改用默认保存位置');
+          });
+          $('#rcpDirOpen', root).addEventListener('click', () => {
+            const d = rset().dir || rcpDefault;
+            if (!d) { toast('还没有保存位置', 'warn'); return; }
+            Promise.resolve(API.openDir(d)).catch((e) => toast('打开失败：' + e, 'warn'));
+          });
+        }
       }
       toggles.appendChild(switchRow('显示桌面卡片层', '透明提词层，随时悬浮在桌面边缘', st.overlay !== false, (v) => API.op({ type: 'settings:update', patch: { overlay: v } })));
       toggles.appendChild(switchRow('仅在桌面显示', '前台是其他窗口时隐藏卡片层', st.desktopOnly !== false, (v) => API.op({ type: 'settings:update', patch: { desktopOnly: v } })));

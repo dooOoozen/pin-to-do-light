@@ -143,7 +143,7 @@ pub fn known_folder(id: &KnownFolderId) -> Option<std::path::PathBuf> {
         let mut units = Vec::new();
         let mut i = 0usize;
         loop {
-            let c = unsafe { *raw.add(i) };
+            let c = *raw.add(i);
             if c == 0 {
                 break;
             }
@@ -153,7 +153,7 @@ pub fn known_folder(id: &KnownFolderId) -> Option<std::path::PathBuf> {
                 break;
             }
         }
-        unsafe { CoTaskMemFree(raw as *mut c_void) };
+        CoTaskMemFree(raw as *mut c_void);
         if units.is_empty() {
             return None;
         }

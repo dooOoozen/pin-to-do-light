@@ -780,6 +780,13 @@ body.side-collapsed .main { grid-column: 1 / -1; }
 
 /* no stray horizontal scrollbar on the work area */
 .main { overflow-x: hidden; }
+/* The dashboard grid is its own scroller. The rows are sized to fill the window, so a
+   module pulled to five or six rows makes the grid taller than the page, and the page's
+   overflow:hidden used to clip the bottom out of reach — the grip moved but the cards
+   stayed invisible. Scroll it, but draw no bar: the wheel does the work, and an 11 px
+   stripe would steal a column's worth of width from the modules. */
+.dash-grid { overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.dash-grid::-webkit-scrollbar { width: 0; height: 0; }
 
 /* heat panel: content sized (no empty middle), fluid cells that grow with the panel */
 .heat-year .heat-row { height: auto; }

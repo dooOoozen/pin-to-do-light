@@ -1863,6 +1863,14 @@
      The card layer owns this clock, because it is the only window that is always open:
      a scheduled receipt has to print with the task panel shut. It lands beside the deck
      and takes itself away, so the desk is not left holding a machine. */
+  /* the receipt module needs this while the user drags the machine around, and it lives
+     in the other file */
+  function rcpChase() {
+    markRectsDirty(900);
+    refreshHitRects(true);
+  }
+  window.__rcpChase = rcpChase;
+
   let rcpFired = '';
   setInterval(() => {
     if (!window.Receipt || !S || !S.settings) return;
@@ -1873,11 +1881,12 @@
     API.forceShowLayer(14000);
     window.Receipt.auto(S, r ? { x: r.left - 150, y: r.top } : null);
     /* the paper moves on a schedule the page cannot hook from here, so the region keeps
-       chasing it for as long as the machine is up */
+       chasing it for as long as the machine is up. The hook itself stays installed:
+       a second, manual print needs it just as much, and nulling it out would leave that
+       one outside the region until something else happened to move. */
     const chase = setInterval(() => {
       if (!window.Receipt.active()) { clearInterval(chase); return; }
-      markRectsDirty(900);
-      refreshHitRects(true);
+      rcpChase();
     }, 120);
     setTimeout(() => clearInterval(chase), 16000);
   }, 15000);

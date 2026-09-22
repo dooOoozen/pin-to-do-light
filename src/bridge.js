@@ -132,8 +132,9 @@
       notify: (title, body) => { invoke('notify', { title: String(title || ''), body: String(body || '') }); },
       /* a receipt is only worth printing if the user can find the file afterwards, so
          the host writes it and says where; the renderer never guesses a path */
-      savePng: (dataUrl, name) => invoke('save_png', { dataUrl: String(dataUrl || ''), name: String(name || 'receipt.png') }),
+      savePng: (dataUrl, name, dir) => invoke('save_png', { dataUrl: String(dataUrl || ''), name: String(name || 'receipt.png'), dir: String(dir || '') }),
       openDir: (path) => invoke('open_dir', { path: String(path || '') }),
+      receiptDir: () => invoke('receipt_dir'),
       workArea: async () => invoke('work_area'),
       appInfo: async () => invoke('app_info'),
       exportData: async () => JSON.stringify(state, null, 2),
