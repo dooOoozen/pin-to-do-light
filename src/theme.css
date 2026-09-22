@@ -1100,7 +1100,7 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="garden"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
 
 /* ==========================================================================
-   MATERIAL: 电蓝海报 / BLUE SCREEN PRINT  (data-style="p3")
+   MATERIAL: 电蓝海报 / BLUE SCREEN PRINT  (data-style="poster")
    ==========================================================================
    Not glass and not mist: a screen-printed poster. One saturated electric blue doing
    the structural work, white and near-black as the only other values, a lime disc for
@@ -1108,7 +1108,7 @@ input[type="range"] { accent-color: var(--brick); }
    reference gets its depth from overlapping shapes and hard cuts, not from shadows —
    so elevation is off and the rules are 2px. */
 
-:root[data-style="p3"] {
+:root[data-style="poster"] {
   --paper:      #eaf3ff;
   --paper-hi:   #ffffff;
   --paper-lo:   #d2e5fb;
@@ -1159,7 +1159,7 @@ input[type="range"] { accent-color: var(--brick); }
 
 /* the same poster at night: the blue becomes the field, black stays the rule, and the
    accents invert in role — lime and white carry what blue carried by day */
-:root[data-style="p3"][data-theme="ink"] {
+:root[data-style="poster"][data-theme="ink"] {
   /* the field drops to deep blue: #0a8cff is too light a ground for either black or
      white type to clear 4.5:1, and the reference's dark panels are near-black with the
      electric blue kept for the strips, the rules and the moon */
@@ -1193,52 +1193,53 @@ input[type="range"] { accent-color: var(--brick); }
 }
 
 /* the screen-print: a dot where the grain was, at print frequency */
-:root[data-style="p3"] {
+:root[data-style="poster"] {
   --tex-grain: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ink) 15%, transparent) 1px, transparent 1.7px);
   --tex-size: 5px 5px;
   --tex-size-bg: 5px 5px;
   --tex-blend: normal;
 }
-:root[data-style="p3"] .hud,
-:root[data-style="p3"] .hud-thin,
-:root[data-style="p3"] .modal-panel,
-:root[data-style="p3"] .plan-pop,
-:root[data-style="p3"] .deck-face,
-:root[data-style="p3"] .deck-sheet,
-:root[data-style="p3"] .todo-card {
+:root[data-style="poster"] .hud,
+:root[data-style="poster"] .hud-thin,
+:root[data-style="poster"] .modal-panel,
+:root[data-style="poster"] .plan-pop,
+:root[data-style="poster"] .deck-face,
+:root[data-style="poster"] .deck-sheet,
+:root[data-style="poster"] .todo-card {
   border-width: 2px;
 }
-:root[data-style="p3"] .hud-head {
-  /* a solid blue block with a hard white shard and a lime cut across it */
+:root[data-style="poster"] .hud-head {
+  /* a solid blue block with a hard white shard and a lime cut, both packed against the
+     right end so they read as a mark on the header rather than a stripe across it */
   background-image: linear-gradient(112deg,
-    transparent 0 46%, color-mix(in srgb, var(--paper-hi) 85%, transparent) 46% 49%,
-    transparent 49% 71%, color-mix(in srgb, var(--honey) 70%, transparent) 71% 73%, transparent 73%);
+    transparent 0 79%, color-mix(in srgb, var(--paper-hi) 85%, transparent) 79% 82.5%,
+    transparent 82.5% 87%, color-mix(in srgb, var(--honey) 70%, transparent) 87% 89%, transparent 89%);
   background-color: var(--head-hi);
   color: var(--brick-ink);
   border-bottom: 2px solid var(--edge);
   font-weight: 700;
   letter-spacing: .1em;
 }
-:root[data-style="p3"] .idx-mark { background: var(--honey); color: var(--ink); border-color: var(--edge); }
-:root[data-style="p3"] .idx-mark.plain { background: transparent; color: var(--brick-ink); }
-:root[data-style="p3"] .mod-head { color: var(--brick-ink); }
-:root[data-style="p3"] .btn { font-weight: 700; letter-spacing: .08em; border-width: 2px; }
-:root[data-style="p3"] .btn:hover,
-:root[data-style="p3"] .icon-btn:hover { background: var(--brick); color: var(--brick-ink); }
-:root[data-style="p3"] .btn.primary { background: var(--ink); color: var(--paper-hi); border-color: var(--edge); }
-:root[data-style="p3"] .day-head { border-width: 2px; }
-:root[data-style="p3"] .day-head.overdue { color: var(--paper-hi); }
-:root[data-style="p3"] .day-head.overdue b { color: var(--honey); }
+:root[data-style="poster"] .idx-mark { background: var(--honey); color: var(--ink); border-color: var(--edge); }
+:root[data-style="poster"] .idx-mark.plain { background: transparent; color: var(--brick-ink); }
+:root[data-style="poster"] .mod-head { color: var(--brick-ink); }
+:root[data-style="poster"] .btn { font-weight: 700; letter-spacing: .08em; border-width: 2px; }
+:root[data-style="poster"] .btn:hover,
+:root[data-style="poster"] .icon-btn:hover { background: var(--brick); color: var(--brick-ink); }
+:root[data-style="poster"] .btn.primary { background: var(--ink); color: var(--paper-hi); border-color: var(--edge); }
+:root[data-style="poster"] .day-head { border-width: 2px; }
+:root[data-style="poster"] .day-head.overdue { color: var(--paper-hi); }
+:root[data-style="poster"] .day-head.overdue b { color: var(--honey); }
 
 /* ==========================================================================
-   MATERIAL: 指令台 / RETRO-FUTURE CONSOLE  (data-style="unp")
+   MATERIAL: 指令台 / RETRO-FUTURE CONSOLE  (data-style="console")
    ==========================================================================
    The mission-console reading of retro-futurism: a bolted flange plate with four
    screws, a thick bezel that sits down on the desk with its own hard edge, mylar
    cream in daylight and a powered-down CRT at night where only the readouts glow.
    Orange is the working colour, cyan the instrument colour, amber the lamp. */
 
-:root[data-style="unp"] {
+:root[data-style="console"] {
   --paper:      #e9e3d5;
   --paper-hi:   #f4efe3;
   --paper-lo:   #dcd5c4;
@@ -1290,7 +1291,7 @@ input[type="range"] { accent-color: var(--brick); }
 }
 
 /* powered down: the panel is a dark screen and only the lamps are on */
-:root[data-style="unp"][data-theme="ink"] {
+:root[data-style="console"][data-theme="ink"] {
   --paper:      #17181a;
   --paper-hi:   #202225;
   --paper-lo:   #101112;
@@ -1318,10 +1319,10 @@ input[type="range"] { accent-color: var(--brick); }
 }
 
 /* the flange: four screws at the corners of every plate */
-:root[data-style="unp"] .hud,
-:root[data-style="unp"] .modal-panel,
-:root[data-style="unp"] .deck-face,
-:root[data-style="unp"] .todo-card {
+:root[data-style="console"] .hud,
+:root[data-style="console"] .modal-panel,
+:root[data-style="console"] .deck-face,
+:root[data-style="console"] .todo-card {
   border-width: 2px;
   background-image:
     radial-gradient(circle at 8px 8px, var(--edge) 0 1.6px, transparent 2.2px),
@@ -1331,7 +1332,7 @@ input[type="range"] { accent-color: var(--brick); }
   background-size: 100% 100%;
   box-shadow: var(--bevel), var(--pop-shadow-sm);
 }
-:root[data-style="unp"] .hud-head {
+:root[data-style="console"] .hud-head {
   letter-spacing: .2em;
   /* scanline across the strip, and it is the lamp that lights it */
   background-image: repeating-linear-gradient(180deg,
@@ -1339,11 +1340,11 @@ input[type="range"] { accent-color: var(--brick); }
   background-color: var(--head-hi);
   border-bottom: 2px solid var(--edge);
 }
-:root[data-style="unp"] .idx-mark { background: var(--slate); color: var(--slate-ink); border-color: transparent; }
-:root[data-style="unp"] .idx-mark.plain { background: transparent; color: var(--ink); }
-:root[data-style="unp"] .btn { letter-spacing: .14em; }
-:root[data-style="unp"] .btn:active { transform: translateY(2px); box-shadow: none; }
-:root[data-style="unp"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
+:root[data-style="console"] .idx-mark { background: var(--slate); color: var(--slate-ink); border-color: transparent; }
+:root[data-style="console"] .idx-mark.plain { background: transparent; color: var(--ink); }
+:root[data-style="console"] .btn { letter-spacing: .14em; }
+:root[data-style="console"] .btn:active { transform: translateY(2px); box-shadow: none; }
+:root[data-style="console"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
 
 /* ---------------------------------------------------------------- 今日小票 printer */
 
@@ -1370,117 +1371,133 @@ input[type="range"] { accent-color: var(--brick); }
    for the lamp — so switching material re-skins the hardware instead of leaving grey
    plastic pasted on top of a screen print. */
 .rcp-plate {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px 10px;
-  width: 172px; padding: 13px 12px 11px; flex: none; align-self: flex-start;
+  display: flex; flex-direction: column; gap: 8px;
+  width: 132px; padding: 14px 11px 13px; flex: none; align-self: flex-start;
   background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
-  border: 1px solid var(--edge); border-radius: var(--r-plate);
-  box-shadow: var(--bevel), var(--pop-shadow);
+  border-radius: var(--r-plate);
+  box-shadow: var(--pop-shadow);
 }
-.rc-ctl { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.rc-ctl { display: flex; align-items: center; gap: 9px; }
 .rc-ctl label {
-  font-size: 7.5px; letter-spacing: .13em; text-transform: uppercase;
-  color: var(--ink-3); white-space: nowrap;
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 4px;
+  font-size: 9.5px; letter-spacing: .04em; color: var(--ink-2); white-space: nowrap;
 }
-.rc-ctl-lever { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: 9px; }
+.rc-ctl label em {
+  font-style: normal; font-size: 7px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--ink-3);
+}
 
-/* pilot lamp */
+/* pilot lamp, at the end of the label line */
 .rc-led {
-  width: 7px; height: 7px; border-radius: 50%; display: block;
-  border: 1px solid var(--edge); background: var(--paper-dim);
+  width: 6px; height: 6px; border-radius: 50%; display: block; flex: none;
+  background: var(--paper-dim); box-shadow: inset 0 1px 1px rgba(0, 0, 0, .22);
 }
 .rc-led.on {
   background: var(--brick);
-  border-color: color-mix(in srgb, var(--brick) 70%, #000);
   box-shadow: 0 0 6px color-mix(in srgb, var(--brick) 65%, transparent);
 }
 
-/* knurled knob: the face turns, the knurl does not */
-.rc-knob {
-  position: relative; width: 40px; height: 40px; padding: 0; cursor: pointer;
-  border: 1px solid var(--edge); border-radius: 50%;
-  background: radial-gradient(circle at 34% 26%,
-    var(--paper-hi) 0 30%, var(--paper-lo) 62%, var(--paper-dim) 100%);
-  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, .18),
-              inset 0 2px 2px color-mix(in srgb, var(--paper-hi) 85%, transparent),
-              0 2px 5px rgba(0, 0, 0, .3);
+/* the round button: a bezel, and a dome that sinks. No border anywhere — the shading is
+   what makes the edge, and an outline on a circle reads as a ring pasted over it. */
+.rc-btn {
+  position: relative; width: 34px; height: 34px; flex: none; padding: 0; cursor: pointer;
+  border: 0; border-radius: 50%;
+  background: radial-gradient(circle at 38% 26%, var(--paper-hi) 0 40%, var(--paper-dim) 100%);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, .22), inset 0 -2px 3px rgba(0, 0, 0, .10),
+              inset 0 2px 2px color-mix(in srgb, var(--paper-hi) 70%, transparent);
 }
-.rc-knob::after {
-  content: ""; position: absolute; inset: -1px; border-radius: 50%; pointer-events: none;
-  background: repeating-conic-gradient(from 0deg,
-    color-mix(in srgb, var(--ink) 20%, transparent) 0 3deg, transparent 3deg 9deg);
-  -webkit-mask: radial-gradient(circle, transparent 0 63%, #000 64%);
-  mask: radial-gradient(circle, transparent 0 63%, #000 64%);
-  opacity: .55;
+.rc-btn > i {
+  position: absolute; inset: 5px; display: block; border-radius: 50%;
+  background: radial-gradient(circle at 36% 26%,
+    color-mix(in srgb, var(--brick) 55%, #fff) 0 20%, var(--brick) 60%,
+    color-mix(in srgb, var(--brick) 78%, #000) 100%);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, .26), inset 0 1px 2px rgba(255, 255, 255, .30);
+  transition: transform .12s ease, box-shadow .12s ease;
 }
-.rc-knob-face {
-  position: absolute; inset: 6px; display: block; border-radius: 50%;
-  transition: transform .22s cubic-bezier(.2, .8, .2, 1);
-}
-.rc-knob-face b {
-  position: absolute; left: 50%; top: 2px; width: 3px; height: 10px; margin-left: -1.5px;
-  border-radius: 2px; background: var(--ink);
-}
-.rc-knob.a-on .rc-knob-face { transform: rotate(46deg); }
-.rc-knob.a-off .rc-knob-face { transform: rotate(-46deg); }
-.rc-knob:active { box-shadow: inset 0 2px 4px rgba(0, 0, 0, .3); }
-
-/* domed push button */
-.rc-push {
-  width: 44px; height: 44px; padding: 0; cursor: pointer;
-  border: 1px solid color-mix(in srgb, var(--brick) 70%, #000); border-radius: 50%;
-  background: radial-gradient(circle at 36% 28%,
-    color-mix(in srgb, var(--brick) 72%, #fff) 0 26%, var(--brick) 58%,
-    color-mix(in srgb, var(--brick) 62%, #000) 100%);
-  box-shadow: inset 0 2px 3px rgba(255, 255, 255, .35), inset 0 -3px 5px rgba(0, 0, 0, .3),
-              0 3px 6px rgba(0, 0, 0, .34);
-  color: var(--brick-ink); font-size: 8.5px; letter-spacing: .1em;
-}
-.rc-push span { position: relative; top: 1px; text-shadow: 0 1px 0 rgba(0, 0, 0, .3); }
-.rc-push:active {
-  transform: translateY(2px);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .45);
+.rc-btn:active > i { transform: scale(.9); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .42); }
+/* latched: it stays down until pressed again */
+.rc-btn.on > i {
+  transform: translateY(1px) scale(.92);
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, .48), inset 0 -1px 1px rgba(255, 255, 255, .12);
 }
 
-/* key caps */
-.rc-key {
-  min-width: 52px; height: 30px; padding: 0 8px; cursor: pointer;
-  border: 1px solid var(--edge); border-radius: var(--r-ctl);
-  background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--paper-hi) 90%, transparent),
-              inset 0 -2px 3px rgba(0, 0, 0, .16), 0 2px 4px rgba(0, 0, 0, .26);
-  color: var(--ink); font-size: 9px; letter-spacing: .12em;
+/* the time drum: two rollers with an index scale between them, moved by the wheel. The
+   native field lies on top of it, invisible, so a click still opens the system editor and
+   the digits can still be typed. */
+.rc-ctl-roll { align-items: flex-start; flex-direction: column; gap: 5px; }
+.rc-ctl-roll label { flex: none; }
+.rc-roller {
+  position: relative; display: flex; align-items: stretch; gap: 2px;
+  width: 100%; padding: 6px 5px; box-sizing: border-box;
+  border-radius: var(--r-ctl);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ink) 22%, var(--paper-lo)), var(--paper-hi) 24% 76%,
+    color-mix(in srgb, var(--ink) 22%, var(--paper-lo)));
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .28);
 }
-.rc-key:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .3); }
-.rc-key-exit { background: linear-gradient(180deg, var(--paper-lo), var(--paper-dim)); }
-
-/* lever in a slot */
-.rc-slot {
-  position: relative; width: 26px; height: 54px; display: block;
-  border: 1px solid var(--edge); border-radius: 13px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--ink) 26%, var(--paper-lo)), var(--paper-lo));
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .35);
+.rc-drum {
+  position: relative; flex: 1 1 0; min-width: 0; height: 40px; overflow: hidden;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--paper-dim), var(--paper-hi) 30% 70%, var(--paper-dim));
 }
-.rc-lever {
-  position: absolute; left: 3px; bottom: 3px; width: 18px; height: 18px; display: block;
-  border: 1px solid var(--edge); border-radius: 50%; cursor: pointer;
-  background: radial-gradient(circle at 36% 28%, var(--paper-hi) 0 34%, var(--paper-dim) 100%);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, .34);
-  transition: bottom .16s cubic-bezier(.2, .8, .2, 1);
+.rc-drum b {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-family: var(--font-mono); font-size: 17px; font-weight: 600; color: var(--ink);
+  transition: transform .14s cubic-bezier(.2, .8, .2, 1), opacity .14s ease;
 }
-.rc-lever:hover, .rc-lever:active { bottom: 31px; }
-
-/* the native time field, brought onto the panel instead of sitting on it */
+.rc-drum.tick b { transform: translateY(-7px); opacity: .25; }
+.rc-drum::after {
+  content: ""; position: absolute; left: 4px; right: 4px; bottom: 3px; height: 2px;
+  border-radius: 1px; background: var(--brick); opacity: .85;
+}
+.rc-roller::before {
+  content: ""; flex: none; width: 9px; align-self: stretch; opacity: .45;
+  background: repeating-linear-gradient(180deg, var(--ink-3) 0 1px, transparent 1px 8px);
+}
 .rcp-at {
-  width: 66px; height: 26px; padding: 0 5px; box-sizing: border-box;
-  border: 1px solid var(--edge); border-radius: var(--r-ctl);
-  background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
-  color: var(--ink); font-family: var(--font-mono); font-size: 12px; text-align: center;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .18);
-  color-scheme: light;
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0;
+  border: 0; background: transparent; opacity: 0; cursor: pointer;
+  font-family: var(--font-mono); color-scheme: light;
 }
 :root[data-theme="ink"] .rcp-at { color-scheme: dark; }
-.rcp-at::-webkit-calendar-picker-indicator { opacity: .45; filter: invert(1); }
-:root[data-theme="ink"] .rcp-at::-webkit-calendar-picker-indicator { filter: none; }
+
+/* The share preview: pinned beside the machine so opening it cannot slide the printer out
+   from under the paper, and it arrives by growing into place rather than appearing. */
+.rcp-prev {
+  position: fixed; z-index: 3; width: 212px; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 9px; padding: 12px 12px 13px;
+  overflow: auto;
+  background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
+  border-radius: var(--r-plate); box-shadow: var(--pop-shadow);
+  opacity: 0; transform: scale(.94) translateY(8px);
+  transform-origin: left center;
+  transition: opacity .15s ease, transform .19s cubic-bezier(.2, .8, .2, 1);
+}
+.rcp-prev.in { opacity: 1; transform: none; }
+.rcp-prev-head { font-size: 11px; letter-spacing: .06em; color: var(--ink-2); }
+.rcp-prev-head em {
+  font-style: normal; font-size: 7.5px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.rcp-prev-shot {
+  flex: none; display: grid; place-items: center; padding: 9px 6px; border-radius: var(--r-ctl);
+  background: repeating-conic-gradient(color-mix(in srgb, var(--ink) 10%, transparent) 0 25%,
+    transparent 0 50%) 0 0 / 12px 12px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .2);
+}
+.rcp-prev-shot canvas { display: block; }
+.rcp-prev-bgs { display: flex; gap: 7px; flex-wrap: wrap; }
+.rc-bg {
+  width: 21px; height: 21px; padding: 0; cursor: pointer; border: 0; border-radius: 50%;
+  background: var(--chip, transparent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .26);
+}
+.rc-bg-none {
+  background: repeating-conic-gradient(color-mix(in srgb, var(--ink) 26%, transparent) 0 25%,
+    var(--paper-hi) 0 50%) 0 0 / 8px 8px;
+}
+.rc-bg.on { box-shadow: 0 0 0 2px var(--ink), 0 1px 3px rgba(0, 0, 0, .26); }
+.rcp-prev-ops { display: flex; gap: 14px; }
 
 .rcp-rig { display: flex; flex-direction: column; align-items: center; flex: none; }
 .rcp-machine {
@@ -1498,12 +1515,18 @@ input[type="range"] { accent-color: var(--brick); }
 .rcp-led { font-size: 9px; letter-spacing: .2em; color: var(--brick); white-space: nowrap; }
 .rcp-led::before { content: "CF"; margin-right: 6px; font-size: 8px; }
 .rcp-slot {
-  position: relative; width: 300px; overflow: hidden;
+  /* wider than the sheet: the slot clips, so at exactly 300 px the paper's own drop
+     shadow was cut off down its two sides — the "左右两边的阴影没有" of the timed print */
+  position: relative; width: 344px; overflow: hidden;
   margin-top: -2px;
 }
 .rcp-paper {
   position: absolute; top: 0; left: 50%; margin-left: -150px; display: block;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .3));
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .34));
 }
-/* the timed print arrives uninvited, so it does not darken the whole desk */
+/* the timed print arrives uninvited, so it does not darken the whole desk — but the
+   machine still has to take the pointer, and an ancestor with pointer-events:none makes
+   elementFromPoint answer "body" there, which the layer reads as empty desktop and turns
+   the window click-through. The rig switches its own subtree back on. */
 .rcp-backdrop.rcp-auto { background: transparent; pointer-events: none; }
+.rcp-backdrop.rcp-auto .rcp { pointer-events: auto; }

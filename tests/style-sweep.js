@@ -7,7 +7,7 @@
   var API = window.API;
   function note(s) { try { API.bootNote('[T] ' + s); } catch (e) { /* no bridge */ } }
   function q(s) { return document.querySelector(s); }
-  var LIST = ['print', 'diner', 'ikb', 'garden', 'p3', 'unp'];
+  var LIST = ['print', 'diner', 'ikb', 'garden', 'poster', 'console'];
 
   function lum(rgb) {
     var m = /rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(rgb);

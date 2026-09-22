@@ -44,14 +44,17 @@ itself to the edge when idle.
 - **Daily receipt** — the same day printed as a thermal slip: completed count, tracked
   time, task names on or off, a stamp, a barcode and a torn edge. It feeds out of the slot
   in stuttering pulls with the motor running and a ding when it stops. The machine has a
-  real control plate beside it — knurled knobs for NAMES and TIMER, a domed FEED button,
-  PNG and EXIT key caps, a lever in a recessed slot for the folder — and every one of them
-  is made from the material's own tokens, so another material re-skins the hardware. The
-  saved PNG is composited with the machine head above the paper, because `◆ PIN TO-DO 收银台`
-  on the image is what tells anyone who sees it which software made it. A scheduled print
-  shows only the machine and the paper, lands beside the deck with the panel closed, saves
-  itself, and stays pinned to the desk until you click it — the body drags out of the way
-  first if you need to. The hour, the switch and the save folder live in Settings → RECEIPT.
+  real control plate beside it — one column of round dome buttons, the two that hold a
+  state (NAMES, TIMER) latched down with a pilot lamp beside them, and the hour set on a
+  drum you scroll with the wheel and click for the system's fine editor. Every piece is
+  drawn from the material's own tokens, so another material re-skins the hardware. Pressing
+  PNG opens a share preview beside the machine — six backgrounds, including transparent —
+  and the saved file is composited with the machine head above the paper, because
+  `◆ PIN TO-DO 收银台` on the image is what tells anyone who sees it which software made it.
+  A scheduled print shows only the machine and the paper, lands beside the desk with the
+  panel closed, saves itself, and stays put until you pull the sheet off it — the body
+  drags out of the way first if you need to. The hour, the switch and the save folder live
+  in Settings → RECEIPT.
 - **Pomodoro, memo, reminders, sound, tray, autostart**, and six materials, each with its own
   day and night palette: **印刷 1971** (the terminal sheet — square plates, hard print shadow,
   paper grain), **餐厅 DINER** (Googie console: enamel cream, chrome trim, rounded corners),

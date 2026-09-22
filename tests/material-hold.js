@@ -10,7 +10,7 @@
   var HOLD = 20000;
 
   var LIST = [];
-  ['print', 'diner', 'ikb', 'garden', 'p3', 'unp'].forEach(function (s) {
+  ['print', 'diner', 'ikb', 'garden', 'poster', 'console'].forEach(function (s) {
     LIST.push([s, 'paper']); LIST.push([s, 'ink']);
   });
 

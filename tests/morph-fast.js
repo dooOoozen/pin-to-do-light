@@ -16,10 +16,10 @@
   API.getState().then(function (st) {
     var before = { style: st.settings.style, theme: st.settings.theme };
     var chain = Promise.resolve();
-    ['print', 'diner', 'ikb', 'garden', 'p3', 'unp'].forEach(function (s) {
+    ['print', 'diner', 'ikb', 'garden', 'poster', 'console'].forEach(function (s) {
       chain = chain.then(function () { return visit(s, 'paper'); });
     });
-    ['garden', 'p3', 'unp'].forEach(function (s) {
+    ['garden', 'poster', 'console'].forEach(function (s) {
       chain = chain.then(function () { return visit(s, 'ink'); });
     });
     chain.then(function () { return visit(before.style, before.theme); })

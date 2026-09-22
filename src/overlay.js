@@ -1404,6 +1404,15 @@
       $$('.todo-card', el.cardLayer).forEach((c) => {
         if (!c.classList.contains('docked')) rects.push(rectOfNode(c));
       });
+      /* The receipt machine is drawn inside the region, but the region is not what keeps
+         the window awake for the mouse — hitRects is, and then .interactive. Leaving the
+         rig out of this list is what made a timed print visible and completely dead: every
+         pointer over it set WS_EX_TRANSPARENT, so the click went to the desktop and the
+         body could not be dragged. */
+      const rig = doc.querySelector('.rcp');
+      if (rig) rects.push(rectOfNode(rig));
+      const prev = doc.querySelector('.rcp-prev');
+      if (prev) rects.push(rectOfNode(prev));
     }
     hitRects = rects;
     pushShape();
@@ -1465,6 +1474,10 @@
        well as input, so a machine outside the region is a machine that is not there */
     const rig = doc.querySelector('.rcp');
     if (rig) out.push(rig);
+    /* the share preview is pinned beside the machine rather than inside its box, so it has
+       to be named for the region to know it exists */
+    const prev = doc.querySelector('.rcp-prev');
+    if (prev) out.push(prev);
     /* live children of the toast host, not the host: it is a full-height column and
        would claim a strip of the desktop for nothing */
     if (el.toast) {
@@ -1493,6 +1506,12 @@
     if (lifts && box) {
       pad += Math.ceil(Math.max(box.width, box.height) * 0.05);
     }
+    /* The receipt machine's shadow is `0 28px 52px`, which paints about 26 px past its
+       box, and the sheet adds its own drop shadow under the slot. At the 8 px rest pad the
+       region cut the machine through its own shadow, which is what "收银台的阴影像被截断了"
+       describes. The rig is transient and is the thing being pointed at, so the extra
+       ring of swallowed desktop clicks only exists while a receipt is on the desk. */
+    if (node.classList && node.classList.contains('rcp')) pad += 26;
     return pad;
   }
 
@@ -1872,8 +1891,19 @@
   window.__rcpChase = rcpChase;
 
   let rcpFired = '';
+  let rcpSeeded = false;
   setInterval(() => {
     if (!window.Receipt || !S || !S.settings) return;
+    /* A time that passed before this run began is not a print that is owed. The first
+       build here asked "is it past 21:37?" and "have I printed today's 21:37?", got yes
+       and no, and produced a receipt fifteen seconds after launching the app — which is
+       what the user reported as 点开软件后自动弹出了一张小票. Seed the day as spent, then
+       only print when the clock actually crosses the moment. */
+    if (!rcpSeeded) {
+      rcpSeeded = true;
+      const past = window.Receipt.due(S, new Date(), '');
+      if (past) { rcpFired = past; return; }
+    }
     const key = window.Receipt.due(S, new Date(), rcpFired);
     if (!key) return;
     rcpFired = key;

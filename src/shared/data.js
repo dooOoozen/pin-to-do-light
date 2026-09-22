@@ -34,6 +34,23 @@
   var WEEKDAY_CN = ['日', '一', '二', '三', '四', '五', '六'];
   var EDGES = ['left', 'right', 'top', 'bottom'];
   var TEMP_GROUP_ID = 'g_temp';
+  /* The dashboard grid's only two sizes, declared once. Six columns of which a module may
+     claim 2, 3, 4 or all 6; rows up to six, because a module sized to fill a maximised
+     window is four or five rows tall and the old cap of two left the resize grip dead long
+     before the screen was full. */
+  var DASH_SPANS = [2, 3, 4, 6];
+  var DASH_ROWS = [1, 2, 3, 4, 5, 6];
+  /* Two material keys are retired: they were abbreviations of someone else's work (p3, unp)
+     and are now named after their own medium (poster, console). The old spelling is accepted
+     and rewritten rather than rejected, because it is what every existing data file holds
+     and an unresolved style would drop the whole desk back to 印刷. */
+  var STYLE_WAS = { p3: 'poster', unp: 'console' };
+  var STYLE_IS = ['print', 'diner', 'ikb', 'garden', 'poster', 'console'];
+  function styleKey(v) {
+    var k = String(v || '');
+    if (STYLE_WAS[k]) k = STYLE_WAS[k];
+    return STYLE_IS.indexOf(k) >= 0 ? k : 'print';
+  }
 
   var SETTING_KEYS = [
     'edge', 'overlay', 'alwaysOnTop', 'launchAtLogin', 'reminders', 'opacity',
@@ -326,6 +343,10 @@
       });
     }
     if (EDGES.indexOf(settings.edge) < 0) settings.edge = 'right';
+    /* Resolved on the way in, not only when a settings write happens: the material is
+       carried in the data file, so a load has to be able to translate it or the desk boots
+       with a data-style nothing matches and every material rule in the sheet misses. */
+    settings.style = styleKey(settings.style);
     settings.opacity = Math.min(1, Math.max(0.3, Number(settings.opacity) || 1));
     settings.dockScale = Math.min(2, Math.max(0.6, Number(settings.dockScale) || 1));
     settings.overlay = settings.overlay !== false;
@@ -345,7 +366,10 @@
     settings.receipt = {
       on: rp.on === true && atOk,
       at: atOk ? String(rp.at) : '21:30',
-      dir: typeof rp.dir === 'string' ? rp.dir.slice(0, 260) : ''
+      dir: typeof rp.dir === 'string' ? rp.dir.slice(0, 260) : '',
+      /* the share background is an id, not a colour: anything else (a stale build, a hand
+         edited file) falls back to the one the reference sheet used */
+      bg: ['none', 'rose', 'cream', 'paper', 'brick', 'ink'].indexOf(rp.bg) >= 0 ? rp.bg : 'rose'
     };
     /* v2 settings: dock position + split deck/card sizes + interface scale */
     if (s.settings && typeof s.settings === 'object' &&
@@ -847,7 +871,7 @@
       if (EDGES.indexOf(s.settings.edge) < 0) s.settings.edge = 'right';
       /* the material is a closed set like the edge: a typo would leave the sheet with a
          data-style nothing matches, which reads as a half-styled window */
-      if (['print', 'diner', 'ikb', 'garden', 'p3', 'unp'].indexOf(s.settings.style) < 0) s.settings.style = 'print';
+      s.settings.style = styleKey(s.settings.style);
       s.settings.opacity = Math.min(1, Math.max(0.3, Number(s.settings.opacity) || 1));
       s.settings.dockScale = Math.min(2, Math.max(0.6, Number(s.settings.dockScale) || 1));
       s.settings.dockPos = Math.min(1, Math.max(0, isFinite(s.settings.dockPos) ? Number(s.settings.dockPos) : 0.5));
@@ -874,6 +898,11 @@
          bad file cannot leave a hole in the grid — and a module the file does not
          mention keeps no entry at all, so the page's own default applies rather than a
          filled-in 2/6 that would silently flatten the grid. */
+      /* The grid sizes are validated here rather than in the page, and the page reads the
+         same two lists back — the row cap used to live in both places, the reducer's copy
+         stopped at 2, and a module dragged to 3 rows was quietly rewritten on the way to
+         disk. That is "拉到 3 会自动变成 2", and no amount of raising the page's own list
+         could fix it while two sources existed. */
       (function () {
         var dl = s.settings.dashLayout;
         var ids = ['clock', 'stats', 'pomo', 'today', 'memo', 'heat', 'mini'];
@@ -883,7 +912,7 @@
         }
         if (ok.order.length !== ids.length) ok.order = ids.slice();
         ['span', 'row'].forEach(function (key) {
-          var allowed = key === 'span' ? [2, 3, 4, 6] : [1, 2];
+          var allowed = key === 'span' ? DASH_SPANS : DASH_ROWS;
           var bag = dl && dl[key];
           if (!bag) return;
           ids.forEach(function (id) {
@@ -1221,6 +1250,8 @@
     REPEAT_LABEL: REPEAT_LABEL,
     WEEKDAY_CN: WEEKDAY_CN,
     EDGES: EDGES,
+    DASH_SPANS: DASH_SPANS,
+    DASH_ROWS: DASH_ROWS,
     TEMP_GROUP_ID: TEMP_GROUP_ID,
     repeatText: repeatText,
     weekdayName: weekdayName,
