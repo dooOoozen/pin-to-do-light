@@ -345,6 +345,10 @@ input[type="range"] { accent-color: var(--brick); }
 .modal-root { position: fixed; inset: 0; z-index: 8000; display: none; }
 .modal-root.open { display: block; }
 .modal-backdrop {
+  /* No z-index here. .modal-root is already at 8000, which is above the receipt machine's
+     90; putting a z-index on the dim layer instead lifts it over its own .modal-panel and
+     the modal stops answering the pointer — which is how a fix for "设置操作不了" can
+     quietly become the reason it does not work. */
   position: absolute; inset: 0;
 }
 .modal-panel {
@@ -1397,29 +1401,36 @@ input[type="range"] { accent-color: var(--brick); }
   box-shadow: 0 0 6px color-mix(in srgb, var(--brick) 65%, transparent);
 }
 
-/* the round button: a bezel, and a dome that sinks. No border anywhere — the shading is
-   what makes the edge, and an outline on a circle reads as a ring pasted over it. */
+/* the round button, variant D: a cream dome sitting in a bezel, with a ring of colour under
+   the rim that only lights when the control is holding a state. No outlines — a border on
+   a circle reads as a ring pasted over the button, which is what made the first plate look
+   cheap. The ring is conic rather than flat so it catches the light like a bezel does. */
 .rc-btn {
-  position: relative; width: 34px; height: 34px; flex: none; padding: 0; cursor: pointer;
+  position: relative; width: 36px; height: 36px; flex: none; padding: 0; cursor: pointer;
   border: 0; border-radius: 50%;
-  background: radial-gradient(circle at 38% 26%, var(--paper-hi) 0 40%, var(--paper-dim) 100%);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, .22), inset 0 -2px 3px rgba(0, 0, 0, .10),
-              inset 0 2px 2px color-mix(in srgb, var(--paper-hi) 70%, transparent);
+  background: radial-gradient(circle at 36% 26%, var(--paper-hi) 0 40%, var(--paper-dim) 100%);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, .20);
+}
+.rc-btn::before {
+  content: ""; position: absolute; inset: 2px; border-radius: 50%;
+  background: conic-gradient(from 210deg, var(--brick),
+    color-mix(in srgb, var(--brick) 30%, var(--honey)), var(--brick));
+  opacity: .12; transition: opacity .16s ease;
 }
 .rc-btn > i {
-  position: absolute; inset: 5px; display: block; border-radius: 50%;
-  background: radial-gradient(circle at 36% 26%,
-    color-mix(in srgb, var(--brick) 55%, #fff) 0 20%, var(--brick) 60%,
-    color-mix(in srgb, var(--brick) 78%, #000) 100%);
-  box-shadow: 0 2px 3px rgba(0, 0, 0, .26), inset 0 1px 2px rgba(255, 255, 255, .30);
+  position: absolute; inset: 6px; display: block; border-radius: 50%;
+  background: radial-gradient(circle at 38% 28%,
+    color-mix(in srgb, var(--ink) 6%, var(--paper-hi)) 0 24%, var(--paper) 62%, var(--paper-lo) 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .22), inset 0 -1px 2px rgba(0, 0, 0, .12);
   transition: transform .12s ease, box-shadow .12s ease;
 }
-.rc-btn:active > i { transform: scale(.9); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .42); }
-/* latched: it stays down until pressed again */
+.rc-btn:active > i { transform: scale(.94); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .28); }
+/* latched: the ring comes up and the dome stays down */
 .rc-btn.on > i {
-  transform: translateY(1px) scale(.92);
-  box-shadow: inset 0 3px 6px rgba(0, 0, 0, .48), inset 0 -1px 1px rgba(255, 255, 255, .12);
+  transform: scale(.94);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .28), inset 0 -1px 1px rgba(255, 255, 255, .10);
 }
+.rc-btn.on::before { opacity: 1; }
 
 /* the time drum: two rollers with an index scale between them, moved by the wheel. The
    native field lies on top of it, invisible, so a click still opens the system editor and
@@ -1454,26 +1465,48 @@ input[type="range"] { accent-color: var(--brick); }
   content: ""; flex: none; width: 9px; align-self: stretch; opacity: .45;
   background: repeating-linear-gradient(180deg, var(--ink-3) 0 1px, transparent 1px 8px);
 }
-.rcp-at {
+/* The invisible native field that lies over the drum, so a click opens the system editor
+   and the digits can still be typed. Scoped to the drum on purpose: the settings panel has
+   a time field with this same class, and an unscoped `position:absolute; inset:0` turned
+   that one into a transparent sheet over the entire modal — which is what made 设置 stop
+   answering clicks. */
+.rcp-roller .rcp-at {
   position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0;
   border: 0; background: transparent; opacity: 0; cursor: pointer;
   font-family: var(--font-mono); color-scheme: light;
 }
+/* the same field standing on its own, in the settings panel: a visible, themed input */
+.rcp-at {
+  width: 74px; height: 27px; padding: 0 6px; box-sizing: border-box;
+  border: 0; border-radius: var(--r-ctl);
+  background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
+  color: var(--ink); font-family: var(--font-mono); font-size: 12px; text-align: center;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .18);
+  color-scheme: light;
+}
 :root[data-theme="ink"] .rcp-at { color-scheme: dark; }
+.rcp-at::-webkit-calendar-picker-indicator { opacity: .45; }
+:root[data-theme="ink"] .rcp-at::-webkit-calendar-picker-indicator { filter: invert(1); }
 
-/* The share preview: pinned beside the machine so opening it cannot slide the printer out
-   from under the paper, and it arrives by growing into place rather than appearing. */
+/* The share preview covers the desk and dims it, rather than sitting beside the machine:
+   it is a decision, not a tool, and it should be the only thing on screen while it is up.
+   It closes on 保存 or 返回 and on nothing else — a panel that dismisses because you
+   clicked the wrong pixel loses the choice you were making. */
 .rcp-prev {
-  position: fixed; z-index: 3; width: 212px; box-sizing: border-box;
-  display: flex; flex-direction: column; gap: 9px; padding: 12px 12px 13px;
-  overflow: auto;
+  position: fixed; inset: 0; z-index: 4;
+  display: grid; place-items: center; padding: 16px;
+  background: color-mix(in srgb, #0a0907 56%, transparent);
+  opacity: 0; transition: opacity .16s ease;
+}
+.rcp-prev.in { opacity: 1; }
+.rcp-prev-card {
+  width: 224px; display: flex; flex-direction: column; gap: 10px; padding: 13px 13px 14px;
+  max-height: calc(100vh - 32px); overflow: auto;
   background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
   border-radius: var(--r-plate); box-shadow: var(--pop-shadow);
-  opacity: 0; transform: scale(.94) translateY(8px);
-  transform-origin: left center;
-  transition: opacity .15s ease, transform .19s cubic-bezier(.2, .8, .2, 1);
+  transform: scale(.94) translateY(10px); transition: transform .2s cubic-bezier(.2, .8, .2, 1);
 }
-.rcp-prev.in { opacity: 1; transform: none; }
+.rcp-prev.in .rcp-prev-card { transform: none; }
 .rcp-prev-head { font-size: 11px; letter-spacing: .06em; color: var(--ink-2); }
 .rcp-prev-head em {
   font-style: normal; font-size: 7.5px; letter-spacing: .16em;

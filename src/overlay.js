@@ -1506,12 +1506,12 @@
     if (lifts && box) {
       pad += Math.ceil(Math.max(box.width, box.height) * 0.05);
     }
-    /* The receipt machine's shadow is `0 28px 52px`, which paints about 26 px past its
-       box, and the sheet adds its own drop shadow under the slot. At the 8 px rest pad the
-       region cut the machine through its own shadow, which is what "收银台的阴影像被截断了"
-       describes. The rig is transient and is the thing being pointed at, so the extra
-       ring of swallowed desktop clicks only exists while a receipt is on the desk. */
-    if (node.classList && node.classList.contains('rcp')) pad += 26;
+    /* The receipt machine's shadow is `0 28px 52px`, and the sheet adds its own drop shadow
+       under the slot, so the 8 px rest pad cut the machine through its own shadow — which is
+       what "收银台的阴影像被截断了" describes. While a sheet is being torn off it leaves the
+       rig's box entirely, and a region that stops at the box clips the paper in mid-fall,
+       so the allowance opens up for the length of the tear and closes again after. */
+    if (node.classList && node.classList.contains('rcp')) pad += window.__rcpTear ? 300 : 40;
     return pad;
   }
 

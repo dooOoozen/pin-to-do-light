@@ -258,23 +258,39 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     draw(ctx, d);
     /* the tear bar leaves a sawtooth, and it has to be real geometry rather than a CSS
-       mask — the same canvas is what gets exported, so the saved PNG must be torn too */
-    var tooth = 9 * SCALE, base = h * SCALE;
+       mask — the same canvas is what gets exported, so the saved PNG must be torn too.
+       The teeth are irregular on purpose: a machine-cut perforation is regular, tearing by
+       hand is not, and the even zigzag was the thing that gave the first version away. */
+    var base = h * SCALE;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.moveTo(0, base);
-    for (var x = 0; x < canvas.width; x += tooth) {
-      ctx.lineTo(x + tooth / 2, base - tooth);
-      ctx.lineTo(x + tooth, base);
-    }
-    ctx.lineTo(canvas.width, base + tooth);
-    ctx.lineTo(0, base + tooth);
+    ctx.moveTo(0, base + 4);
+    raggedEdge(ctx, canvas.width, base, 0.012, 0, 1234);
+    ctx.lineTo(canvas.width, base + 40);
+    ctx.lineTo(0, base + 40);
     ctx.closePath();
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
     return h;
+  }
+
+  /* A hand-torn line: the step varies, the depth varies, and the whole thing drifts,
+     because paper never lets go along a level. Seeded, so the same day's receipt tears the
+     same way every time it is re-printed rather than flickering between pulls. */
+  function raggedEdge(ctx, width, y, slope, phase, seed) {
+    var s = seed || 1;
+    function rnd() { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }
+    var x = 0;
+    while (x < width) {
+      var step = (5 + rnd() * 9) * SCALE;
+      var deep = (3 + rnd() * 9) * SCALE;
+      var drift = (x / width - 0.5) * width * slope + phase;
+      ctx.lineTo(x + step / 2, y + drift - deep);
+      x += step;
+      ctx.lineTo(x, y + (x / width - 0.5) * width * slope + phase + (rnd() - 0.5) * 2 * SCALE);
+    }
   }
 
   /* ---- the sound of a machine ----
@@ -412,7 +428,9 @@
 
   function eject(canvas, height) {
     var slot = canvas.parentNode;
-    slot.style.height = (height + 26) + 'px';
+    /* room below the sheet for its own drop shadow (0 10px 18px), which the slot's clip was
+       cutting off — the flat bottom edge on the timed print */
+    slot.style.height = (height + 44) + 'px';
     canvas.style.transform = 'translateY(' + (-height) + 'px)';
     canvas.style.opacity = '1';
     var i = 0;
@@ -439,21 +457,55 @@
      then it falls and turns. The first version translated and faded in a single 240 ms
      ease, which read as a dissolve. `from` is however far the hand had already pulled it,
      so a release mid-drag continues that position instead of snapping to it. */
+  var tearNo = 0;
+
   function rip(from, canvas, done) {
     if (!canvas) { done(); return; }
     var slot = canvas.parentNode;
     var h = canvas.getBoundingClientRect().height;
     /* the slot clips, and a sheet that is leaving must be allowed to */
     slot.style.overflow = 'visible';
+    /* and the backdrop has to stop scrolling: a sheet falling past the bottom of the rig
+       drags the panel's scrollbar down with it — the strip of chrome that appeared on the
+       right after a tear in the task panel */
+    var back = canvas.closest ? canvas.closest('.rcp-backdrop') : null;
+    if (back) back.style.overflow = 'hidden';
+    tearTop(canvas, tearNo);
+    /* nobody tears a receipt along a vertical: it comes off leaning, and it turns as it
+       falls. The lean alternates so a stack of them does not look machine-cut. */
+    var side = tearNo % 2 ? 1 : -1;
+    tearNo++;
+    /* the card layer's region clips drawing as well as input, and the falling sheet leaves
+       the rig's box: without this its bottom edge and its shadow are cut mid-fall */
+    window.__rcpTear = true;
+    chase();
     ratchet();
     canvas.style.transition = 'transform 90ms ease-out';
-    canvas.style.transform = 'translateY(' + (from - 6) + 'px) rotate(-1deg)';
+    canvas.style.transform = 'translate(' + (side * 5) + 'px,' + (from - 6) + 'px) rotate(' + (side * -1.4).toFixed(2) + 'deg)';
     setTimeout(function () {
-      canvas.style.transition = 'transform 430ms cubic-bezier(.42, .04, .74, .36), opacity 400ms ease-in';
-      canvas.style.transform = 'translateY(' + (from + h * 0.8) + 'px) translateX(16px) rotate(4.4deg)';
+      canvas.style.transition = 'transform 460ms cubic-bezier(.42, .04, .74, .36), opacity 420ms ease-in';
+      canvas.style.transform = 'translate(' + (side * 44) + 'px,' + (from + h * 0.85) + 'px) rotate(' + (side * 8.5).toFixed(1) + 'deg)';
       canvas.style.opacity = '0';
-      setTimeout(done, 450);
+      setTimeout(function () { window.__rcpTear = false; chase(); done(); }, 470);
     }, 95);
+  }
+
+  /* The edge the sheet parts on, cut into the top of the canvas at the moment of tearing.
+     It stays inside the 18 px the layout keeps clear above the first printed line, so the
+     sheet that falls has a torn head without eating anything that was printed on it. */
+  function tearTop(canvas, seed) {
+    var x = canvas.getContext('2d');
+    x.save();
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    x.globalCompositeOperation = 'destination-out';
+    x.fillStyle = '#000';
+    x.beginPath();
+    x.moveTo(0, -4);
+    raggedEdge(x, canvas.width, 4, 0.01, 2, 97 + seed * 31);
+    x.lineTo(canvas.width, -4);
+    x.closePath();
+    x.fill();
+    x.restore();
   }
 
   function tearOff(done) { rip(0, lastCanvas, done); }
@@ -618,7 +670,15 @@
         var give = pull.give;
         pull = null;
         if (give > 14) {
-          rip(give, paper, function () { if (opts.auto) close(); });
+          /* In the panel a torn-off sheet means "print me another": the reader is holding
+             the receipt they wanted and the machine is still on the desk. In the timed mode
+             it means "get out of the way" — it came uninvited and it leaves.
+             Either way the host has to go: the backdrop is a full-window layer, and leaving
+             it up after the paper fell is what made the whole panel stop answering clicks. */
+          rip(give, paper, function () {
+            if (opts.auto) close();
+            else build(state, showNames, opts);
+          });
         } else {
           slot.style.overflow = 'hidden';
           paper.style.transition = 'transform 200ms cubic-bezier(.2, .8, .2, 1)';
@@ -843,21 +903,21 @@
 
   function shotBg() { return bgHex(receiptSettings(lastState).bg); }
 
-  /* The preview is a panel pinned beside the machine, not a third column in its flex row:
-     as a row member it widened the group, and because the backdrop centres its child the
-     whole machine and plate slid left the moment 保存 was pressed — a printer moving out
-     from under the paper it is printing. Fixed beside it, nothing moves; the card layer
-     adds this element to the window region by name (.rcp-prev) so a panel outside the rig's
-     box is still drawn and still takes the pointer. */
+  /* The share preview covers the desk and dims it, rather than sitting beside the machine:
+     it is a decision, not a tool. It was first added as a third column in the rig's flex
+     row, which widened the group and let the backdrop's centring slide the printer out from
+     under its own paper — so whatever it becomes, it must not be in that row. The card layer
+     adds it to the window region by name (.rcp-prev), because a full-window element outside
+     the rig's box would otherwise not be drawn at all. */
   function preview(paper) {
     if (!paper) return;
-    var rig = host.querySelector('.rcp');
     var old = host.querySelector('.rcp-prev');
     if (old) old.parentNode.removeChild(old);
     var cur = receiptSettings(lastState).bg;
     var box = doc.createElement('div');
     box.className = 'rcp-prev interactive';
     box.innerHTML =
+      '<div class="rcp-prev-card">' +
       '<div class="rcp-prev-head">预览 <em>SHARE</em></div>' +
       '<div class="rcp-prev-shot"><canvas></canvas></div>' +
       '<div class="rcp-prev-bgs">' + BGS.map(function (b) {
@@ -870,15 +930,9 @@
       '<label><span>保存</span><em>PNG</em></label></div>' +
       '<div class="rc-ctl"><button class="rc-btn" data-prev="back"><i></i></button>' +
       '<label><span>返回</span><em>BACK</em></label></div>' +
+      '</div>' +
       '</div>';
     host.appendChild(box);
-    var rb = rig.getBoundingClientRect();
-    var PW = 212;
-    var left = rb.right + 16;
-    if (left + PW > window.innerWidth - 14) left = Math.max(14, rb.left - PW - 16);
-    box.style.left = Math.round(left) + 'px';
-    box.style.top = '16px';
-    box.style.maxHeight = Math.max(240, window.innerHeight - 32) + 'px';
 
     var shot = box.querySelector('canvas');
     function paintShot() {
