@@ -536,6 +536,9 @@
 
   let dashDrag = null;
   let dashSize = null;
+  /* set when the titlebar exists; the settings modal calls it so the two mute controls
+     cannot disagree about what the button looks like */
+  let syncMuteBtn = () => {};
 
   function applyDashLayout() {
     const grid = doc.getElementById('dashGrid');
@@ -607,6 +610,7 @@
       const mod = head.closest('.mod');
       if (!mod) return;
       dashDrag = { mod: mod, x: ev.clientX, y: ev.clientY, moved: false };
+      if (window.UISound) UISound.tap();
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
       window.addEventListener('pointercancel', up);
@@ -647,8 +651,7 @@
     grid.addEventListener('pointerdown', (ev) => {
       if (ev.button !== 0 || dashSize) return;
       const grip = ev.target.closest('.mod-size');
-      if (!grip) return;
-      const mod = grip.closest('.mod');
+      if (!grip) return;      const mod = grip.closest('.mod');
       if (!mod) return;
       ev.preventDefault();
       const r = mod.getBoundingClientRect();
@@ -1748,7 +1751,12 @@
       let laid = false;
       const move = (e2) => {
         if (Math.abs(e2.clientY - y0) > 3) laid = true;
-        cur = snap(yToTime(col, e2.clientY)); paint();
+        const was = cur;
+        cur = snap(yToTime(col, e2.clientY));
+        /* one click per notch crossed, the same detent as the receipt's time drum: dragging
+           on the axis is choosing a time, and it should feel like the drum does */
+        if (was !== cur && window.UISound) UISound.detent();
+        paint();
       };
       const up = (e2) => {
         doc.removeEventListener('pointermove', move);
@@ -2635,6 +2643,31 @@
       });
     }
     $('#btnMin').addEventListener('click', () => API.win.minimize());
+    /* The interface mute. It sits left of 最小化 because it is a desk habit rather than a
+       window control, and it does not touch the receipt machine: a printer that falls quiet
+       because the UI did is not a printer, and the user asked for exactly that exception. */
+    const mute = $('#btnMute');
+    const paintMute = () => {
+      if (!mute) return;
+      const off = S.state.settings.muted === true;
+      mute.classList.toggle('off', off);
+      mute.classList.toggle('on', !off);
+      mute.textContent = off ? '\u266A' : '\u266B';
+      mute.title = off ? '界面已静音（小票机仍发声）' : '静音界面音效（小票机不受影响）';
+    };
+    if (mute) {
+      mute.addEventListener('click', () => {
+        const next = !(S.state.settings.muted === true);
+        API.op({ type: 'settings:update', patch: { muted: next } });
+        S.state.settings.muted = next;
+        window.__uiMuted = next;
+        paintMute();
+        if (!next && window.UISound) UISound.tap();
+      });
+    }
+    paintMute();
+    /* the settings modal has a mute row too, and it repaints this button through here */
+    syncMuteBtn = paintMute;
     $('#btnMax').addEventListener('click', () => API.win.toggleMax());
     $('#btnClose').addEventListener('click', () => API.win.close());
 
@@ -3298,6 +3331,16 @@
       }));
       toggles.appendChild(switchRow('动画效果', '关闭后卡片瞬移（低性能模式）', st.animations !== false, (v) => API.op({ type: 'settings:update', patch: { animations: v } })));
       toggles.appendChild(switchRow('完成音效', '勾选完成卡片时播放提示音', st.sound !== false, (v) => API.op({ type: 'settings:update', patch: { sound: v } })));
+      toggles.appendChild(switchRow('简化卡片', '散布到桌面的卡片只显示标题（字号更大），不显示重要度 / 重复 / 时间 / 分组', st.simple === true, (v) => {
+        API.op({ type: 'settings:update', patch: { simple: v } });
+        toast(v ? '简化模式：只显示标题 // SIMPLE' : '完整卡片：显示全部信息 // FULL');
+      }));
+      toggles.appendChild(switchRow('界面静音', '关掉散布卡片、面板点击、时间轴拖动这些音效；小票机的声音不受影响', st.muted === true, (v) => {
+        API.op({ type: 'settings:update', patch: { muted: v } });
+        window.__uiMuted = v;
+        syncMuteBtn();
+        toast(v ? '界面音效已静音（小票机仍发声）' : '界面音效已开启');
+      }));
 
       $('#edgePicker', root).addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-edge]');
