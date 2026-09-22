@@ -259,17 +259,21 @@
     draw(ctx, d);
     /* the tear bar leaves a sawtooth, and it has to be real geometry rather than a CSS
        mask — the same canvas is what gets exported, so the saved PNG must be torn too.
-       The teeth are irregular on purpose: a machine-cut perforation is regular, tearing by
-       hand is not, and the even zigzag was the thing that gave the first version away. */
-    var base = h * SCALE;
+       This one stays regular: it is the edge the paper was born with at the slot, and the
+       irregularity the user asked for belongs to the edge the *hand* makes, which is cut
+       where the sheet parts from the stub when it is torn off. */
+    var tooth = 9 * SCALE, base = h * SCALE;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.moveTo(0, base + 4);
-    raggedEdge(ctx, canvas.width, base, 0.012, 0, 1234);
-    ctx.lineTo(canvas.width, base + 40);
-    ctx.lineTo(0, base + 40);
+    ctx.moveTo(0, base);
+    for (var x = 0; x < canvas.width; x += tooth) {
+      ctx.lineTo(x + tooth / 2, base - tooth);
+      ctx.lineTo(x + tooth, base);
+    }
+    ctx.lineTo(canvas.width, base + tooth);
+    ctx.lineTo(0, base + tooth);
     ctx.closePath();
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
@@ -459,34 +463,42 @@
      so a release mid-drag continues that position instead of snapping to it. */
   var tearNo = 0;
 
-  function rip(from, canvas, done) {
+  /* Parting the sheet from the stub: cut the ragged head, let the region know the paper is
+     about to leave the rig's box, and make the sound of the edge giving. Returns which way
+     it leans, alternating so a stack of them does not look machine-cut. */
+  function partSheet(canvas) {
+    var side = tearNo % 2 ? 1 : -1;
+    tearNo++;
+    tearTop(canvas, tearNo);
+    window.__rcpTear = true;
+    chase();
+    ratchet();
+    return side;
+  }
+
+  function rip(from, canvas, done, side) {
     if (!canvas) { done(); return; }
     var slot = canvas.parentNode;
     var h = canvas.getBoundingClientRect().height;
     /* the slot clips, and a sheet that is leaving must be allowed to */
     slot.style.overflow = 'visible';
     /* and the backdrop has to stop scrolling: a sheet falling past the bottom of the rig
-       drags the panel's scrollbar down with it — the strip of chrome that appeared on the
-       right after a tear in the task panel */
+       drags the panel's scrollbar down with it — the strip of chrome that appeared after a
+       tear in the task panel */
     var back = canvas.closest ? canvas.closest('.rcp-backdrop') : null;
     if (back) back.style.overflow = 'hidden';
-    tearTop(canvas, tearNo);
-    /* nobody tears a receipt along a vertical: it comes off leaning, and it turns as it
-       falls. The lean alternates so a stack of them does not look machine-cut. */
-    var side = tearNo % 2 ? 1 : -1;
-    tearNo++;
-    /* the card layer's region clips drawing as well as input, and the falling sheet leaves
-       the rig's box: without this its bottom edge and its shadow are cut mid-fall */
+    if (side === undefined) side = partSheet(canvas);
+    /* nobody tears a receipt along a vertical, and the sheet turns as it goes: the drag
+       already leaned it, and the fall takes it round further still */
     window.__rcpTear = true;
     chase();
-    ratchet();
     canvas.style.transition = 'transform 90ms ease-out';
-    canvas.style.transform = 'translate(' + (side * 5) + 'px,' + (from - 6) + 'px) rotate(' + (side * -1.4).toFixed(2) + 'deg)';
+    canvas.style.transform = 'translate(' + (side * 6) + 'px,' + (from - 6) + 'px) rotate(' + (side * -2).toFixed(2) + 'deg)';
     setTimeout(function () {
-      canvas.style.transition = 'transform 460ms cubic-bezier(.42, .04, .74, .36), opacity 420ms ease-in';
-      canvas.style.transform = 'translate(' + (side * 44) + 'px,' + (from + h * 0.85) + 'px) rotate(' + (side * 8.5).toFixed(1) + 'deg)';
+      canvas.style.transition = 'transform 480ms cubic-bezier(.40, .02, .72, .40), opacity 430ms ease-in';
+      canvas.style.transform = 'translate(' + (side * 74) + 'px,' + (from + h * 0.95) + 'px) rotate(' + (side * 14).toFixed(1) + 'deg)';
       canvas.style.opacity = '0';
-      setTimeout(function () { window.__rcpTear = false; chase(); done(); }, 470);
+      setTimeout(function () { window.__rcpTear = false; chase(); done(); }, 490);
     }, 95);
   }
 
@@ -660,25 +672,28 @@
       ev.preventDefault();
       moved = Math.max(moved, dy);
       pull.give = Math.min(pull.h * 0.3, dy * 0.5);
+      /* The sheet is off the machine the moment the edge gives — not when the finger
+         lifts. Before this it stayed square while you pulled and only grew its torn head
+         on release, which is the wrong way round: you are holding a torn receipt. */
+      if (!pull.side && pull.give > 14) pull.side = partSheet(paper);
       slot.style.overflow = 'visible';
+      var s = pull.side || 0;
       paper.style.transition = 'none';
-      paper.style.transform = 'translateY(' + pull.give + 'px) rotate(' + (pull.give * 0.01).toFixed(2) + 'deg)';
+      paper.style.transform = 'translate(' + (s * pull.give * 0.14).toFixed(1) + 'px,' +
+        pull.give.toFixed(1) + 'px) rotate(' + (s * pull.give * 0.055).toFixed(2) + 'deg)';
     });
     ['pointerup', 'pointercancel'].forEach(function (k) {
       paper.addEventListener(k, function () {
         if (!pull) return;
         var give = pull.give;
+        var side = pull.side;
         pull = null;
-        if (give > 14) {
-          /* In the panel a torn-off sheet means "print me another": the reader is holding
-             the receipt they wanted and the machine is still on the desk. In the timed mode
-             it means "get out of the way" — it came uninvited and it leaves.
-             Either way the host has to go: the backdrop is a full-window layer, and leaving
-             it up after the paper fell is what made the whole panel stop answering clicks. */
+        if (side) {
+          /* already parted: it goes, whatever the distance */
           rip(give, paper, function () {
             if (opts.auto) close();
             else build(state, showNames, opts);
-          });
+          }, side);
         } else {
           slot.style.overflow = 'hidden';
           paper.style.transition = 'transform 200ms cubic-bezier(.2, .8, .2, 1)';
@@ -937,9 +952,9 @@
     var shot = box.querySelector('canvas');
     function paintShot() {
       var bg = bgHex(cur);
-      /* half size on screen, but rendered at SCALE*0.5 = 1 device px per CSS px of the
-         sheet, so the preview shows the real pixels rather than a resampled thumbnail */
-      var c = renderShot(paper, bg, 0.5);
+      /* 0.66 rather than 0.5: at half size the preview showed less of the sheet than the
+         receipt already on the desk behind it, which made it feel like a thumbnail */
+      var c = renderShot(paper, bg, 0.66);
       shot.width = c.width; shot.height = c.height;
       shot.style.width = Math.round(c.width / SCALE) + 'px';
       shot.style.height = Math.round(c.height / SCALE) + 'px';
@@ -968,7 +983,12 @@
 
     box.addEventListener('click', function (ev) {
       var b = ev.target.closest && ev.target.closest('[data-bg],[data-prev]');
-      if (!b) return;
+      if (!b) {
+        /* the dim area is the "never mind": clicking the blank closes it, the way every
+           other dismissible surface in this app does */
+        if (ev.target === box) dismiss();
+        return;
+      }
       if (b.hasAttribute('data-bg')) {
         detent();
         cur = b.getAttribute('data-bg');
