@@ -301,6 +301,13 @@ fn overlay_show(app: AppHandle, show: bool) -> Result<(), String> {
         }
     }
     let _ = if show { win.show() } else { win.hide() };
+    if show {
+        /* showing re-enters the z-order at the bottom of the topmost band, so the deck can
+           be flagged topmost and still sit under a terminal. Put it back at the front. */
+        if let Ok(h) = win.hwnd() {
+            unsafe { win32::reassert_topmost(h.0 as win32::Hwnd) };
+        }
+    }
     Ok(())
 }
 
