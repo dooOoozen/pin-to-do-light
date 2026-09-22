@@ -977,6 +977,16 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .tk-cap.today { color: var(--brick); border-bottom-color: var(--brick); }
 .tk-cap.today b { color: var(--brick); }
 .tk-cap i { font-style: normal; font-size: 8.5px; color: var(--sage); min-height: 11px; }
+/* Clicking a caption moves the ring to that day. Today already owns the brick text and
+   the brick rule, so the day under inspection is drawn as a frame instead — the two
+   marks can be on the same caption at once and both still read. */
+.tk-cap { cursor: pointer; }
+.tk-cap:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.tk-cap.sel {
+  outline: 1px solid var(--ink); outline-offset: -1px;
+  background: color-mix(in srgb, var(--ink) 11%, transparent);
+}
+.tk-cap.sel i { color: var(--ink-2); }
 
 /* The window shows part of the day and scrolls; the day itself is 1008px of
    .tk-grid. They have to be different boxes: setting both on the scroller
@@ -1233,54 +1243,27 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .rp-track { flex: 1 1 auto; height: 12px; border: 1px solid var(--edge); background: var(--paper-lo); overflow: hidden; }
 .rp-fill { display: block; height: 100%; border-right: 1px solid var(--edge); }
 
+/* The columns are deliberately narrow: at a twelfth of the panel each of them was a
+   slab, and a slab cannot show the stack of groups inside a day. The segments are
+   flex children sized as a percentage of the chart, so the tallest day fills the frame
+   and every other day reads against it. */
 .rp-cols {
-  display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; align-items: end;
-  height: 96px; border-bottom: 1px solid var(--edge); padding-bottom: 2px;
-  margin-bottom: 16px; /* the day numbers hang below the rule */
+  display: grid; grid-template-columns: repeat(14, 1fr); gap: 6px; align-items: end;
+  height: 104px; border-bottom: 1px solid var(--edge); padding-bottom: 2px;
+  margin-bottom: 18px; /* the day numbers hang below the rule */
 }
-.rp-col { position: relative; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0; cursor: default; }
-.rp-stem { display: block; width: 100%; min-height: 2px; background: var(--brick); border: 1px solid var(--edge); }
-.rp-col.today .rp-stem { background: var(--honey); }
+.rp-col {
+  position: relative; justify-self: center; width: 15px; height: 100%;
+  display: flex; flex-direction: column-reverse; justify-content: flex-start;
+  cursor: default;
+}
+.rp-seg { display: block; width: 100%; border-top: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); }
+.rp-seg:last-child { border-top: 0; }
+.rp-col.today .rp-col-x { color: var(--brick); font-weight: 700; }
 .rp-col-x {
-  position: absolute; left: 0; bottom: -13px; width: 100%;
-  font-size: 8px; color: var(--ink-3); letter-spacing: .04em; text-align: center;
+  position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);
+  font-size: 8px; color: var(--ink-3); letter-spacing: .04em;
 }
-
-/* ---------------------------------------------------------------- 今日小票 printer */
-
-/* The machine is the one element that is deliberately not themed from --paper: a printer
-   body is dark in every material, and it is the contrast that makes the pale paper read
-   as paper. Everything the paper itself uses — ink, brick, the material's own typefaces —
-   is read from the tokens inside receipt.js, so a receipt printed under another material
-   comes out on that material's stock. */
-.rcp-backdrop {
-  position: fixed; inset: 0; z-index: 90;
-  display: flex; align-items: center; justify-content: center;
-  /* a day with a long list prints taller than the panel, so the whole machine scrolls
-     rather than the slot — clipping inside the slot is what hides the paper before it
-     has been fed out, and that must not be given up */
-  overflow: auto; padding: 18px 0;
-  background: color-mix(in srgb, #0a0907 62%, transparent);
-}
-.rcp { margin: auto; display: flex; flex-direction: column; align-items: center; }
-.rcp-machine {
-  position: relative; z-index: 2;
-  width: 344px; box-sizing: border-box;
-  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-  padding: 13px 18px 11px;
-  background: linear-gradient(180deg, var(--ink), color-mix(in srgb, var(--ink) 82%, #000));
-  color: var(--paper-hi);
-  border: 1px solid var(--edge);
-  border-radius: var(--r-plate) var(--r-plate) 3px 3px;
-  box-shadow: var(--pop-shadow);
-}
-.rcp-brand { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; }
-.rcp-led { font-size: 9px; letter-spacing: .2em; color: var(--brick); white-space: nowrap; }
-.rcp-led::before { content: "\25CF"; margin-right: 6px; font-size: 8px; }
-.rcp-slot {
-  width: 300px; overflow: hidden;
-  display: flex; justify-content: center; align-items: flex-start;
-  margin-top: -2px; padding-top: 0;
-}
-.rcp-paper { display: block; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .3)); }
-.rcp-actions { display: flex; gap: 6px; justify-content: center; margin-top: 14px; }
+.rp-legend { display: flex; flex-wrap: wrap; gap: 10px; margin: -8px 0 2px; }
+.rp-lg { display: inline-flex; align-items: center; gap: 5px; font-size: 9px; color: var(--ink-2); letter-spacing: .06em; }
+.rp-lg i { width: 9px; height: 9px; border: 1px solid var(--edge); display: block; }

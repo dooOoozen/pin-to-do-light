@@ -125,6 +125,9 @@
     region: () => regionCheck(),
     leaks: (all) => regionLeaks(all),
     lag: () => pushedLag(),
+    /* the spans the OS was told about, verbatim: a per-frame sampler is the only way to
+       see a gap that closes again in three frames */
+    pushed: () => (shapePushed ? lastPushed : null),
     hitRects: () => hitRects.length,
     moves: () => moveCount,
     lastHit: () => lastHit,
@@ -1458,6 +1461,10 @@
       if ((!c.classList.contains('docked') || cardPaints(c)) && out.indexOf(c) < 0) out.push(c);
     });
     if (el.modal && modalOpen) out.push(el.modal);
+    /* a scheduled receipt prints into this window, and SetWindowRgn clips drawing as
+       well as input, so a machine outside the region is a machine that is not there */
+    const rig = doc.querySelector('.rcp');
+    if (rig) out.push(rig);
     /* live children of the toast host, not the host: it is a full-height column and
        would claim a strip of the desktop for nothing */
     if (el.toast) {
@@ -1589,6 +1596,42 @@
     return Date.now() < rectsDirtyUntil || popGuardUntil > Date.now();
   }
 
+  /* During the spread a card travels on the order of 200 px in half a second while the
+     region is re-cut at most every 40 ms, so the painted card runs ahead of the region and
+     its leading edge is clipped for a few frames. Measured on a real pop: 60 frames out of
+     ~5000 with card0's corner outside the spans, marching from x=1700 down to x=1498 as the
+     card flew left. The drag path already solves this by accumulating where the box *has
+     been*; the same trick belongs on every animating node, so the region is always ahead of
+     the pixels it has to show rather than chasing them. */
+  const sweptBoxes = new Map();
+  const LEAD_MS = 90;     /* how far ahead of the pixels to draw the region */
+  const LEAD_CAP = 260;   /* px: a fast flick must not claim the whole screen */
+  function sweptBox(node, b) {
+    const now = Date.now();
+    const prev = sweptBoxes.get(node);
+    let out = { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+    if (prev && now - prev.at < 500) {
+      /* where it has been: keeps a card that decelerates inside the region it vacates */
+      if (now - prev.at < 600) {
+        out.left = Math.min(out.left, prev.left); out.top = Math.min(out.top, prev.top);
+        out.right = Math.max(out.right, prev.right); out.bottom = Math.max(out.bottom, prev.bottom);
+      }
+      /* where it is going: the region is rebuilt every few tens of ms while a spreading
+         card moves hundreds of px per second, so covering the past still leaves the
+         leading edge outside. Measured: 31 frames of a pop with card0's corner ahead of
+         every span the OS had been told about. */
+      const dt = Math.max(1, now - prev.at);
+      const clamp = (v) => Math.max(-LEAD_CAP, Math.min(LEAD_CAP, v));
+      const ex = clamp((b.left - prev.left) / dt * LEAD_MS);
+      const ey = clamp((b.top - prev.top) / dt * LEAD_MS);
+      out.left = Math.min(out.left, out.left + ex); out.top = Math.min(out.top, out.top + ey);
+      out.right = Math.max(out.right, out.right + ex); out.bottom = Math.max(out.bottom, out.bottom + ey);
+    }
+    if (sweptBoxes.size > 96) sweptBoxes.clear();
+    sweptBoxes.set(node, { left: b.left, top: b.top, right: b.right, bottom: b.bottom, at: now });
+    return out;
+  }
+
   function buildSpans() {
     if (fullWindowHit()) return null;           /* null = whole window is ours */
     const moving = movingNow();
@@ -1617,13 +1660,23 @@
       /* the box the browser says it actually painted: a region clips drawing, so any
          corner this under-covers is a corner the user sees cut off */
       if (box) {
-        spans.push.apply(spans, spansOfQuad([{ x: b.left, y: b.top },
-          { x: b.right, y: b.top }, { x: b.right, y: b.bottom },
-          { x: b.left, y: b.bottom }], pad));
+        /* unconditional, not only while something is animating: the dirty window that
+           marks "moving" is opened once when the pop starts, and a card with a 200 ms
+           stagger is still flying after it closes. Sweeping always costs one Map lookup
+           per node and costs nothing at rest, where the swept box equals the live box. */
+        const c = sweptBox(n, b);
+        spans.push.apply(spans, spansOfQuad([{ x: c.left, y: c.top },
+          { x: c.right, y: c.top }, { x: c.right, y: c.bottom },
+          { x: c.left, y: c.bottom }], pad));
       }
     });
     /* accumulated across time, not across nodes: this is where the dragged box has
        *been* since the grab, so the region is always ahead of the pixels it must show */
+    if (moving && spreadEnvelope && (mode === 'overview' || mode === 'deployed')) {
+      const e = spreadEnvelope;
+      spans.push.apply(spans, spansOfQuad([{ x: e.l, y: e.t }, { x: e.r, y: e.t },
+        { x: e.r, y: e.b }, { x: e.l, y: e.b }], SHAPE_PAD_REST));
+    }
     if (dragging && dragSweep) {
       const s = dragSweep;
       spans.push.apply(spans, spansOfQuad([{ x: s.l, y: s.t }, { x: s.r, y: s.t },
@@ -1695,6 +1748,9 @@
     API.setShape(spans === null ? [{ x: 0, y: 0, width: area.width, height: area.height }] : spans);
     lastPushed = spans;
     shapePushed = true;
+    /* the settle pass is the only moment the spread is exactly where it will live, so it
+       is the only honest time to record the envelope */
+    if (!wasMoving && (mode === 'overview' || mode === 'deployed')) learnSpread();
     setIgnore(spans !== null && spans.length === 0);
   }
 
@@ -1768,6 +1824,27 @@
      interaction. So ask the question directly, from the painted boxes, on a slow timer
      while nothing is moving. applyShape() no-ops when the signature has not changed, so
      a healthy layer pays one buildSpans() per tick and no SetWindowRgn at all. */
+  /* The envelope the last spread ended in. During a pop the region cannot catch up with
+     the pixels by re-cutting — measured, 32 frames of a 460 ms flight still had the
+     leading corner outside whatever had been pushed — so it covers where the cards are
+     going instead. The layout is stable, so the last settled spread is the best possible
+     prediction of the next one, and after the first pop the artifact is gone. */
+  let spreadEnvelope = null;
+  function learnSpread() {
+    let box = null;
+    $$('.todo-card', el.cardLayer).forEach((c) => {
+      const cs = getComputedStyle(c);
+      if (cs.opacity === '0' || cs.visibility === 'hidden') return;
+      const b = c.getBoundingClientRect();
+      if (!isFinite(b.width) || b.width <= 0) return;
+      box = box ? {
+        l: Math.min(box.l, b.left), t: Math.min(box.t, b.top),
+        r: Math.max(box.r, b.right), b: Math.max(box.b, b.bottom)
+      } : { l: b.left, t: b.top, r: b.right, b: b.bottom };
+    });
+    if (box && box.r - box.l > 2 && box.b - box.t > 2) spreadEnvelope = box;
+  }
+
   /* The self-heal. It has to ask pushedLag(), not regionLeaks(): the latter used to
      rebuild the spans from live geometry and compare them with the same live geometry,
      which always agreed, so this watchdog could never fire and a region left stale by a
@@ -1781,6 +1858,29 @@
     markRectsDirty(400);
     refreshHitRects(true);
   }, 400);
+
+  /* ---- 定时出票 ----
+     The card layer owns this clock, because it is the only window that is always open:
+     a scheduled receipt has to print with the task panel shut. It lands beside the deck
+     and takes itself away, so the desk is not left holding a machine. */
+  let rcpFired = '';
+  setInterval(() => {
+    if (!window.Receipt || !S || !S.settings) return;
+    const key = window.Receipt.due(S, new Date(), rcpFired);
+    if (!key) return;
+    rcpFired = key;
+    const r = el.dock ? el.dock.getBoundingClientRect() : null;
+    API.forceShowLayer(14000);
+    window.Receipt.auto(S, r ? { x: r.left - 150, y: r.top } : null);
+    /* the paper moves on a schedule the page cannot hook from here, so the region keeps
+       chasing it for as long as the machine is up */
+    const chase = setInterval(() => {
+      if (!window.Receipt.active()) { clearInterval(chase); return; }
+      markRectsDirty(900);
+      refreshHitRects(true);
+    }, 120);
+    setTimeout(() => clearInterval(chase), 16000);
+  }, 15000);
 
   /* The invariant the user can actually see: is everything being painted right now
      inside the region the OS was *told about*? Comparing live geometry against live

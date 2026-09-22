@@ -229,28 +229,12 @@
   }
 
   /* ---- the machine ---- */
-  var host = null, audio = null, soundOn = true, pull = 0;
+  var host = null, audio = null, soundOn = true, lastCanvas = null, lastDir = '';
 
-  function beep(kind) {
-    if (!soundOn) return;
-    try {
-      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
-      var ctx = audio;
-      if (ctx.state === 'suspended') ctx.resume();
-      var t0 = ctx.currentTime;
-      /* a stepper motor: a short square wave whose pitch climbs as the paper takes up
-         speed, then a single low click when it stops against the tear bar */
-      var o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'square';
-      /* one tick per pull, not one long tone: the motor audibly starts and stops, and
-         the pauses are the part that makes it sound like a printer rather than a fan */
-      o.frequency.setValueAtTime(kind === 'end' ? 110 : 250 + (pull % 4) * 26, t0);
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(kind === 'end' ? 0.05 : 0.03, t0 + 0.012);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + (kind === 'end' ? 0.1 : 0.06));
-      o.connect(g).connect(ctx.destination);
-      o.start(t0); o.stop(t0 + (kind === 'end' ? 0.14 : 0.08));
-    } catch (e) { /* no audio */ }
+  function audioCtx() {
+    if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    return audio;
   }
 
   function paint(canvas, d) {
@@ -283,89 +267,282 @@
     return h;
   }
 
-  /* the stutter: the paper advances in short pulls with pauses between, which is what a
-     cheap thermal printer actually does when it catches on the tear bar. Twelve pulls
-     over about 2.3 s rather than eight over 1.2 s, because the finer the catch, the more
-     it reads as a mechanism — and because the screen recorder runs at about five frames a
-     second, and a one-second feed gives it nothing to show. */
+  /* ---- the sound of a machine ----
+     Square-wave blips sounded like a microwave. A thermal printer is a DC motor under a
+     stepping head, so: a low sawtooth with a slow amplitude wobble for the motor, running
+     for the whole feed; a band-passed noise burst on each pull for the head ratcheting;
+     and a two-partial bell at the end, which is the "叮" the user asked for. */
+  var motor = null;
+
+  function startMotor() {
+    if (!soundOn || motor) return;
+    try {
+      var ctx = audioCtx();
+      var o = ctx.createOscillator(), g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = 96;
+      lfo.type = 'sine'; lfo.frequency.value = 11; lg.gain.value = 0.012;
+      g.gain.value = 0.03;
+      lfo.connect(lg); lg.connect(g.gain);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); lfo.start();
+      motor = { o: o, lfo: lfo, g: g };
+    } catch (e) { motor = null; }
+  }
+
+  function stopMotor() {
+    if (!motor) return;
+    try {
+      var ctx = audioCtx(), m = motor; motor = null;
+      m.g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.03);
+      m.o.stop(ctx.currentTime + 0.12); m.lfo.stop(ctx.currentTime + 0.12);
+    } catch (e) { /* already stopped */ }
+  }
+
+  function ratchet() {
+    if (!soundOn) return;
+    try {
+      var ctx = audioCtx();
+      var n = ctx.createBufferSource(), len = Math.floor(ctx.sampleRate * 0.05);
+      var buf = ctx.createBuffer(1, len, ctx.sampleRate), ch = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      n.buffer = buf;
+      var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2100; bp.Q.value = 1.4;
+      var g = ctx.createGain(); g.gain.value = 0.09;
+      n.connect(bp); bp.connect(g); g.connect(ctx.destination);
+      n.start();
+    } catch (e) { /* no audio */ }
+  }
+
+  function ding() {
+    if (!soundOn) return;
+    try {
+      var ctx = audioCtx(), t0 = ctx.currentTime;
+      [[1568, 0.06], [2093, 0.035], [3136, 0.014]].forEach(function (p) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = p[0];
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(p[1], t0 + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t0); o.stop(t0 + 0.95);
+      });
+    } catch (e) { /* no audio */ }
+  }
+
+  /* the stutter: short pulls with pauses between, which is what a cheap printer does when
+     the paper catches on the tear bar */
   var PULLS = [
     { to: 0.06, at: 110 }, { to: 0.13, at: 80 }, { to: 0.19, at: 70 }, { to: 0.24, at: 230 },
     { to: 0.33, at: 100 }, { to: 0.42, at: 75 }, { to: 0.50, at: 65 }, { to: 0.55, at: 240 },
     { to: 0.66, at: 95 }, { to: 0.78, at: 80 }, { to: 0.89, at: 70 }, { to: 1.00, at: 110 }
   ];
 
+  /* The slot is sized to the finished paper BEFORE the feed starts. It used to grow with
+     the paper, and because the whole rig is centred in the backdrop, growing it walked the
+     machine and the buttons upward as the receipt came out — a printer that flinches. */
   function eject(canvas, height) {
     var slot = canvas.parentNode;
-    pull = 0;
+    slot.style.height = (height + 26) + 'px';
     canvas.style.transform = 'translateY(' + (-height) + 'px)';
+    canvas.style.opacity = '1';
     var i = 0;
+    startMotor();
     function step() {
-      if (i >= PULLS.length) { beep('end'); return; }
+      if (i >= PULLS.length) {
+        stopMotor();
+        setTimeout(ding, 90);
+        return;
+      }
       var p = PULLS[i++];
-      pull = i;
-      beep('run');
+      ratchet();
       canvas.style.transition = 'transform ' + p.at + 'ms linear';
       canvas.style.transform = 'translateY(' + (-height + height * p.to) + 'px)';
-      slot.style.height = Math.round(height * p.to + 26) + 'px';
       setTimeout(step, p.at + 10);
     }
     setTimeout(step, 160);
   }
 
-  function build(state, showNames) {
+  /* taking the old one off: down and round a little, then out. Re-printing without this
+     just swapped the picture under the reader's eye. */
+  function tearOff(canvas, done) {
+    if (!canvas) { done(); return; }
+    var h = canvas.getBoundingClientRect().height;
+    canvas.style.transition = 'transform 240ms cubic-bezier(.3,.7,.2,1), opacity 240ms ease-in';
+    canvas.style.transform = 'translateY(' + (h * 0.22) + 'px) rotate(2.4deg)';
+    canvas.style.opacity = '0';
+    setTimeout(done, 260);
+  }
+
+  /* ---- the schedule ---- */
+  function receiptSettings(state) {
+    var r = (state && state.settings && state.settings.receipt) || {};
+    return { on: !!r.on, at: r.at || '21:30' };
+  }
+
+  function build(state, showNames, opts) {
+    opts = opts || {};
     close();
     soundOn = !(state && state.settings && state.settings.sound === false);
-    host = doc.createElement('div');
-    host.className = 'rcp-backdrop';
     var d = collect(state, showNames);
+    var sched = receiptSettings(state);
+
+    host = doc.createElement('div');
+    host.className = 'rcp-backdrop' + (opts.auto ? ' rcp-auto' : '');
     host.innerHTML =
       '<div class="rcp">' +
-      '  <div class="rcp-machine">' +
-      '    <span class="rcp-brand">◆ PIN TO-DO 收银台</span>' +
-      '    <span class="rcp-led">ONLINE</span>' +
-      '  </div>' +
-      '  <div class="rcp-slot"><canvas class="rcp-paper"></canvas></div>' +
-      '  <div class="rcp-actions">' +
+      '  <div class="rcp-side">' +
       '    <button class="btn sm" data-rcp="names">' + (showNames ? '隐藏任务名' : '显示任务名') + '</button>' +
       '    <button class="btn sm" data-rcp="again">重打一张</button>' +
       '    <button class="btn primary sm" data-rcp="save">保存 PNG</button>' +
-      '    <button class="btn ghost sm" data-rcp="close">关闭</button>' +
+      '    <button class="btn sm" data-rcp="folder">打开文件夹</button>' +
+      '    <label class="rcp-timer"><span>定时出票</span>' +
+      '      <span class="switch' + (sched.on ? ' on' : '') + '"><i></i></span>' +
+      '      <input type="time" class="rcp-at" value="' + sched.at + '" /></label>' +
+      '    <button class="btn sm rcp-close" data-rcp="close">关闭</button>' +
+      '  </div>' +
+      '  <div class="rcp-rig">' +
+      '    <div class="rcp-machine">' +
+      '      <span class="rcp-brand">◆ PIN TO-DO 收银台</span>' +
+      '      <span class="rcp-led">ONLINE</span>' +
+      '    </div>' +
+      '    <div class="rcp-slot"><canvas class="rcp-paper"></canvas></div>' +
       '  </div>' +
       '</div>';
     doc.body.appendChild(host);
+    /* a scheduled print lands beside the deck rather than in the middle of the screen:
+       the user is looking at the deck, and a machine that appears somewhere else reads
+       as somebody else's window */
+    if (opts.pos) {
+      var rig = host.querySelector('.rcp');
+      rig.style.position = 'absolute';
+      rig.style.margin = '0';
+      rig.style.left = Math.max(8, Math.min(opts.pos.x, (window.innerWidth - 480))) + 'px';
+      rig.style.top = Math.max(8, Math.min(opts.pos.y, Math.max(8, window.innerHeight - 420))) + 'px';
+    }
     var canvas = host.querySelector('.rcp-paper');
     var h = paint(canvas, d);
-    host.querySelector('.rcp-slot').style.height = '26px';
     eject(canvas, h);
+    lastCanvas = canvas;
+
     host.addEventListener('click', function (ev) {
+      var sw = ev.target.closest && ev.target.closest('.rcp-timer .switch');
+      if (sw) { toggleSchedule(state, sw); return; }
       var b = ev.target.closest && ev.target.closest('[data-rcp]');
-      if (!b) { if (ev.target === host) close(); return; }
+      if (!b) { if (ev.target === host && !opts.auto) close(); return; }
       var k = b.getAttribute('data-rcp');
       if (k === 'close') close();
       else if (k === 'save') save(canvas);
+      else if (k === 'folder') openFolder();
       else if (k === 'again' || k === 'names') {
-        window.__rcpNames = k === 'names' ? !showNames : showNames;
-        build(state, window.__rcpNames);
+        var next = k === 'names' ? !showNames : showNames;
+        window.__rcpNames = next;
+        tearOff(canvas, function () { build(state, next, opts); });
       }
     });
+    var at = host.querySelector('.rcp-at');
+    at.addEventListener('change', function () { writeSchedule(state, null, at.value); });
   }
 
-  function save(canvas) {
+  function toggleSchedule(state, node) {
+    var want = !receiptSettings(state).on;
+    if (want) {
+      var v = state.settings.receipt && state.settings.receipt.at;
+      var today = new Date().toTimeString().slice(0, 5);
+      if (!v || v <= today) {
+        toast('定时已开：' + (v || '21:30') + ' 之前不会触发，改时间或等明天');
+      }
+    }
+    writeSchedule(state, want, null);
+  }
+
+  function writeSchedule(state, on, at) {
+    var cur = receiptSettings(state);
+    var next = { on: on === null ? cur.on : on, at: at || cur.at };
+    state.settings.receipt = next;
+    window.API.op({ type: 'settings:update', patch: { receipt: next } });
+    toast(next.on ? '定时出票：每天 ' + next.at : '定时出票已关闭');
+  }
+
+  /* the panel has its own toast strip; the card layer does not, and there a system
+     notification is the only thing the user can actually see */
+  function toast(text) {
+    if (window.__toast) { try { window.__toast(text, 'info'); return; } catch (e) { /* fall through */ } }
+    try { window.API.notify('小票机', text); } catch (e) { /* no notifier */ }
+  }
+
+  function stamp() {
+    var n = new Date();
+    return n.getFullYear() + ('0' + (n.getMonth() + 1)).slice(-2) + ('0' + n.getDate()).slice(-2) +
+      '-' + ('0' + n.getHours()).slice(-2) + ('0' + n.getMinutes()).slice(-2);
+  }
+
+  function dataUrl(canvas) { try { return canvas.toDataURL('image/png'); } catch (e) { return ''; } }
+
+  /* Saving goes through the host so the user is told where the file landed, and so the
+     timed print can write the same way with no window in front of it. The anchor path is
+     the fallback when the command is unavailable. */
+  function save(canvas, quiet) {
+    var url = dataUrl(canvas);
+    if (!url) { toast('这张纸画不出来，没保存'); return; }
+    var name = '今日小票-' + stamp() + '.png';
+    if (window.API && window.API.savePng) {
+      window.API.savePng(url, name).then(function (res) {
+        if (res && res.path && !quiet) toast('已保存到 ' + res.path);
+        if (res && res.dir) lastDir = res.dir;
+      }).catch(function () { anchorSave(url, name); });
+    } else anchorSave(url, name);
+  }
+
+  function anchorSave(url, name) {
     try {
       var a = doc.createElement('a');
-      a.download = '今日小票-' + new Date().toISOString().slice(0, 10) + '.png';
-      a.href = canvas.toDataURL('image/png');
-      a.click();
+      a.download = name; a.href = url; a.click();
+      toast('已保存到「下载」文件夹');
     } catch (e) { /* the dialog was refused */ }
   }
 
+  function openFolder() {
+    if (window.API && window.API.openDir) {
+      window.API.openDir(lastDir).catch(function () { toast('打不开那个文件夹'); });
+    } else toast('这台构建还不能打开文件夹');
+  }
+
   function close() {
+    stopMotor();
     if (host && host.parentNode) host.parentNode.removeChild(host);
-    host = null;
+    host = null; lastCanvas = null;
+  }
+
+  /* A timed print has nobody to click 关闭: it feeds, saves, tears itself off and goes
+     away, so the desk is not left holding a machine the user walked past. */
+  function autoPrint(state, pos) {
+    build(state, window.__rcpNames !== false, { auto: true, pos: pos });
+    var total = 0;
+    PULLS.forEach(function (p) { total += p.at + 10; });
+    setTimeout(function () {
+      save(lastCanvas, true);
+      tearOff(lastCanvas, function () { setTimeout(close, 240); });
+    }, total + 700);
   }
 
   window.Receipt = {
     open: function (state) { build(state, window.__rcpNames !== false); },
-    close: close
+    auto: autoPrint,
+    active: function () { return !!host; },
+    close: close,
+    /* the overlay window owns the clock: it is the only one that is always there, and a
+     scheduled print must not have to open the task panel to happen */
+    due: function (state, now, fired) {
+      var r = state && state.settings && state.settings.receipt;
+      if (!r || !r.on) return null;
+      var at = String(r.at || '');
+      if (!/^\d{2}:\d{2}$/.test(at)) return null;
+      var d = now || new Date();
+      var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+      if (hm < at) return null;
+      var key = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() + '@' + at;
+      if (fired === key) return null;
+      return key;
+    }
   };
 })();

@@ -1450,10 +1450,14 @@
       const t = doc.createElement('div');
       const d = new Date(tkDayStart(dk));
       const ms = D.entriesOn(S.state, dk, now).reduce((a, r) => a + r.ms, 0);
-      t.className = 'tk-cap' + (dk === today ? ' today' : '');
+      /* today already has its own marker, so the day under inspection gets a bracket and
+         a heavier rule rather than the same highlight in another colour */
+      t.className = 'tk-cap' + (dk === today ? ' today' : '') + (dk === S.tkDay ? ' sel' : '');
+      t.title = '看这一天的完成情况';
       t.innerHTML = '<span><b>' + '日一二三四五六'[d.getDay()] + '</b> ' +
         pad2t(d.getMonth() + 1) + '/' + pad2t(d.getDate()) + '</span>' +
         '<i>' + (ms ? hm(ms) : '') + '</i>';
+      t.addEventListener('click', () => { S.tkDay = dk; renderTracking(); });
       cap.appendChild(t);
     });
     head.appendChild(cap);
@@ -1942,30 +1946,49 @@
     wrap.appendChild(gbox);
 
     /* ---- the last 14 days, regardless of the switch above: it is the shape of the
-       habit that people come back to look at, not the number for one week ---- */
+       habit that people come back to look at, not the number for one week. Each column
+       is stacked rather than filled with one colour, because a day is usually spent on
+       more than one thing: the segments run in the order they happened, earliest at the
+       bottom, and each one wears the colour of the group it belonged to. ---- */
     wrap.appendChild(rpEl('rp-h2', 'DAYS / 最近 14 天'));
     const cols = rpEl('rp-cols');
     const today = dayStart();
     const perDay = [];
     for (let i = 13; i >= 0; i--) {
       const from = today - i * DAY_MS;
-      const ms = (st.timeEntries || []).reduce((s, e) => {
+      const list = (st.timeEntries || []).filter((e) => {
         const t = new Date(e.start).getTime();
-        return (t >= from && t < from + DAY_MS) ? s + rpLive(e) : s;
-      }, 0);
+        return t >= from && t < from + DAY_MS;
+      }).sort((a, b) => new Date(a.start) - new Date(b.start));
+      const runs = [];
+      list.forEach((e) => {
+        const t = D.todoById(st, e.todoId);
+        const gid = t ? t.groupId : '__gone';
+        const tail = runs[runs.length - 1];
+        if (tail && tail.gid === gid) tail.ms += rpLive(e);
+        else runs.push({ gid: gid, ms: rpLive(e) });
+      });
+      const ms = runs.reduce((s, r) => s + r.ms, 0);
       const done = st.todos.reduce((s, t) => {
         const c = t.completedAt ? new Date(t.completedAt).getTime() : 0;
         return (c >= from && c < from + DAY_MS) ? s + 1 : s;
       }, 0);
-      perDay.push({ from, ms, done });
+      perDay.push({ from, ms, done, runs });
     }
     const dmax = Math.max(1, ...perDay.map((d) => d.ms));
     perDay.forEach((d) => {
       const col = rpEl('rp-col');
-      const stem = rpEl('rp-stem');
-      stem.style.height = Math.round((d.ms / dmax) * 100) + '%';
       if (d.from === today) col.classList.add('today');
-      col.appendChild(stem);
+      /* the column is flex-direction: column-reverse, so appending in the order the
+         runs happened puts the earliest at the bottom and the day reads upwards */
+      d.runs.forEach((r) => {
+        const seg = rpEl('rp-seg');
+        const g = D.groupById(st, r.gid);
+        seg.style.height = Math.max(1.5, (r.ms / dmax) * 100) + '%';
+        seg.style.background = g ? (D.PALETTE[g.color] || D.PALETTE.brick) : 'var(--ink-3)';
+        seg.title = (g ? g.name : '（已删除）') + ' · ' + rpMs(r.ms);
+        col.appendChild(seg);
+      });
       const dt = new Date(d.from);
       col.title = (dt.getMonth() + 1) + '/' + dt.getDate() + ' · ' + rpMs(d.ms) +
         ' · 完成 ' + d.done;
@@ -1973,6 +1996,19 @@
       cols.appendChild(col);
     });
     wrap.appendChild(cols);
+
+    const legend = rpEl('rp-legend');
+    st.groups.forEach((g) => {
+      const used = perDay.some((d) => d.runs.some((r) => r.gid === g.id));
+      if (!used) return;
+      const chip = rpEl('rp-lg');
+      const sw = doc.createElement('i');
+      sw.style.background = D.PALETTE[g.color] || D.PALETTE.brick;
+      chip.appendChild(sw);
+      chip.appendChild(doc.createTextNode(g.name));
+      legend.appendChild(chip);
+    });
+    if (legend.childNodes.length) wrap.appendChild(legend);
 
     /* ---- the longest runs, which is the part that reads as an achievement ---- */
     const top = inRange.slice().sort((a, b) => rpLive(b) - rpLive(a)).slice(0, 5);
@@ -3371,6 +3407,7 @@
 
   /* ---------------------------------------------------------------- toast */
 
+  window.__toast = function (text, kind) { return toast(text, kind); };
   function toast(text, kind) {
     const node = doc.createElement('div');
     node.className = 'toast' + (kind ? ' ' + kind : '');

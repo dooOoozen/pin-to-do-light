@@ -41,7 +41,7 @@
     'dockScale', 'autoScale',
     'desktopOnly', 'dockPos', 'deckScale', 'cardScale', 'uiScale', 'dockMovable', 'sideWidth', 'sideCollapsed', 'sound',
     'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'theme', 'style', 'palette',
-    'memo', 'pomoDate', 'pomoCount', 'dashLayout'
+    'memo', 'pomoDate', 'pomoCount', 'dashLayout', 'receipt'
   ];
 
   /* ---------------------------------------------------------------- utils */
@@ -337,6 +337,12 @@
     settings.autoScale = settings.autoScale !== false;
     settings.desktopOnly = settings.desktopOnly === true;
     settings.pinned = !!settings.pinned;
+    /* The timed print must never fire from a schedule that cannot be parsed, and never
+       from a half-written setting left by an older build: 开关 only means 开关 when the
+       time is a real HH:MM. */
+    var rp = settings.receipt && typeof settings.receipt === 'object' ? settings.receipt : {};
+    var atOk = /^\d{2}:\d{2}$/.test(String(rp.at || ''));
+    settings.receipt = { on: rp.on === true && atOk, at: atOk ? String(rp.at) : '21:30' };
     /* v2 settings: dock position + split deck/card sizes + interface scale */
     if (s.settings && typeof s.settings === 'object' &&
       s.settings.cardScale === undefined && s.settings.deckScale === undefined && s.settings.dockScale !== undefined) {
