@@ -19,23 +19,27 @@ const W0 = meta.w, H0 = meta.h, N = meta.frames;
 const scale = Math.min(1, (scaleArg ? +scaleArg : W0) / W0);
 const W = Math.max(2, Math.round(W0 * scale));
 const H = Math.max(2, Math.round(H0 * scale));
-const bpp = W * 2;               // bytes per destination pixel
-const srcStride = W0 * 3;
-
-/* one pass over the raw dump: nearest-neighbour shrink, and count distinct colours */
+/* The grabber copies the whole LockBits buffer in one go now, which is what took the
+   capture from 2 fps to fast enough to catch a one-second animation, so rows carry
+   padding and the wire order is BGR. Both come from the manifest rather than being
+   assumed. */
+const stride = meta.stride ? Math.abs(meta.stride) : W0 * 3;
+const bytes = meta.bytes || stride * H0;
+const b2r = meta.bgr === true;
 const counts = new Map();
 const frames = [];
 for (let f = 0; f < N; f++) {
-  const base = f * H0 * srcStride;
+  const base = f * bytes;
   const px = new Uint8Array(W * H * 3);
   for (let y = 0; y < H; y++) {
     const sy = Math.min(H0 - 1, Math.floor(y / scale));
-    const rowOff = base + sy * srcStride;
+    const rowOff = base + sy * stride;
     for (let x = 0; x < W; x++) {
       const sx = Math.min(W0 - 1, Math.floor(x / scale));
-      const i = (rowOff + sx * 3);
-      const o = (y * W + x) * 3;
-      px[o] = raw[i]; px[o + 1] = raw[i + 1]; px[o + 2] = raw[i + 2];
+      const i = rowOff + sx * 3;
+      const p = (y * W + x) * 3;
+      if (b2r) { px[p] = raw[i + 2]; px[p + 1] = raw[i + 1]; px[p + 2] = raw[i]; }
+      else { px[p] = raw[i]; px[p + 1] = raw[i + 1]; px[p + 2] = raw[i + 2]; }
     }
   }
   frames.push(px);

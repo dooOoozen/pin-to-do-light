@@ -911,9 +911,11 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .pal-swatch {
   flex: none; width: 42px; height: 20px; padding: 0; cursor: pointer;
   background: none; border: 1px solid var(--edge);
+  overflow: hidden; /* the chip is drawn by a native pseudo-element, which ignores the
+                       parent's radius and would sit square inside a rounded frame */
 }
-.pal-swatch::-webkit-color-swatch-wrapper { padding: 1px; }
-.pal-swatch::-webkit-color-swatch { border: none; }
+.pal-swatch::-webkit-color-swatch-wrapper { padding: 1px; border-radius: inherit; }
+.pal-swatch::-webkit-color-swatch { border: none; border-radius: inherit; }
 /* ---------------------------------------------------------------- tracking */
 
 /* Axes on the left, ring + figures + recent down the right — the layout as asked
@@ -1189,3 +1191,96 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .style-sw { display: flex; gap: 3px; width: 100%; }
 .style-sw i { display: block; flex: 1 1 0; height: 13px; border: 1px solid var(--rule-strong); }
 .style-hint { font-size: 9px; line-height: 1.45; color: var(--ink-3); letter-spacing: .02em; }
+
+/* ---------------------------------------------------------------- 时间账本 report */
+
+/* Everything here is drawn from the material tokens rather than from fixed colours, so
+   the report picks up radius, edge, type and plate from whichever material is on screen
+   the same way the ledger and the axis do. */
+.rp { display: flex; flex-direction: column; gap: 10px; padding: 2px; }
+.rp-bar { display: flex; align-items: center; gap: 6px; }
+.rp-bar .btn.on { background: var(--ink); color: var(--paper); }
+.rp-range-label {
+  margin-left: auto; font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.rp-h2 {
+  font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-2);
+  border-bottom: 1px dashed var(--rule-strong); padding-bottom: 3px; margin-top: 4px;
+}
+.rp-empty { font-size: 10.5px; color: var(--ink-3); padding: 6px 2px; }
+
+.rp-figs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.rp-fig {
+  border: 1px solid var(--edge); border-radius: var(--r-ctl);
+  background: var(--paper-hi); padding: 8px 9px;
+  display: flex; flex-direction: column; justify-content: center; gap: 5px; min-width: 0;
+}
+.rp-fig-k {
+  font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rp-fig-v { font-size: 26px; line-height: 1; letter-spacing: -.02em; font-weight: 700; }
+
+.rp-rows { display: flex; flex-direction: column; gap: 4px; }
+.rp-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rp-row-k {
+  flex: 0 0 128px; min-width: 0; font-size: 11px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rp-row-list .rp-row-k { flex: 1 1 auto; }
+.rp-row-v { flex: none; width: 62px; text-align: right; font-size: 11px; color: var(--ink-2); }
+.rp-track { flex: 1 1 auto; height: 12px; border: 1px solid var(--edge); background: var(--paper-lo); overflow: hidden; }
+.rp-fill { display: block; height: 100%; border-right: 1px solid var(--edge); }
+
+.rp-cols {
+  display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; align-items: end;
+  height: 96px; border-bottom: 1px solid var(--edge); padding-bottom: 2px;
+  margin-bottom: 16px; /* the day numbers hang below the rule */
+}
+.rp-col { position: relative; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0; cursor: default; }
+.rp-stem { display: block; width: 100%; min-height: 2px; background: var(--brick); border: 1px solid var(--edge); }
+.rp-col.today .rp-stem { background: var(--honey); }
+.rp-col-x {
+  position: absolute; left: 0; bottom: -13px; width: 100%;
+  font-size: 8px; color: var(--ink-3); letter-spacing: .04em; text-align: center;
+}
+
+/* ---------------------------------------------------------------- 今日小票 printer */
+
+/* The machine is the one element that is deliberately not themed from --paper: a printer
+   body is dark in every material, and it is the contrast that makes the pale paper read
+   as paper. Everything the paper itself uses — ink, brick, the material's own typefaces —
+   is read from the tokens inside receipt.js, so a receipt printed under another material
+   comes out on that material's stock. */
+.rcp-backdrop {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  /* a day with a long list prints taller than the panel, so the whole machine scrolls
+     rather than the slot — clipping inside the slot is what hides the paper before it
+     has been fed out, and that must not be given up */
+  overflow: auto; padding: 18px 0;
+  background: color-mix(in srgb, #0a0907 62%, transparent);
+}
+.rcp { margin: auto; display: flex; flex-direction: column; align-items: center; }
+.rcp-machine {
+  position: relative; z-index: 2;
+  width: 344px; box-sizing: border-box;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 13px 18px 11px;
+  background: linear-gradient(180deg, var(--ink), color-mix(in srgb, var(--ink) 82%, #000));
+  color: var(--paper-hi);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-plate) var(--r-plate) 3px 3px;
+  box-shadow: var(--pop-shadow);
+}
+.rcp-brand { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; }
+.rcp-led { font-size: 9px; letter-spacing: .2em; color: var(--brick); white-space: nowrap; }
+.rcp-led::before { content: "\25CF"; margin-right: 6px; font-size: 8px; }
+.rcp-slot {
+  width: 300px; overflow: hidden;
+  display: flex; justify-content: center; align-items: flex-start;
+  margin-top: -2px; padding-top: 0;
+}
+.rcp-paper { display: block; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .3)); }
+.rcp-actions { display: flex; gap: 6px; justify-content: center; margin-top: 14px; }

@@ -31,8 +31,35 @@ using System; using System.Runtime.InteropServices;
 public static class Rig {
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint d, uint e, uint x, int extra);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(E cb, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out R r);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
+  public delegate bool E(IntPtr h, IntPtr l);
+  public struct R { public int L, T, Rr, B; }
   public static void Down() { mouse_event(0x0002, 0, 0, 0, 0); }
   public static void Up()   { mouse_event(0x0004, 0, 0, 0, 0); }
+  /* raise the app's own window of this width: another window sitting on the same pixels
+     of the second monitor would otherwise end up in the recording, which is both wrong
+     and a leak of whatever that window was showing */
+  public static bool Raise(int want) {
+    bool hit = false;
+    EnumWindows((h, l) => {
+      if (!IsWindowVisible(h)) return true;
+      R r; GetWindowRect(h, out r);
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      string nm;
+      try { nm = System.Diagnostics.Process.GetProcessById((int)pid).ProcessName; }
+      catch (System.Exception) { return true; }
+      if (nm != "pin-tauri") return true;
+      if ((r.Rr - r.L) != want) return true;
+      BringWindowToTop(h); SetForegroundWindow(h); hit = true;
+      return true;
+    }, IntPtr.Zero);
+    return hit;
+  }
 }
 '@
 
@@ -40,6 +67,9 @@ $frameBytes = $W * $H * 3
 $fs = [System.IO.File]::Create((Join-Path (Get-Location) "$Out.rgb"))
 $bw = New-Object System.IO.BinaryWriter $fs
 $delays = New-Object System.Collections.Generic.List[int]
+$rowBuf = $null
+$frameBytes = 0
+$strideOut = 0
 $bmp = New-Object System.Drawing.Bitmap $W, $H, ([System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
 $gfx = [System.Drawing.Graphics]::FromImage($bmp)
 $rect = New-Object System.Drawing.Rectangle 0, 0, $W, $H
@@ -48,20 +78,18 @@ function Grab-One {
   $gfx.CopyFromScreen($X, $Y, 0, 0, (New-Object System.Drawing.Size $W, $H))
   $data = $bmp.LockBits($rect, [System.Drawing.Imaging.ImageLockMode]::ReadOnly,
                         [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
-  $stride = $data.Stride
-  # Measured on this machine, not assumed from the GDI+ docs: a memory bitmap created
-  # with a positive stride hands back its rows top-down here, and flipping them on the
-  # sign produced an upside-down capture. The encoder reads the file as top-down.
-  $abs = [Math]::Abs($stride)
-  $rowBuf = New-Object byte[] ($W * 3)
-  for ($r = 0; $r -lt $H; $r++) {
-    [System.Runtime.InteropServices.Marshal]::Copy([IntPtr]::Add($data.Scan0, $r * $abs), $rowBuf, 0, ($W * 3))
-    # CopyFromScreen gives BGR on the wire; the encoder wants RGB
-    for ($i = 0; $i -lt ($W * 3); $i += 3) {
-      $t = $rowBuf[$i]; $rowBuf[$i] = $rowBuf[$i + 2]; $rowBuf[$i + 2] = $t
-    }
-    $bw.Write($rowBuf)
-  }
+  $abs = [Math]::Abs($data.Stride)
+  $script:strideOut = $data.Stride
+  # Measured here, not read off the docs: a positive stride still hands back top-down rows
+  # for a memory bitmap, and flipping on the sign produced an upside-down capture.
+  $script:frameBytes = $abs * $H
+  # One copy of the whole buffer, not one per row: the row loop measured 450 ms a frame,
+  # which is 2 fps and cannot capture a one-second animation at all. The encoder strips
+  # the row padding instead.
+  $size = $abs * $H
+  if ($null -eq $rowBuf -or $rowBuf.Length -ne $size) { $rowBuf = New-Object byte[] $size }
+  [System.Runtime.InteropServices.Marshal]::Copy($data.Scan0, $rowBuf, 0, $size)
+  $bw.Write($rowBuf)
   $bmp.UnlockBits($data)
 }
 
@@ -75,6 +103,7 @@ foreach ($s in $Steps) {
     'click' { [Rig]::SetCursorPos([int]$p[1], [int]$p[2]) | Out-Null; Start-Sleep -Milliseconds 90
               [Rig]::Down(); Start-Sleep -Milliseconds 40; [Rig]::Up(); Start-Sleep -Milliseconds 90 }
     'wait'  { Start-Sleep -Milliseconds ([int]$p[1]) }
+    'raise' { [void][Rig]::Raise([int]$p[1]); Start-Sleep -Milliseconds 250 }
     'grab'  {
       $n = [int]$p[1]; $d = [int]$p[2]
       for ($i = 0; $i -lt $n; $i++) {
@@ -93,6 +122,7 @@ $bw.Flush(); $bw.Close(); $fs.Close()
 $gfx.Dispose(); $bmp.Dispose()
 [Rig]::SetCursorPos($origin.X, $origin.Y) | Out-Null
 
-$meta = '{"w":' + $W + ',"h":' + $H + ',"frames":' + $delays.Count + ',"delays":[' + ($delays -join ',') + ']}'
+$meta = '{"w":' + $W + ',"h":' + $H + ',"stride":' + $strideOut + ',"bytes":' + $frameBytes +
+  ',"bgr":true,"frames":' + $delays.Count + ',"delays":[' + ($delays -join ',') + ']}'
 Set-Content -Path (Join-Path (Get-Location) "$Out.json") -Value $meta -Encoding ascii
 Write-Output "wrote $Out.rgb ($($delays.Count) frames of ${W}x${H}) and $Out.json"
