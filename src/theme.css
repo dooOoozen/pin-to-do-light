@@ -1425,6 +1425,9 @@ input[type="range"] { accent-color: var(--brick); }
   transition: transform .12s ease, box-shadow .12s ease;
 }
 .rc-btn:active > i { transform: scale(.94); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .28); }
+/* pressed lights the ring exactly the way latching does — a momentary key is the same
+   hardware as a holding one, and it was reading as two different kinds of control */
+.rc-btn:active::before { opacity: 1; }
 /* latched: the ring comes up and the dome stays down */
 .rc-btn.on > i {
   transform: scale(.94);
@@ -1470,9 +1473,13 @@ input[type="range"] { accent-color: var(--brick); }
    a time field with this same class, and an unscoped `position:absolute; inset:0` turned
    that one into a transparent sheet over the entire modal — which is what made 设置 stop
    answering clicks. */
-.rcp-roller .rcp-at {
+/* The native field behind the drum. It must not take part in the layout at all — the
+   earlier rule said `.rcp-roller` while the element's class is `.rc-roller`, so it never
+   matched and the field appeared as a visible box beside the drums, squeezing them.
+   pointer-events:none so the click reaches the drum, which opens the system editor itself. */
+.rc-roller .rcp-at {
   position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0;
-  border: 0; background: transparent; opacity: 0; cursor: pointer;
+  border: 0; background: transparent; opacity: 0; pointer-events: none;
   font-family: var(--font-mono); color-scheme: light;
 }
 /* the same field standing on its own, in the settings panel: a visible, themed input */
@@ -1500,7 +1507,8 @@ input[type="range"] { accent-color: var(--brick); }
 }
 .rcp-prev.in { opacity: 1; }
 .rcp-prev-card {
-  width: 224px; display: flex; flex-direction: column; gap: 10px; padding: 13px 13px 14px;
+  width: min(320px, calc(100vw - 40px));
+  display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 15px;
   max-height: calc(100vh - 32px); overflow: auto;
   background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
   border-radius: var(--r-plate); box-shadow: var(--pop-shadow);
@@ -1555,7 +1563,9 @@ input[type="range"] { accent-color: var(--brick); }
 }
 .rcp-paper {
   position: absolute; top: 0; left: 50%; margin-left: -150px; display: block;
-  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .34));
+  /* tight and dark rather than wide and soft: an 18 px blur reached past what the slot and
+     the window region reserve, so the halo was cut into a rectangle — the "晕染开太大" */
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, .30));
 }
 /* the timed print arrives uninvited, so it does not darken the whole desk — but the
    machine still has to take the pointer, and an ancestor with pointer-events:none makes

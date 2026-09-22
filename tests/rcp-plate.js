@@ -30,6 +30,14 @@
       window.Receipt.open(st);
       return wait(60);
     }).then(function () {
+      /* the drum must own its row: the field behind it is out of the layout entirely */
+      var at = q('.rc-roller .rcp-at');
+      var drum = q('.rc-drum');
+      note('drumW=' + (drum ? Math.round(drum.getBoundingClientRect().width) : '-') +
+        ' rollerW=' + (q('.rc-roller') ? Math.round(q('.rc-roller').getBoundingClientRect().width) : '-') +
+        ' atPos=' + (at ? getComputedStyle(at).position + '/' + getComputedStyle(at).opacity +
+          '/' + getComputedStyle(at).pointerEvents : '-') +
+        ' atW=' + (at ? Math.round(at.getBoundingClientRect().width) : '-'));
       note('plate btns=' + n('.rc-btn') + ' roller=' + n('.rc-roller') + ' drums=' + n('.rc-drum b') +
         ' leds=' + n('.rc-led') + ' prev=' + n('.rcp-prev') +
         ' order=' + Array.prototype.map.call(document.querySelectorAll('.rcp-plate [data-rcp]'),
@@ -98,6 +106,20 @@
       .then(function () {
         note('afterSave prev=' + n('.rcp-prev') + ' active=' + window.Receipt.active() +
           ' rigMoved=' + (q('.rcp').getBoundingClientRect().left - window.__rigBefore).toFixed(1));
+        /* reopen and leave by clicking the blank, as the dim area now allows */
+        q('[data-rcp="save"]').click();
+        return wait(320);
+      })
+      .then(function () {
+        var box = q('.rcp-prev');
+        var c = box ? box.querySelector('canvas') : null;
+        note('reopened=' + !!box + ' shotCss=' + (c ? c.style.width + '/' + c.style.height : '-') +
+          ' cardW=' + (box && box.firstElementChild ? Math.round(box.firstElementChild.getBoundingClientRect().width) : '-'));
+        if (box) box.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        return wait(400);
+      })
+      .then(function () {
+        note('blankCloses prev=' + n('.rcp-prev') + ' active=' + window.Receipt.active());
         return API.getState();
       })
       .then(function (st) {
@@ -115,17 +137,20 @@
         return wait(3000);
       })
       .then(function () {
-        /* pull the sheet: it should follow, then come off */
+        /* pull the sheet: it should part while the finger is still down, not on release */
         var paper = q('.rcp-paper');
         var b = paper.getBoundingClientRect();
         paper.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 3, clientX: b.left + 60, clientY: b.top + 8 }));
-        paper.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 3, clientX: b.left + 60, clientY: b.top + 90 }));
-        note('pull transform=' + paper.style.transform);
+        paper.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 3, clientX: b.left + 60, clientY: b.top + 40 }));
+        note('mid1 ' + paper.style.transform);
+        paper.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 3, clientX: b.left + 60, clientY: b.top + 130 }));
+        note('mid2 transform=' + paper.style.transform + ' tornFlag=' + String(window.__rcpTear));
         paper.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 3 }));
-        return wait(900);
+        note('released transform=' + paper.style.transform);
+        return wait(1100);
       })
       .then(function () {
-        note('afterPull active=' + window.Receipt.active());
+        note('afterPull active=' + window.Receipt.active() + ' tornFlag=' + String(window.__rcpTear));
         return API.op({ type: 'settings:update', patch: { receipt: schedBefore } });
       })
       .then(function () { return wait(400); })
