@@ -292,6 +292,26 @@ pub unsafe fn strip_caption(hwnd: Hwnd) -> (i32, i32, i32) {
     (GetWindowLongW(hwnd, GWL_STYLE), r.right, r.bottom)
 }
 
+/// Put the window back at the front of the topmost band.
+///
+/// `always_on_top(true)` sets WS_EX_TOPMOST once, at creation, and the bit survives
+/// hide/show — so probing the style says "topmost" and looks fine. What does not survive is
+/// the *position within that band*: a window re-entered after a show lands at the bottom of
+/// it, under every other topmost window on the desk. That is the "卡片堆不在其他应用前了"
+/// shape — still topmost, still behind a terminal. Re-issuing the same insertion is the
+/// documented way to move back to the front of the band.
+pub unsafe fn reassert_topmost(hwnd: Hwnd) {
+    SetWindowPos(
+        hwnd,
+        -1isize as Hwnd, // HWND_TOPMOST
+        0,
+        0,
+        0,
+        0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+    );
+}
+
 pub fn foreground() -> Hwnd {
     unsafe { GetForegroundWindow() }
 }
