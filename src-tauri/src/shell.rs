@@ -32,6 +32,7 @@ const SHELL_CLASSES: [&str; 14] = [
 
 const SHELL_CLASS_PREFIXES: [&str; 2] = ["Windows.UI.Core.CoreWindow", "Windows.UI.Composition"];
 
+/// Shell processes other than `explorer`, which is handled separately — see is_shell_proc.
 const SHELL_PROCS: [&str; 10] = [
     "ShellExperienceHost",
     "StartMenuExperienceHost",
@@ -72,6 +73,20 @@ fn eq(a: &str, b: &str) -> bool {
 
 fn any(haystack: &[&str], needle: &str) -> bool {
     haystack.iter().any(|h| eq(h, needle))
+}
+
+/// The shell's own processes. Used for one narrower question than `classify` answers:
+/// can this window be "the film you are watching"?
+///
+/// `explorer` is here and `classify` does not treat it as shell, because the two answers
+/// have to differ: a folder window IS a foreign application for the sake of the
+/// desktop-only rule, and hiding the deck behind it is the feature working. But explorer
+/// never plays a film, and its top levels are exactly the windows a *spanning* desktop
+/// owns — the desktop's own window on this machine measures 3840x1168 because it covers
+/// both displays, which passes any monitor-sized test. So the desktop can be a cover and
+/// must never be a cinema.
+pub fn is_shell_proc(proc: &str) -> bool {
+    any(&SHELL_PROCS, proc) || eq(proc, "explorer")
 }
 
 /// Identifying our own two windows goes through the window *title* rather than the

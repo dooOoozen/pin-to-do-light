@@ -323,10 +323,18 @@ fn repair_layer_frame(app: &AppHandle) {
         return;
     }
     FRAME_DIRTY.store(1, Ordering::Relaxed);
+    /* name the bits that were found: whether the offender is WS_CAPTION (0xC00000, the
+       white title bar the user sees) or one of the box/menu bits says whether this is the
+       toolkit restoring decorations or something else rewriting the style wholesale */
+    let found = style & win32::FRAME_BITS;
+    let found_ex = ex & win32::WS_EX_APPWINDOW;
     let (ns, nex, _, _) = unsafe { win32::strip_frame(hwnd) };
     let _ = boot_note(
         app.clone(),
-        format!("[layer] frame repaired -> 0x{:08X}/0x{:08X}", ns, nex),
+        format!(
+            "[layer] frame repaired: had 0x{:08X}/0x{:08X} -> 0x{:08X}/0x{:08X}",
+            found, found_ex, ns, nex
+        ),
     );
 }
 
@@ -655,6 +663,10 @@ struct ForegroundFrame {
     /// The window in front covers its whole monitor: a film or a game. The deck has no
     /// business being on top of that, whatever the desktop-only setting says.
     fullscreen: bool,
+    /// The window that decided the frame, so a wrong hiding is diagnosable after the
+    /// fact: "the deck vanished when I clicked the desktop" needs the class name, not a
+    /// guess about which of the four rules fired.
+    who: String,
 }
 
 fn spawn_foreground_watch(app: AppHandle) {
@@ -662,9 +674,9 @@ fn spawn_foreground_watch(app: AppHandle) {
         let mut last = String::new();
         loop {
             std::thread::sleep(std::time::Duration::from_millis(700));
-            /* the frame repair rides along here: this loop already ticks while the layer
-               is up, and a second polling thread is not worth its codegen cost */
-            repair_layer_frame(&app);
+            /* the frame guard is its own thread on purpose: this loop may idle out
+               whenever the visibility policy stops needing foreground frames, and the
+               caption bits come back whether or not it is watching */
             if !FOREGROUND_ON.load(Ordering::Relaxed) {
                 continue;
             }
@@ -684,13 +696,20 @@ fn spawn_foreground_watch(app: AppHandle) {
                 None => true,
             };
             /* only a foreign application can be "the film you are watching": our own
-               maximised panel and the shell windows cover the screen for other reasons */
-            let full = kind == "app" && unsafe { win32::is_fullscreen(hwnd) };
+               maximised panel and the shell windows cover the screen for other reasons.
+               `over` is part of the test rather than an extra: a film on the screen the
+               deck is NOT on is nobody's business, and the deck on the second display has
+               no reason to disappear when the first one goes full screen. */
+            let full = kind == "app"
+                && over
+                && !shell::is_shell_proc(&proc)
+                && unsafe { win32::is_fullscreen(hwnd) };
             let stamp = format!("{}|{}|{}|{}", kind, title, over, full);
             if stamp == last {
                 continue;
             }
             last = stamp;
+            let who = format!("{}|{}", class, proc);
             let _ = app.emit_to(
                 LAYER,
                 "command",
@@ -699,9 +718,27 @@ fn spawn_foreground_watch(app: AppHandle) {
                     what: kind.to_string(),
                     over,
                     fullscreen: full,
+                    who,
                 },
             );
         }
+    });
+}
+
+/// Keep the caption off the desktop layer on its own clock.
+///
+/// Something in the toolkit puts WS_CAPTION and friends back — it owns the style it built
+/// the window with and re-applies that on activation and resize, so stripping it once is
+/// not a fix. Between the re-add and the strip, a window whose region covers the whole
+/// client paints a white title bar reading "Pin To-Do 桌面卡片层", which is the flash the
+/// user reports. The window-event hook answers it the moment the event reaches us; this is
+/// the backstop for the cases where it does not, and at two `GetWindowLongW` calls a tick
+/// it is not worth being cleverer about. 120 ms keeps the flash shorter than the blink it
+/// was reported as, and stays readable in the log, which names every repair.
+fn spawn_frame_guard(app: AppHandle) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_millis(120));
+        repair_layer_frame(&app);
     });
 }
 
@@ -1277,6 +1314,7 @@ pub fn run() {
             build_layer(&handle)?;
             spawn_cursor_feed(handle.clone());
             spawn_foreground_watch(handle.clone());
+            spawn_frame_guard(handle.clone());
 
             if std::env::args().any(|a| a == "--test-clear-region") {
                 // does clearing the region make the transparent layer opaque? that
@@ -1346,14 +1384,24 @@ pub fn run() {
                caught as the resulting resize of the layer: re-cache the origin the
                cursor feed subtracts and let the renderer redo its layout */
             if window.label() == LAYER {
-                if let tauri::WindowEvent::Resized(_) = event {
+                /* The toolkit's own activation and resize paths are the likely places the
+                   caption bits come back (tao rewrites GWL_STYLE from a cached style there),
+                   so strip on those events rather than waiting for the 700 ms backstop: a
+                   restored WS_CAPTION on a window whose region covers the whole client is a
+                   white title bar reading "Pin To-Do 桌面卡片层" until the next repair.
+                   repair_layer_frame no-ops when the style is already clean, and logs when
+                   it is not — which also names the event that dirtied it. */
+                if let tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(_) = event {
                     let app = window.app_handle().clone();
-                    refresh_layer_cache(&app);
-                    let _ = app.emit_to(
-                        LAYER,
-                        "command",
-                        serde_json::json!({ "type": "relayout" }),
-                    );
+                    if matches!(event, tauri::WindowEvent::Resized(_)) {
+                        refresh_layer_cache(&app);
+                        let _ = app.emit_to(
+                            LAYER,
+                            "command",
+                            serde_json::json!({ "type": "relayout" }),
+                        );
+                    }
+                    repair_layer_frame(&app);
                 }
                 return;
             }
