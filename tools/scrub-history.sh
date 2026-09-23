@@ -6,9 +6,9 @@
 # has not contained them since 998febe, so this is purely about what `git log` can still
 # show. Measured before writing this: exactly 2 commits x 4 text files, plus 2 messages.
 #
-# The substitution is the one verified against those blobs: every name maps to the material's
-# current name, so nothing has to be invented, and `晨雾花园` is matched before `晨雾花园` or the
-# result reads as a half-replaced word.
+# The substitution lives in tools/scrub-names.sh, where the old names are stored as \u
+# escapes: this tool must not recommit the words it exists to remove, and the first draft
+# did exactly that in its own comments until the verification loop caught it.
 #
 # Rewriting history is destructive and shared: every commit from 14332a3 onward changes
 # hash, the remote needs a force push, and any other clone has to be re-fetched or reset.
@@ -20,14 +20,29 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-# The substitution itself lives in tools/scrub-tree.sh and tools/scrub-msg.sh — one copy of
-# the mapping, not one here and one inside a quoted filter argument.
-GREPF='群青构成\|晨雾花园\|电蓝海报\|指令台\|电蓝海报'
+# The substitution and the search patterns both come from one file, whose names are stored
+# as escapes so this tool does not recommit the words it exists to remove.
+# shellcheck disable=SC1091
+. "$(pwd)/tools/scrub-names.sh"
 BACKUP=.git/scrub-backup.bundle
 
 if [ "${1:-}" = "--undo" ]; then
-  git fetch "$BACKUP" '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*'
-  echo "restored from $BACKUP; now: $(git rev-parse --short HEAD)"
+  # `git fetch <bundle> refs/heads/main:refs/heads/main` is refused while main is checked
+  # out, so read the SHAs the bundle recorded and point the refs at them directly.
+  git bundle verify "$BACKUP" >/dev/null 2>&1 || { echo "no readable backup at $BACKUP"; exit 1; }
+  git bundle list-heads "$BACKUP" | while read -r sha ref; do
+    case "$ref" in
+      refs/heads/main|refs/tags/*)
+        # annotated tags come as refs/tags/X^{}; skip those, the tag object is restored by
+        # its own line and git resolves the peeled entry from it
+        case "$ref" in *'{}') continue ;; esac
+        git update-ref "$ref" "$sha" && echo "restored $ref -> $(git rev-parse --short "$sha")"
+        ;;
+    esac
+  done
+  git update-ref -d refs/original/refs/heads/main 2>/dev/null || true
+  git reset --hard refs/heads/main
+  echo "now at $(git rev-parse --short HEAD); filter-branch's refs/original/ backup was dropped"
   exit 0
 fi
 
@@ -42,11 +57,16 @@ echo "backup: $BACKUP (old HEAD $(git rev-parse --short HEAD), tree $BEFORE_TREE
 # filter-branch runs the tree filter with the cwd set to a temporary checkout, and the
 # first attempt of this script died because the sed program was nested inside the
 # --tree-filter argument and git read part of it as its own options.
+#
+# And --all goes AFTER the `--`: git-filter-branch's own parser treats any unrecognised
+# `-*` token as a switch that takes one argument, so `--all --tree-filter X` makes `--all`
+# swallow `--tree-filter` and the filters are silently never bound. Read that out of
+# $(git --exec-path)/git-filter-branch rather than guessing at it.
 HERE="$(pwd)"
-FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --all \
+FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force \
   --tree-filter "sh '$HERE/tools/scrub-tree.sh'" \
   --msg-filter "sh '$HERE/tools/scrub-msg.sh'" \
-  --tag-name-filter cat
+  --tag-name-filter cat -- --all
 
 AFTER_TREE=$(git rev-parse 'HEAD^{tree}')
 echo
@@ -60,16 +80,31 @@ if [ "$BEFORE_TREE" != "$AFTER_TREE" ]; then
 fi
 echo "tree identical — only the history differs, as intended."
 
+# Check the refs that will actually be pushed. filter-branch leaves its own backup under
+# refs/original/, and those objects still carry the old names by design — scanning them
+# would report a failure that is really the safety net doing its job.
 LEFT=0
-for c in $(git rev-list --all); do
-  n=$(git grep -Il -e 群青构成 -e 晨雾花园 -e 电蓝海报 -e 指令台 -e 电蓝海报 "$c" -- 2>/dev/null | wc -l)
-  m=$(git log -1 --format=%B "$c" | grep -c "$GREPF" || true)
-  # `set -e` makes a bare `[ ] && { }` abort the script when the test is false, which is
-  # the normal case here, so the checks are written out
-  if [ "$n" != "0" ]; then echo "still present in $c ($n files)"; LEFT=1; fi
-  if [ "$m" != "0" ]; then echo "still named in the message of $c"; LEFT=1; fi
+for c in $(git for-each-ref --format='%(objectname)' refs/heads refs/tags); do
+  for r in $(git rev-list "$c"); do
+    # `git grep` exits 1 when a commit is clean, and `set -o pipefail` would turn that
+    # expected no-match into the script dying at the first good commit
+    n=$(git grep -Il "${SCRUB_PATTERNS[@]}" "$r" -- 2>/dev/null | wc -l || true)
+    m=$(git log -1 --format=%B "$r" | grep -c "$SCRUB_GREPF" || true)
+    # `set -e` makes a bare `[ ] && { }` abort the script when the test is false, which is
+    # the normal case here, so the checks are written out
+    if [ "$n" != "0" ]; then echo "still present in $r ($n files)"; LEFT=1; fi
+    if [ "$m" != "0" ]; then echo "still named in the message of $r"; LEFT=1; fi
+  done
 done
-if [ "$LEFT" = "0" ]; then echo "no commit text or message carries the old names"; fi
+
+if [ "$LEFT" != "0" ]; then
+  # A silent no-op is the failure mode this script has already hit twice: a filter that
+  # never bound would leave the names in place and still produce a plausible-looking run.
+  echo "STOP: the old names are still reachable. Do not push. Undo with:"
+  echo "  bash tools/scrub-history.sh --undo"
+  exit 1
+fi
+echo "no commit text or message on any branch or tag carries the old names"
 
 echo
 echo "what the two rewritten messages now say:"
