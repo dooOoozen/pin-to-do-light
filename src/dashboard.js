@@ -3252,6 +3252,41 @@
           API.op({ type: 'settings:update', patch: { dockMovable: v } });
           toast(v ? '已解锁：可拖动卡盒 // UNLOCKED' : '已锁定卡盒位置 // LOCKED');
         }));
+        /* Which display the deck lives on. Asked of the host rather than assumed: a machine
+           with one screen gets a sentence, not a control that does nothing. */
+        const monRow = doc.createElement('div');
+        monRow.className = 'set-col';
+        monRow.innerHTML = '<div class="set-label">卡片堆所在屏幕</div>';
+        const monHost = doc.createElement('div');
+        monHost.className = 'row mon-row';
+        monRow.appendChild(monHost);
+        iface.appendChild(monRow);
+        Promise.resolve(API.monitors ? API.monitors() : null).then((r) => {
+          const list = (r && r.monitors) || [];
+          const cur = Number(S.state.settings.deckMonitor);
+          if (list.length < 2) {
+            monHost.innerHTML = '<span class="set-hint">当前无第二屏幕' +
+              (list.length === 1 ? '（' + list[0].width + '×' + list[0].height + '）' : '') + '</span>';
+            return;
+          }
+          monHost.innerHTML = '';
+          list.forEach((m) => {
+            const b = doc.createElement('button');
+            b.className = 'btn sm' + (m.index === cur || (cur < 0 && m.primary) ? ' primary' : '');
+            b.textContent = '屏幕 ' + (m.index + 1) + ' · ' + m.width + '×' + m.height + (m.primary ? ' · 主' : '');
+            b.title = m.name + ' · 缩放 ' + m.scale + '×';
+            b.addEventListener('click', () => {
+              API.op({ type: 'settings:update', patch: { deckMonitor: m.index } });
+              toast('卡片堆移到屏幕 ' + (m.index + 1));
+              Array.prototype.forEach.call(monHost.querySelectorAll('.btn'),
+                (x) => x.classList.remove('primary'));
+              b.classList.add('primary');
+            });
+            monHost.appendChild(b);
+          });
+        }).catch(() => {
+          monHost.innerHTML = '<span class="set-hint">读不到显示器列表</span>';
+        });
       }
       /* The receipt schedule is three values that only mean something together (the
          normaliser refuses to arm the timer unless the time parses), so the row always

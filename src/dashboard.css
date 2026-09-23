@@ -1282,3 +1282,8 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .rp-legend { display: flex; flex-wrap: wrap; gap: 10px; margin: -8px 0 2px; }
 .rp-lg { display: inline-flex; align-items: center; gap: 5px; font-size: 9px; color: var(--ink-2); letter-spacing: .06em; }
 .rp-lg i { width: 9px; height: 9px; border: 1px solid var(--edge); display: block; }
+
+/* The deck's display picker: the buttons are per-monitor and their labels are as long as
+   a resolution, so they wrap instead of overflowing the panel. */
+.mon-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.mon-row .btn { font-size: 10px; }

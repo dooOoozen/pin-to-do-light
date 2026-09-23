@@ -95,12 +95,80 @@ fn work_area_rect<R: Runtime>(app: &AppHandle<R>) -> Result<(Rect, f64), String>
     ))
 }
 
-/// --monitor <n> aims every window this process creates at one display, so a test
-/// run can be kept entirely off the screen the user is working on.
+
+/// Which display the deck lives on, 0-based; -1 means "the primary, as always".
+///
+/// The renderer owns this as a setting and pushes it down on every state sync, because the
+/// host has no reason to know about preferences. It is a process-global rather than a
+/// re-read of the data file because `pick_monitor` runs on the window-manager path, where
+/// touching the disk is not an option.
+static DECK_MONITOR: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(-1);
+
 fn monitor_index() -> Option<usize> {
-    arg_value("--monitor")
-        .and_then(|s| s.parse::<usize>().ok())
-        .filter(|n| *n >= 1)
+    let from_flag = arg_value("--monitor").and_then(|s| s.parse::<usize>().ok());
+    let chosen = match from_flag {
+        Some(n) if n >= 1 => return Some(n),
+        _ => DECK_MONITOR.load(Ordering::Relaxed),
+    };
+    if chosen >= 0 {
+        Some(chosen as usize + 1)
+    } else {
+        None
+    }
+}
+
+/// Every display the shell knows about, in logical coordinates, so the settings panel can
+/// offer a choice rather than guess how many screens there are.
+#[tauri::command]
+fn monitors(app: AppHandle) -> Result<serde_json::Value, String> {
+    let list = app.available_monitors().map_err(|e| e.to_string())?;
+    let primary = app.primary_monitor().map_err(|e| e.to_string())?;
+    let out: Vec<serde_json::Value> = list
+        .iter()
+        .enumerate()
+        .map(|(i, m)| {
+            let wa = m.work_area();
+            let is_primary = primary
+                .as_ref()
+                .map(|p| p.name() == m.name())
+                .unwrap_or(i == 0);
+            serde_json::json!({
+                "index": i,
+                "name": m.name().cloned().unwrap_or_default(),
+                "x": wa.position.x,
+                "y": wa.position.y,
+                "width": wa.size.width,
+                "height": wa.size.height,
+                "scale": m.scale_factor(),
+                "primary": is_primary,
+            })
+        })
+        .collect();
+    Ok(serde_json::json!({ "monitors": out }))
+}
+
+/// Move the deck to another display. No-ops when nothing changed, so the renderer can call
+/// this on every state sync without bouncing the window around.
+#[tauri::command]
+fn set_deck_monitor(app: AppHandle, index: isize) -> Result<serde_json::Value, String> {
+    let count = app.available_monitors().map_err(|e| e.to_string())?.len() as isize;
+    let want = if index >= count { -1 } else { index };
+    let prev = DECK_MONITOR.swap(want, Ordering::Relaxed);
+    let (rect, _) = work_area_rect(&app)?;
+    if let Some(win) = app.get_webview_window(LAYER) {
+        let _ = win.set_position(tauri::LogicalPosition::new(f64::from(rect.x), f64::from(rect.y)));
+        let _ = win.set_size(tauri::LogicalSize::new(
+            f64::from(rect.width),
+            f64::from(rect.height),
+        ));
+        refresh_layer_cache(&app);
+    }
+    Ok(serde_json::json!({
+        "changed": prev != want,
+        "index": want,
+        "count": count,
+        "rect": { "x": rect.x, "y": rect.y, "width": rect.width, "height": rect.height },
+    }))
 }
 
 fn pick_monitor<R: Runtime>(app: &AppHandle<R>) -> Result<tauri::Monitor, String> {
@@ -1192,6 +1260,8 @@ pub fn run() {
             save_png,
             open_dir,
             receipt_dir,
+            monitors,
+            set_deck_monitor,
             boot_note,
             app_info
         ])

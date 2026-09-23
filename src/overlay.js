@@ -870,6 +870,16 @@
        is the only thing that survives anyway — so give the title the room instead. */
     doc.body.classList.toggle('simple', st.simple === true);
     if (window.UISound) window.__uiMuted = st.muted === true;
+    /* The host owns where the window is, so the chosen display is pushed down rather than
+       read here. set_deck_monitor no-ops when the index is unchanged, which makes this safe
+       to run on every sync — the window must not jump because some other setting changed. */
+    if (API.setDeckMonitor) {
+      const want = Number.isFinite(Number(st.deckMonitor)) ? Math.floor(Number(st.deckMonitor)) : -1;
+      if (window.__deckMonitorSent !== want) {
+        window.__deckMonitorSent = want;
+        Promise.resolve(API.setDeckMonitor(want)).catch(() => { /* single-screen machine */ });
+      }
+    }
     computeScale();
   }
 
