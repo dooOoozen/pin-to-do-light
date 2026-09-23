@@ -217,6 +217,9 @@ pub const WS_MINIMIZEBOX: i32 = 0x0002_0000;
 pub const WS_MAXIMIZEBOX: i32 = 0x0001_0000;
 pub const WS_EX_TOOLWINDOW: i32 = 0x0000_0080;
 pub const WS_EX_APPWINDOW: i32 = 0x0004_0000;
+/// Same numeric value as WS_SYSMENU and no relation to it: styles and ex-styles are
+/// separate slots, and this is the one the window manager writes to for transparency.
+pub const WS_EX_LAYERED: i32 = 0x0008_0000;
 const SWP_NOSIZE: u32 = 0x0001;
 const SWP_NOMOVE: u32 = 0x0002;
 const SWP_NOZORDER: u32 = 0x0004;
@@ -244,7 +247,14 @@ pub const FRAME_BITS: i32 = WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZ
 pub unsafe fn strip_frame(hwnd: Hwnd) -> (i32, i32, i32, i32) {
     let style = (GetWindowLongW(hwnd, GWL_STYLE) & !FRAME_BITS) | WS_POPUP;
     SetWindowLongW(hwnd, GWL_STYLE, style);
-    let ex = (GetWindowLongW(hwnd, GWL_EXSTYLE) & !WS_EX_APPWINDOW) | WS_EX_TOOLWINDOW;
+    /* Re-assert WS_EX_LAYERED alongside the other two. Measured, not assumed: the style
+       rewrite that brings the caption back writes the whole cached set — 0x14C80000 /
+       0x00040118 — which carries neither LAYERED nor TOOLWINDOW, and the repair that
+       follows has so far only put TOOLWINDOW back. So every caption incident was also a
+       lost-layered incident, on a window whose entire job is to be transparent. This is
+       not the bit being toggled for effect: the layer is created with LAYERED on
+       (0x000800B8 in the same boot log) and works, which is the state being restored. */
+    let ex = (GetWindowLongW(hwnd, GWL_EXSTYLE) & !WS_EX_APPWINDOW) | WS_EX_TOOLWINDOW | WS_EX_LAYERED;
     SetWindowLongW(hwnd, GWL_EXSTYLE, ex);
     SetWindowPos(
         hwnd,

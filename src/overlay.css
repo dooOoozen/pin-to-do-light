@@ -713,13 +713,15 @@ body[data-mode="deployed"] .todo-card:hover { z-index: 80 !important; }
    at arm's length on a second monitor the title is the only one of them you can read
    anyway — so drop them and give the whole card over to the title. */
 body.simple .todo-card .card-bot { display: none; }
+/* A scattered sheet keeps the height it was sized for even with the badge row gone, which
+   leaves the title hanging at the top of a mostly empty card. The three layers under the
+   body (the watermark index, the hover tools, the flip face) are all absolutely positioned,
+   so the body is the only thing in the flow and can simply be centred against the card. */
+body.simple .todo-card {
+  display: flex; flex-direction: column; justify-content: center;
+}
 body.simple .todo-card .card-title {
   font-size: calc(19px * var(--cs, 1) * var(--fontk, 1));
   line-height: 1.25;
-  text-align: center;
-  /* the 24px left margin belongs to the index number the sheet no longer shows, and a
-     centred line inside a box that starts 24px in is not centred on the paper */
-  margin-left: 0;
-  padding-left: 0;
   -webkit-line-clamp: 3;
 }
