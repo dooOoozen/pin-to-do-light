@@ -230,8 +230,109 @@ const SWP_FRAMECHANGED: u32 = 0x0020;
 extern "system" {
     pub fn GetWindowLongW(hwnd: Hwnd, index: i32) -> i32;
     fn SetWindowLongW(hwnd: Hwnd, index: i32, value: i32) -> i32;
+    fn SetWinEventHook(eventMin: u32, eventMax: u32, module: Handle, cb: EventProc, idProcess: u32, idThread: u32, flags: u32) -> Handle;
+    fn UnhookWinEvent(hook: Handle) -> i32;
     fn SetWindowPos(hwnd: Hwnd, after: Hwnd, x: i32, y: i32, w: i32, h: i32, flags: u32) -> i32;
     fn GetClientRect(hwnd: Hwnd, rect: *mut WinRect) -> i32;
+}
+
+type EventProc = unsafe extern "system" fn(Handle, u32, Hwnd, i32, i32, u32, u32);
+
+pub const EVENT_OBJECT_REORDER: u32 = 0x8004;
+pub const EVENT_OBJECT_LOCATIONCHANGE: u32 = 0x800B;
+const WINEVENT_OUTOFCONTEXT: u32 = 0;
+
+/// The hook handle, kept so a second call replaces the first rather than stacking watchers.
+static STYLE_HOOK: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
+/// The event hook is process-wide, so the callback needs to know which of this process's
+/// several windows it is being asked about.
+static GUARDED_HWND: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
+
+/// How many times the hook found a dirty style and cleared it. Without this, "no repairs in
+/// the log" cannot be read as anything: it is the same observation as "nothing happened this
+/// run", and only one of them is a fix.
+pub static STYLE_STRIPPED: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
+
+/// (hooked, strips so far) — enough for the log to tell "watching" from "watching and acting".
+pub fn guard_status() -> (bool, isize) {
+    (
+        STYLE_HOOK.load(std::sync::atomic::Ordering::Relaxed) != 0,
+        STYLE_STRIPPED.load(std::sync::atomic::Ordering::Relaxed),
+    )
+}
+
+/// Watch for the caption being put back on the desktop layer, and take it off on the spot.
+///
+/// `strip_frame` clears WS_CAPTION and the toolkit puts it back — measured, twice a minute,
+/// always as a whole cached style set (0x14C80000 / 0x00040118) that also drops
+/// WS_EX_LAYERED and WS_EX_TOOLWINDOW. Every repair after that is a SetWindowLong +
+/// SWP_FRAMECHANGED, i.e. the window is *rebuilt* around the caption: the client area jumps
+/// by the caption's height and the non-client strip is repainted white with the window title
+/// in it. Turning off DWM's non-client rendering did not stop the bar, so the paint is
+/// classic NC, and a poll cannot win the race — it only bounds how long the bar is up.
+///
+/// The mechanism is a WinEvent hook on this process's own z-order and geometry changes,
+/// which is what every one of those rewrites is a side effect of. Measured on the machine
+/// that reported it: two strips inside 24 seconds, and the 120 ms poll below found nothing
+/// dirty once — the hook is faster than anything that asks on a timer.
+///
+/// A window-procedure subclass was tried first and is not what does this job. Patching
+/// GWLP_WNDPROC is invisible to the toolkit here: it delivers messages through a
+/// SetWindowSubclass chain that calls the procedure it captured at install time, not the
+/// slot, so the patch reported "installed" while seeing zero style changes (seen=0 against
+/// stripped=2). An interception that never runs is worse than none, because it reads as a
+/// fix — see the counters, which exist precisely so this claim can be checked.
+///
+/// Out-of-context is also the only kind of hook that can live in an exe: an in-context one
+/// has to be in a DLL, and asking for one here fails outright (measured: the install
+/// returned null). Out-of-context runs on the thread that installed it — the main thread,
+/// which owns this window — and unlike a procedure patch, a style write from there is legal.
+///
+/// The hook lives for the process: it is scoped to this pid and to two events, the layer is
+/// only destroyed on exit, and there is no place in this app's shutdown that would reliably
+/// call UnhookWinEvent before the window is gone.
+pub unsafe fn watch_layer_styles(hwnd: Hwnd) -> bool {
+    GUARDED_HWND.store(hwnd as isize, std::sync::atomic::Ordering::Relaxed);
+    let old = STYLE_HOOK.swap(0, std::sync::atomic::Ordering::Relaxed);
+    if old != 0 {
+        let _ = UnhookWinEvent(old as Handle);
+    }
+    let hook = SetWinEventHook(
+        EVENT_OBJECT_REORDER,
+        EVENT_OBJECT_LOCATIONCHANGE,
+        std::ptr::null_mut(),
+        layer_event_proc,
+        std::process::id(),
+        0,
+        WINEVENT_OUTOFCONTEXT,
+    );
+    STYLE_HOOK.store(hook as isize, std::sync::atomic::Ordering::Relaxed);
+    !hook.is_null()
+}
+
+unsafe extern "system" fn layer_event_proc(
+    _hook: Handle,
+    _event: u32,
+    hwnd: Hwnd,
+    _id: i32,
+    _child: i32,
+    _thread: u32,
+    _time: u32,
+) {
+    let want = GUARDED_HWND.load(std::sync::atomic::Ordering::Relaxed);
+    if want == 0 || hwnd as isize != want {
+        return;
+    }
+    let style = GetWindowLongW(hwnd, GWL_STYLE);
+    let ex = GetWindowLongW(hwnd, GWL_EXSTYLE);
+    if style & FRAME_BITS != 0
+        || ex & WS_EX_APPWINDOW != 0
+        || ex & WS_EX_LAYERED == 0
+        || ex & WS_EX_TOOLWINDOW == 0
+    {
+        STYLE_STRIPPED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        strip_frame(hwnd);
+    }
 }
 
 /// The bits that must stay off the desktop layer, whatever the toolkit does with them.

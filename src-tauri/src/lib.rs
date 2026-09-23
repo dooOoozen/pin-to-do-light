@@ -290,9 +290,15 @@ fn build_layer(app: &AppHandle) -> Result<(), String> {
         LAYER_HWND.store(h.0 as isize, Ordering::Relaxed);
         let (style, ex, cw, ch) = unsafe { win32::strip_frame(h.0 as win32::Hwnd) };
         unsafe { win32::forbid_nc_painting(h.0 as win32::Hwnd) };
+        /* installed from here because setup runs on the thread that owns the window, and the
+           hook is called back on the thread that installs it */
+        let hooked = unsafe { win32::watch_layer_styles(h.0 as win32::Hwnd) };
         let _ = boot_note(
             app.clone(),
-            format!("[layer] style=0x{:08X} ex=0x{:08X} client={}x{}", style, ex, cw, ch),
+            format!(
+                "[layer] style=0x{:08X} ex=0x{:08X} client={}x{} · hook={}",
+                style, ex, cw, ch, hooked
+            ),
         );
     }
     refresh_layer_cache(app);
@@ -317,6 +323,11 @@ fn repair_layer_frame(app: &AppHandle) {
             win32::GetWindowLongW(hwnd, win32::GWL_EXSTYLE),
         )
     };
+    /* the hook's scoreboard on the same transition as everything else: `stripped=0` and no
+       repairs means nothing happened this run, `stripped=7` and no repairs means the hook
+       caught them before this poll could look. Those read identically without this number. */
+    let (hooked, stripped) = win32::guard_status();
+    let guard = format!("hook={} stripped={}", hooked, stripped);
     /* WS_EX_LAYERED belongs to this window the same way WS_POPUP does — the log has seen
        the toolkit's rewrite drop it (0x14C80000/0x00040118 carries neither LAYERED nor
        TOOLWINDOW) — so its absence counts as dirty and strip_frame puts it back. */
@@ -325,7 +336,7 @@ fn repair_layer_frame(app: &AppHandle) {
         || ex & win32::WS_EX_LAYERED == 0;
     if !dirty {
         if FRAME_DIRTY.swap(0, Ordering::Relaxed) != 0 {
-            let _ = boot_note(app.clone(), "[layer] frame clean".into());
+            let _ = boot_note(app.clone(), format!("[layer] frame clean · {}", guard));
         }
         return;
     }
@@ -339,8 +350,8 @@ fn repair_layer_frame(app: &AppHandle) {
     let _ = boot_note(
         app.clone(),
         format!(
-            "[layer] frame repaired: was 0x{:08X}/0x{:08X} -> 0x{:08X}/0x{:08X}",
-            style, ex, ns, nex
+            "[layer] frame repaired: was 0x{:08X}/0x{:08X} -> 0x{:08X}/0x{:08X} · {}",
+            style, ex, ns, nex, guard
         ),
     );
 }
@@ -744,9 +755,23 @@ fn spawn_foreground_watch(app: AppHandle) {
 /// it is not worth being cleverer about. 120 ms keeps the flash shorter than the blink it
 /// was reported as, and stays readable in the log, which names every repair.
 fn spawn_frame_guard(app: AppHandle) {
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_millis(120));
-        repair_layer_frame(&app);
+    std::thread::spawn(move || {
+        let mut last = -1isize;
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(120));
+            repair_layer_frame(&app);
+            /* say so when the hook has had to act: the poll below it will find nothing to
+               repair in exactly the same situation where nothing happened at all, and the
+               two are only distinguishable by this line. */
+            let now = win32::guard_status().1;
+            if now != last {
+                last = now;
+                let _ = boot_note(
+                    app.clone(),
+                    format!("[layer] style guard: stripped={}", now),
+                );
+            }
+        }
     });
 }
 
