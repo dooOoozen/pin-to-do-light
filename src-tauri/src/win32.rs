@@ -280,6 +280,26 @@ pub unsafe fn strip_frame(hwnd: Hwnd) -> (i32, i32, i32, i32) {
     )
 }
 
+#[link(name = "dwmapi")]
+extern "system" {
+    fn DwmSetWindowAttribute(hwnd: Hwnd, attr: u32, value: *const u32, size: u32) -> i32;
+}
+
+/// Never let DWM paint the non-client area of the desktop layer, whatever the style bits
+/// currently say.
+///
+/// `decorations(false)` makes the client area fill the window through WM_NCCALCSIZE, but DWM
+/// still owns the strip it would have reserved and paints it white with the window title in
+/// it the moment WS_CAPTION comes back — which it does, repeatedly, because the toolkit
+/// rewrites the style it built with. That is the "Pin To-Do 桌面卡片层" bar the user
+/// reported, and it is only *visible* while the region covers the top of the window, which
+/// is exactly the scatter and the modal — matching where they found it. Stripping the bits
+/// faster treats the symptom for 120 ms at a time; this turns off the painter.
+pub unsafe fn forbid_nc_painting(hwnd: Hwnd) {
+    let policy: u32 = 1; /* DWMNCRP_DISABLED */
+    DwmSetWindowAttribute(hwnd, 2 /* DWMWA_NCRENDERING_POLICY */, &policy, 4);
+}
+
 /// The panel's share of the same idea: drop only the caption, keep the sizing border
 /// and the taskbar button. DWM will paint a blue title bar for a window that carries
 /// WS_CAPTION even when WM_NCCALCSIZE has already given the client area back, which is
@@ -348,6 +368,15 @@ extern "system" {
 /// every borderless-fullscreen game. A *maximised* window is not fullscreen: it stops at
 /// the work area, so comparing against the monitor rect rather than the work area is what
 /// separates the two. The tolerance is Windows' invisible resize border.
+///
+/// The upper bound is what the first version was missing: a window that covers **more**
+/// than one monitor is not a film on this one, it is the surface the desktop is drawn on.
+/// Measured on the machine that reported it — the wallpaper is 3840x1168 across two
+/// 1920-wide displays, and a desktop organiser that draws the wallpaper itself
+/// (`TXMiniSkin`) sits in the same band, so every click on the desktop read as "a video
+/// started" and the deck hid itself. A genuine multi-monitor game now keeps the deck
+/// visible; that is the cheaper of the two errors, because the other one happens on every
+/// desktop click.
 pub unsafe fn is_fullscreen(hwnd: Hwnd) -> bool {
     let (l, t, r, b) = match rect_of(hwnd) {
         Some(v) => v,
@@ -368,7 +397,9 @@ pub unsafe fn is_fullscreen(hwnd: Hwnd) -> bool {
     }
     let mw = info.rc_monitor.right - info.rc_monitor.left;
     let mh = info.rc_monitor.bottom - info.rc_monitor.top;
-    (r - l) >= mw - 24 && (b - t) >= mh - 24
+    let w = r - l;
+    let h = b - t;
+    (w >= mw - 24 && h >= mh - 24) && (w <= mw + 24 && h <= mh + 24)
 }
 pub fn cursor_pos() -> Option<Point> {
     let mut p = Point::default();

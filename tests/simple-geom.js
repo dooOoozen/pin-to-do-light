@@ -18,13 +18,22 @@
     if (!c) { note(tag + ' NO CARD'); return; }
     var b = c.querySelector('.card-body'), t = c.querySelector('.card-title');
     var cs = getComputedStyle(c), cr = c.getBoundingClientRect(), br = b ? b.getBoundingClientRect() : null;
+    var pin = c.querySelector('.card-pin');
+    var nt = c.querySelector('.card-notes');
+    var pr = pin ? pin.getBoundingClientRect() : null;
+    /* the two things the user asked for, separately: the tack at the top of the paper, and
+       the title block centred in what is left under it — so the second pair of gaps is
+       measured from below the pin, not from the card edge */
+    var freeA = pr && br ? Math.round((t ? t.getBoundingClientRect().top : br.top) - pr.bottom) : '?';
+    var freeB = (nt && nt.getBoundingClientRect().height ? Math.round(cr.bottom - nt.getBoundingClientRect().bottom)
+      : (t ? Math.round(cr.bottom - t.getBoundingClientRect().bottom) : '?'));
     note(tag + ' simple=' + document.body.classList.contains('simple') + ' mode=' + nd.mode() +
       ' card=' + Math.round(cr.width) + 'x' + Math.round(cr.height) +
       ' body=' + (br ? Math.round(br.width) + 'x' + Math.round(br.height) : '—') +
-      /* the two numbers the complaint is about: the free space above and below the only
-         in-flow child. Equal means centred, whatever the min-height was sized from. */
-      ' gap ' + (br ? Math.round(br.top - cr.top) : '?') + '/' + (br ? Math.round(cr.bottom - br.bottom) : '?') +
-      ' minH=' + cs.minHeight + ' justify=' + cs.justifyContent + ' disp=' + cs.display +
+      ' bodyGap ' + (br ? Math.round(br.top - cr.top) : '?') + '/' + (br ? Math.round(cr.bottom - br.bottom) : '?') +
+      ' pinTop=' + (pr ? Math.round(pr.top - cr.top) : '?') +
+      ' blockGap ' + freeA + '/' + freeB +
+      ' minH=' + cs.minHeight + ' disp=' + cs.display +
       ' title=' + (t ? Math.round(t.getBoundingClientRect().height) + 'px/' + getComputedStyle(t).textAlign : '—'));
   }
 

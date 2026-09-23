@@ -429,9 +429,14 @@
      the paper, and because the whole rig is centred in the backdrop, growing it walked the
      machine and the buttons upward as the receipt came out — a printer that flinches. */
   var feeding = false;
+  var feedingTimer = null;
 
   function eject(canvas, height) {
     var slot = canvas.parentNode;
+    /* one run at a time: a second feed started while the first is still stepping would
+       interleave two setTimeout chains on the same canvas, and the sheet ends up half out
+       with the next one printing through it */
+    if (feedingTimer) { clearTimeout(feedingTimer); feedingTimer = null; }
     /* room below the sheet for its own drop shadow (0 10px 18px), which the slot's clip was
        cutting off — the flat bottom edge on the timed print */
     slot.style.height = (height + 44) + 'px';
@@ -441,6 +446,7 @@
     feeding = true;
     startMotor();
     function step() {
+      feedingTimer = null;
       if (i >= PULLS.length) {
         feeding = false;
         stopMotor();
@@ -451,9 +457,9 @@
       ratchet();
       canvas.style.transition = 'transform ' + p.at + 'ms linear';
       canvas.style.transform = 'translateY(' + (-height + height * p.to) + 'px)';
-      setTimeout(step, p.at + 10);
+      feedingTimer = setTimeout(step, p.at + 10);
     }
-    setTimeout(step, 160);
+    feedingTimer = setTimeout(step, 160);
   }
 
   /* Taking the sheet off is two beats, because paper does not leave in one motion: it
@@ -713,6 +719,15 @@
       if (!b) { if (ev.target === root) close(); return; }
       press();
       var k = b.getAttribute('data-rcp');
+      /* The motor is still turning. Tearing off a sheet that has only half come out is not
+         a re-print: the ragged head ends up above the machine and the new sheet feeds under
+         it, which is the picture the user pointed at. A real printer ignores the feed knob
+         while it is printing, so this does too — with a toast, because silence reads as a
+         dead button. */
+      if (feeding && (k === 'again' || k === 'names')) {
+        toast('正在出票，稍后再按 // FEEDING');
+        return;
+      }
       if (k === 'close') close();
       else if (k === 'save') preview(lastCanvas);
       else if (k === 'folder') openFolder();
