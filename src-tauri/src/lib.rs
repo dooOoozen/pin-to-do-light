@@ -289,6 +289,7 @@ fn build_layer(app: &AppHandle) -> Result<(), String> {
     if let Ok(h) = win.hwnd() {
         LAYER_HWND.store(h.0 as isize, Ordering::Relaxed);
         let (style, ex, cw, ch) = unsafe { win32::strip_frame(h.0 as win32::Hwnd) };
+        unsafe { win32::forbid_nc_painting(h.0 as win32::Hwnd) };
         let _ = boot_note(
             app.clone(),
             format!("[layer] style=0x{:08X} ex=0x{:08X} client={}x{}", style, ex, cw, ch),
@@ -709,6 +710,7 @@ fn spawn_foreground_watch(app: AppHandle) {
             let full = kind == "app"
                 && over
                 && !shell::is_shell_proc(&proc)
+                && !shell::is_desktop_surface(&class, &proc)
                 && unsafe { win32::is_fullscreen(hwnd) };
             let stamp = format!("{}|{}|{}|{}", kind, title, over, full);
             if stamp == last {

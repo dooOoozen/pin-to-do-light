@@ -89,6 +89,27 @@ pub fn is_shell_proc(proc: &str) -> bool {
     any(&SHELL_PROCS, proc) || eq(proc, "explorer")
 }
 
+/// Desktop organisers: programs that draw the wallpaper and the desktop icons themselves.
+///
+/// Measured on the machine that reported the bug, not from a list on the internet — the
+/// boot log named the window exactly once the visibility decision started logging the one
+/// that made it: `TXMiniSkin | DesktopMgr64` (腾讯桌面整理). It is not in the shell's own
+/// list of desktop class names, so it classifies as a foreign application, and it covers
+/// the monitor because covering the monitor is what wallpaper is. Every click on the
+/// desktop therefore read as "a video started" and the deck hid itself.
+///
+/// This is a name list and it will not catch every such program; the structural test that
+/// does is `is_fullscreen`'s upper bound (a window wider than the monitor it is on is a
+/// surface, not a film). Keep both: the bound catches the ones that span the desktop, the
+/// names catch the ones that draw one monitor at a time.
+pub fn is_desktop_surface(class: &str, proc: &str) -> bool {
+    any(&DESKTOP_SURFACE_CLASSES, class) || any(&DESKTOP_SURFACE_PROCS, proc)
+}
+
+const DESKTOP_SURFACE_CLASSES: [&str; 3] = ["TXMiniSkin", "TXMiniObj", "TXMiniBar"];
+
+const DESKTOP_SURFACE_PROCS: [&str; 2] = ["DesktopMgr64", "DesktopMgr"];
+
 /// Identifying our own two windows goes through the window *title* rather than the
 /// handle: asking Tauri for an HWND pulls in its Win32 feature, and matching on the
 /// process name cannot tell the card layer from the task panel. `title` is the

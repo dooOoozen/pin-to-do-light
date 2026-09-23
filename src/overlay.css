@@ -714,12 +714,14 @@ body[data-mode="deployed"] .todo-card:hover { z-index: 80 !important; }
    anyway — so drop them and give the whole card over to the title. */
 body.simple .todo-card .card-bot { display: none; }
 /* A scattered sheet keeps the height it was sized for even with the badge row gone, which
-   leaves the title hanging at the top of a mostly empty card. The three layers under the
-   body (the watermark index, the hover tools, the flip face) are all absolutely positioned,
-   so the body is the only thing in the flow and can simply be centred against the card. */
-body.simple .todo-card {
-  display: flex; flex-direction: column; justify-content: center;
-}
+   leaves the title hanging at the top of a mostly empty card. Centring the body fixes that
+   but moves the tack, and the tack is a thing you reach for at the top of the paper — so
+   the body takes the whole card instead, and the two auto margins split what is left:
+   pin at the top, title and notes centred in the space under it. */
+body.simple .todo-card { display: flex; }
+body.simple .todo-card .card-body { flex: 1 1 auto; }
+body.simple .todo-card .card-top { margin-top: auto; }
+body.simple .todo-card .card-notes { margin-bottom: auto; }
 body.simple .todo-card .card-title {
   font-size: calc(19px * var(--cs, 1) * var(--fontk, 1));
   line-height: 1.25;
