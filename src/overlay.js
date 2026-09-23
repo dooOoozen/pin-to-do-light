@@ -1450,6 +1450,7 @@
 
   const SHAPE_PAD_REST = 8;   /* the hard print shadow is offset 3px with zero blur */
   const SHAPE_PAD_MOVE = 90;  /* while a transition is in flight, cover the path */
+  const SHAPE_PAD_FLY = 14;   /* a card whose destination is known needs only its overshoot */
   const SHAPE_PAD_DOCK = 12;  /* .dock-ruler is positioned 9px outside the dock box */
   const SHAPE_STEP = 4;       /* px per span: staircase resolution for the tilt */
   let shapeOn = false;        /* main process confirmed setShape works */
@@ -1636,6 +1637,30 @@
     return Date.now() < rectsDirtyUntil || popGuardUntil > Date.now();
   }
 
+  /* Where a card is going, read off the properties that drive its transform. The flight
+     animates nothing but --tx/--ty/--rot/--sc, so the end point is known before its first
+     frame — which is the whole difference between this and the pad scheme below. A rect
+     spanning the painted box and the destination contains every intermediate frame of an
+     eased translate (the easing has no overshoot: both control y-values are inside 0..1),
+     so one cut ahead of the pixels is exact, while re-cutting after them at 40 ms is not.
+     Half-extents are grown by the rotation and by the completion punch, which scales to
+     1.022 — that overshoot is inside the 14 px flight pad, not inside the 8 px rest pad. */
+  function flightRect(node) {
+    if (!node.classList || !node.classList.contains('todo-card')) return null;
+    const st = node.style;
+    const tx = parseFloat(st.getPropertyValue('--tx'));
+    const ty = parseFloat(st.getPropertyValue('--ty'));
+    if (!isFinite(tx) || !isFinite(ty)) return null;
+    const W = node.offsetWidth, H = node.offsetHeight;
+    if (!(W > 0 && H > 0)) return null;
+    const sc = parseFloat(st.getPropertyValue('--sc'));
+    const k = (isFinite(sc) && sc > 0 ? sc : 1) * 1.03;
+    const rad = (parseFloat(st.getPropertyValue('--rot')) || 0) * Math.PI / 180;
+    const co = Math.abs(Math.cos(rad)) * k, si = Math.abs(Math.sin(rad)) * k;
+    const hw = (W * co + H * si) / 2, hh = (W * si + H * co) / 2;
+    return { l: tx - hw, t: ty - hh, r: tx + hw, b: ty + hh };
+  }
+
   /* During the spread a card travels on the order of 200 px in half a second while the
      region is re-cut at most every 40 ms, so the painted card runs ahead of the region and
      its leading edge is clipped for a few frames. Measured on a real pop: 60 frames out of
@@ -1682,9 +1707,16 @@
        this instant — and it is dropped again on release. */
     const dragging = !!(drag || deckDrag);
     const spans = [];
+    let needEnvelope = false;
     liveNodes().forEach((n) => {
       const b = n.getBoundingClientRect();
-      const pad = moving ? SHAPE_PAD_MOVE : padFor(n, b);
+      /* A card with a known destination is covered by a rect that reaches it, so it does
+         not also need the 90 px band; every other animating node still does.
+         window.__noFlyShape is the A/B for that claim, and tests/flight-clip.js is the
+         measurement — one build, one harness, both paths in the same run, so the numbers
+         are comparable instead of remembered. */
+      const fly = (moving && !window.__noFlyShape) ? flightRect(n) : null;
+      const pad = moving ? (fly ? SHAPE_PAD_FLY : SHAPE_PAD_MOVE) : padFor(n, b);
       const q = quadOf(n, b);
       const box = isFinite(b.width) && b.width > 0 && b.height > 0;
       /* the affine quad is only worth its own rects where it differs from the painted
@@ -1700,19 +1732,37 @@
       /* the box the browser says it actually painted: a region clips drawing, so any
          corner this under-covers is a corner the user sees cut off */
       if (box) {
-        /* unconditional, not only while something is animating: the dirty window that
-           marks "moving" is opened once when the pop starts, and a card with a 200 ms
-           stagger is still flying after it closes. Sweeping always costs one Map lookup
-           per node and costs nothing at rest, where the swept box equals the live box. */
-        const c = sweptBox(n, b);
-        spans.push.apply(spans, spansOfQuad([{ x: c.left, y: c.top },
-          { x: c.right, y: c.top }, { x: c.right, y: c.bottom },
-          { x: c.left, y: c.bottom }], pad));
+        if (fly) {
+          /* One rect spanning where the card is and where it is going, in place of the
+             90 px ring this node used to get. It is smaller than that ring for a card at
+             rest and larger for one about to move, and the difference is the point: the
+             area is the same shape as the flight instead of a band around the box. */
+          const x = Math.floor(Math.min(b.left, fly.l) - SHAPE_PAD_FLY);
+          const y = Math.floor(Math.min(b.top, fly.t) - SHAPE_PAD_FLY);
+          const xe = Math.ceil(Math.max(b.right, fly.r) + SHAPE_PAD_FLY);
+          const ye = Math.ceil(Math.max(b.bottom, fly.b) + SHAPE_PAD_FLY);
+          if (xe > x && ye > y) spans.push({ x: x, y: y, width: xe - x, height: ye - y });
+        } else {
+          if (!fly && n.classList && n.classList.contains('todo-card')) needEnvelope = true;
+          /* unconditional, not only while something is animating: the dirty window that
+             marks "moving" is opened once when the pop starts, and a card with a 200 ms
+             stagger is still flying after it closes. Sweeping always costs one Map lookup
+             per node and costs nothing at rest, where the swept box equals the live box. */
+          const c = sweptBox(n, b);
+          spans.push.apply(spans, spansOfQuad([{ x: c.left, y: c.top },
+            { x: c.right, y: c.top }, { x: c.right, y: c.bottom },
+            { x: c.left, y: c.bottom }], pad));
+        }
       }
     });
     /* accumulated across time, not across nodes: this is where the dragged box has
        *been* since the grab, so the region is always ahead of the pixels it must show */
-    if (moving && spreadEnvelope && (mode === 'overview' || mode === 'deployed')) {
+    /* The envelope is the last settled spread, and it used to be the only prediction
+       available: covering where the cards had been is what let a pop finish inside a
+       region that had not caught up. A rect from each card to its own destination does
+       that job exactly and is smaller, so the envelope is kept for the cards the flight
+       rect could not be read for — a card whose --tx has never been set. */
+    if (moving && needEnvelope && spreadEnvelope && (mode === 'overview' || mode === 'deployed')) {
       const e = spreadEnvelope;
       spans.push.apply(spans, spansOfQuad([{ x: e.l, y: e.t }, { x: e.r, y: e.t },
         { x: e.r, y: e.b }, { x: e.l, y: e.b }], SHAPE_PAD_REST));
@@ -1864,11 +1914,10 @@
      interaction. So ask the question directly, from the painted boxes, on a slow timer
      while nothing is moving. applyShape() no-ops when the signature has not changed, so
      a healthy layer pays one buildSpans() per tick and no SetWindowRgn at all. */
-  /* The envelope the last spread ended in. During a pop the region cannot catch up with
-     the pixels by re-cutting — measured, 32 frames of a 460 ms flight still had the
-     leading corner outside whatever had been pushed — so it covers where the cards are
-     going instead. The layout is stable, so the last settled spread is the best possible
-     prediction of the next one, and after the first pop the artifact is gone. */
+  /* The envelope the last spread ended in. It was the only prediction available before
+     the flight rect existed — covering where the cards had been is the best a settled
+     spread can do — and it stays for the cards whose --tx has never been set, which are
+     precisely the ones the flight rect cannot be read for. */
   let spreadEnvelope = null;
   function learnSpread() {
     let box = null;
@@ -1972,6 +2021,13 @@
   function regionCheck() {
     if (!shapeOn) return 'region=off';
     if (!el.dock) return 'region=nodock';
+    /* What the region takes away from the desktop, in kpx²: spans overlap, so this
+       over-counts, but it is the same over-count on both sides of any change to the pads,
+       which is what makes a "the region is exact now" claim comparable rather than
+       rhetorical. Desktop area is the currency here — every pixel the layer owns is a
+       pixel of desktop icons that cannot be clicked. */
+    const claim = (spans) => (spans === null ? 'FULL'
+      : String(Math.round(spans.reduce((s, r) => s + r.width * r.height, 0) / 1000)));
     const d = el.dock.getBoundingClientRect();
     const x0 = Math.max(0, d.left), y0 = Math.max(0, d.top);
     const x1 = Math.min(area.width, d.right), y1 = Math.min(area.height, d.bottom);
@@ -1985,7 +2041,7 @@
     const w = inside(want) ? 'ok' : 'LOST';
     const p = inside(lastPushed) ? 'ok' : 'LOST';
     return 'region=' + w + '/' + p + ' want=' + live + ' pushed=' + pushed +
-      ' at=' + Math.round(px) + ',' + Math.round(py);
+      ' claim=' + claim(lastPushed) + ' kpx at=' + Math.round(px) + ',' + Math.round(py);
   }
 
   /* the main process answers appInfo() with whether the region path is live */
