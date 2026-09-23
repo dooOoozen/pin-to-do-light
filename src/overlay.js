@@ -338,6 +338,20 @@
   let layerShown = null;
   let lastSummary = '';
 
+  /* One line per state the desk can be left in, because the failure the user reports —
+     "the deck is gone and nothing on the desktop answers clicks" — is a state, not an
+     error: no exception, no bad value, just a mode and a region that between them own a
+     screen they paint nothing on. Only the transitions are logged, so a healthy layer
+     stays quiet, and after the fact the boot log says which switch was last thrown. */
+  function trace(what) {
+    if (!API.bootNote) return;
+    API.bootNote('[layer] ' + what + ' mode=' + mode + ' modal=' + modalOpen +
+      ' shown=' + layerShown + ' by=' + (hiddenBy || '-') +
+      ' loose=' + $$('.todo-card', el.cardLayer).filter(function (c) {
+        return !c.classList.contains('docked');
+      }).length + ' full=' + fullWindowHit());
+  }
+
   function setShown(want, opts) {
     opts = opts || {};
     if (layerShown === want) return;
@@ -347,7 +361,8 @@
        window was in front when the rule fired */
     if (!want && API.bootNote) {
       API.bootNote('[layer] hidden by=' + (hiddenBy || '?') + ' fg=' + foregroundKind
-        + ' over=' + foregroundOver + ' full=' + foregroundFull + ' who=' + foregroundWho);
+        + ' over=' + foregroundOver + ' full=' + foregroundFull + ' who=' + foregroundWho
+        + ' mode=' + mode + ' modal=' + modalOpen);
     }
     API.setLayerVisible(want);
     /* both watchers track the *settings*, never the current shown state: turning the
@@ -663,9 +678,11 @@
 
   function setMode(next) {
     if (mode === next) return;
+    const prev = mode;
     mode = next;
     markRectsDirty(900);
     doc.body.dataset.mode = next;
+    trace('mode ' + prev + '->' + next);
     /* The Electron build only needed the cursor poll while the deck was open, since
        forwarded mousemove did the waking there. Under Tauri this feed is the ONLY way
        a collapsed deck is ever approached again, so gating it on mode deadlocks the
@@ -1444,7 +1461,7 @@
     if (!force && now - lastHitRefresh < 150) return;  /* keep animations smooth */
     lastHitRefresh = now;
     const rects = [];
-    if (modalOpen) {
+    if (fullWindowHit()) {
       rects.push({ left: 0, top: 0, right: area.width, bottom: area.height });
     } else {
       if (!tucked && el.dock) rects.push(rectOfNode(el.dock));
@@ -1498,7 +1515,26 @@
        progress must NOT do this: pointerdown on a deck tool sets deckDrag too, and
        claiming the whole work area paints a full-screen surface over everything,
        which under software compositing looks exactly like "the panel went white". */
-    return modalOpen || mode === 'deployed';
+    if (modalOpen) {
+      /* the flag and the shell are two separate assignments, and only the shell is what
+         makes a whole-window claim legitimate: a modalOpen left set with nothing mounted
+         under it owned every click on the screen while painting none of them */
+      return !!(el.modal && el.modal.classList.contains('open') && el.modal.childElementCount);
+    }
+    /* …and the scatter only gets it while there is a card actually out. An empty group
+       left in deployed mode — reachable by switching group while scattered, for one —
+       claimed the whole work area while painting nothing on it, which is the desktop
+       refusing every click, native caption and all: the region is what clips drawing, so
+       inside a full-window region a restored WS_CAPTION is as live as the cards are not. */
+    return mode === 'deployed' && scatterIsLive();
+  }
+
+  function scatterIsLive() {
+    const cards = $$('.todo-card', el.cardLayer);
+    for (let i = 0; i < cards.length; i++) {
+      if (!cards[i].classList.contains('docked') && cardPaints(cards[i])) return true;
+    }
+    return false;
   }
 
   /* Does this card still put pixels on screen right now? A card being filed into the
@@ -2677,6 +2713,7 @@
     modalOpen = true;
     el.modal.innerHTML = html;
     el.modal.classList.add('open', 'interactive');
+    trace('modal open:' + (($('h2', el.modal) || {}).textContent || '?'));
     setIgnore(false);
     markRectsDirty(500);
     refreshHitRects(true);

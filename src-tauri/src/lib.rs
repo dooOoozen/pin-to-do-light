@@ -316,24 +316,30 @@ fn repair_layer_frame(app: &AppHandle) {
             win32::GetWindowLongW(hwnd, win32::GWL_EXSTYLE),
         )
     };
-    if style & win32::FRAME_BITS == 0 && ex & win32::WS_EX_APPWINDOW == 0 {
+    /* WS_EX_LAYERED belongs to this window the same way WS_POPUP does — the log has seen
+       the toolkit's rewrite drop it (0x14C80000/0x00040118 carries neither LAYERED nor
+       TOOLWINDOW) — so its absence counts as dirty and strip_frame puts it back. */
+    let dirty = style & win32::FRAME_BITS != 0
+        || ex & win32::WS_EX_APPWINDOW != 0
+        || ex & win32::WS_EX_LAYERED == 0;
+    if !dirty {
         if FRAME_DIRTY.swap(0, Ordering::Relaxed) != 0 {
             let _ = boot_note(app.clone(), "[layer] frame clean".into());
         }
         return;
     }
     FRAME_DIRTY.store(1, Ordering::Relaxed);
-    /* name the bits that were found: whether the offender is WS_CAPTION (0xC00000, the
-       white title bar the user sees) or one of the box/menu bits says whether this is the
-       toolkit restoring decorations or something else rewriting the style wholesale */
-    let found = style & win32::FRAME_BITS;
-    let found_ex = ex & win32::WS_EX_APPWINDOW;
+    /* both sides of the strip, not just what was masked off: the interesting question is
+       what the window looked like before (caption back, LAYERED gone) and what it looks
+       like after, and 0xC00000 alone does not distinguish a caption incident from a
+       transparency incident — the white bar the user reports is the first and the
+       unpaintable layer would be the second */
     let (ns, nex, _, _) = unsafe { win32::strip_frame(hwnd) };
     let _ = boot_note(
         app.clone(),
         format!(
-            "[layer] frame repaired: had 0x{:08X}/0x{:08X} -> 0x{:08X}/0x{:08X}",
-            found, found_ex, ns, nex
+            "[layer] frame repaired: was 0x{:08X}/0x{:08X} -> 0x{:08X}/0x{:08X}",
+            style, ex, ns, nex
         ),
     );
 }
