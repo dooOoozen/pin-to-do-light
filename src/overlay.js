@@ -110,6 +110,13 @@
     },
     ignoring: () => ignoring,
     mode: () => mode,
+    /* the visibility the policy settled on, which is not the same question as mode: a
+       hidden layer still has a mode, and "the deck vanished" is about this one */
+    shown: () => layerShown,
+    vis: () => ({
+      shown: layerShown, by: hiddenBy, kind: foregroundKind,
+      over: foregroundOver, full: foregroundFull, who: foregroundWho,
+    }),
     tuck: (v) => setTucked(!!v),
     hoverInfo: () => ({
       mode: mode, tucked: tucked, armed: hoverArmed,
@@ -189,6 +196,7 @@
     el.ratio = $('#deckRatio');
     el.tools = $('#dockTools');
     el.toolDashboard = $('#toolDashboard');
+    el.toolSimple = $('#toolSimple');
     el.toolAutoTuck = $('#toolAutoTuck');
     el.chips = $('#groupChips');
     el.modal = $('#modalRoot');
@@ -252,6 +260,12 @@
       + ' mode=' + mode
       + ' tucked=' + tucked
       + ' shown=' + layerShown
+      /* which foreground window the visibility rule saw, and whether a rule is what took
+         the deck off screen: "the deck vanished" and "the deck is hidden by a policy that
+         fired on the wrong window" look the same from the desktop and nothing else in the
+         log separates them */
+      + ' fg=' + foregroundKind + (foregroundOver ? '' : '/away')
+      + (foregroundFull ? '+full' : '') + ' by=' + (hiddenBy || '-')
       + ' cards=' + cards.length + '/' + docked + '-docked'
       /* hitRects is deliberately not reported: under the region path it is the
          legacy rect array, which excludes the tucked dock and so reads 0 while the
@@ -307,6 +321,7 @@
   let foregroundKind = 'desktop';
   let foregroundOver = true;
   let foregroundFull = false;
+  let foregroundWho = '';
   let forceUntil = 0;
   let cursorFrames = 0;
   let cursorNear = 0;
@@ -327,6 +342,13 @@
     opts = opts || {};
     if (layerShown === want) return;
     layerShown = want;
+    /* the deck going off screen is the one decision here that looks like a crash from
+       outside, and after the fact nothing else in the log says which rule made it or what
+       window was in front when the rule fired */
+    if (!want && API.bootNote) {
+      API.bootNote('[layer] hidden by=' + (hiddenBy || '?') + ' fg=' + foregroundKind
+        + ' over=' + foregroundOver + ' full=' + foregroundFull + ' who=' + foregroundWho);
+    }
     API.setLayerVisible(want);
     /* both watchers track the *settings*, never the current shown state: turning the
        layer off must not also turn off the only signals that can bring it back */
@@ -453,6 +475,7 @@
       foregroundKind = cmd.what || 'app';
       foregroundOver = cmd.over !== false;
       foregroundFull = cmd.fullscreen === true;
+      foregroundWho = cmd.who || '';
       applyVisibility();
     } else if (cmd.type === 'tray') {
       onTrayAction(cmd.action);
@@ -959,6 +982,11 @@
       const auto = S.settings.dockAutoTuck !== false;
       el.toolAutoTuck.classList.toggle('on', auto);
       el.toolAutoTuck.title = auto ? '卡片堆会自动缩进屏幕（点击关闭）' : '卡片堆不再自动缩进（点击开启）';
+    }
+    if (el.toolSimple) {
+      const simple = S.settings.simple === true;
+      el.toolSimple.classList.toggle('on', simple);
+      el.toolSimple.title = simple ? '简化卡片：现在只显示标题（点击看全部信息）' : '简化卡片：只显示标题（点击开启）';
     }
   }
 
@@ -2183,6 +2211,18 @@
     el.face.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleDeploy(); }
     });
+    /* The simplified-card switch lives on the DECK band because the tool column under it is
+       full — which also puts it inside the face, whose own click means "scatter / recall".
+       Stop that here rather than hoping the two handlers stay in a useful order. */
+    if (el.toolSimple) {
+      el.toolSimple.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (window.UISound) UISound.tap();
+        const next = S.settings.simple !== true;
+        API.op({ type: 'settings:update', patch: { simple: next } });
+        toast(next ? '简化卡片：只显示标题 // SIMPLE' : '完整卡片：显示全部信息 // FULL');
+      });
+    }
 
     el.deckStack.addEventListener('pointerdown', onDeckPointerDown);
 
@@ -2266,6 +2306,7 @@
       const btn = ev.target.closest('[data-act]');
       if (!btn) return;
       ev.stopPropagation();
+      if (window.UISound) UISound.tap();
       const act = btn.dataset.act;
       if (act === 'add') openTodoModal({});
       else if (act === 'layout') {
