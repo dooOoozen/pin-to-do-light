@@ -1,0 +1,411 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Pin To-Do 架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "pin-tauri-architecture.html",
+    "viewBox": [
+      1320,
+      700
+    ],
+    "repository": {
+      "url": "https://github.com/dooOoozen/pin-to-do-light",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "6423560a92fc39a58da97e20975f4f012b8086e9"
+    },
+    "views": [
+      {
+        "id": "schedule-path",
+        "label": "一句话排程",
+        "focus": [
+          "user",
+          "layer",
+          "agent",
+          "nlp",
+          "http",
+          "llm"
+        ],
+        "note": "模型只决定意图，日期由本地解析，返回的是草稿。"
+      },
+      {
+        "id": "state-path",
+        "label": "确认与落盘",
+        "focus": [
+          "agent",
+          "reducer",
+          "panel",
+          "host",
+          "state"
+        ],
+        "note": "reducer 在渲染层，两个窗口共用同一份 op。"
+      },
+      {
+        "id": "window-layer",
+        "label": "窗口与区域",
+        "focus": [
+          "layer",
+          "host",
+          "win32",
+          "creds"
+        ],
+        "note": "区域决定哪些像素可见，激活决定标题条是否被合成。"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "桌面用户",
+      "sublabel": "鼠标 / 键盘",
+      "pos": [
+        40,
+        220
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "layer",
+      "type": "frontend",
+      "label": "卡片层窗口",
+      "sublabel": "overlay.js · label main",
+      "tag": "透明 / 置顶 / 工具窗口",
+      "pos": [
+        300,
+        220
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/overlay.js",
+          "line": 1920,
+          "label": "bandClipped"
+        },
+        {
+          "path": "src-tauri/src/lib.rs",
+          "line": 436,
+          "label": "overlay_show"
+        }
+      ]
+    },
+    {
+      "id": "panel",
+      "type": "frontend",
+      "label": "任务面板",
+      "sublabel": "dashboard.js · label dashboard",
+      "pos": [
+        300,
+        400
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "agent",
+      "type": "backend",
+      "label": "排程助手",
+      "sublabel": "agent.js · 三个工具",
+      "tag": "只出草稿，不写库",
+      "pos": [
+        560,
+        220
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/agent.js",
+          "line": 302,
+          "label": "request"
+        }
+      ]
+    },
+    {
+      "id": "nlp",
+      "type": "backend",
+      "label": "日期解析",
+      "sublabel": "shared/nlp.js",
+      "pos": [
+        560,
+        60
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "http",
+      "type": "backend",
+      "label": "WinHTTP 客户端",
+      "sublabel": "net.rs",
+      "pos": [
+        820,
+        220
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "llm",
+      "type": "external",
+      "label": "OpenAI 兼容 provider",
+      "sublabel": "工具调用",
+      "pos": [
+        1080,
+        220
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "reducer",
+      "type": "backend",
+      "label": "reducer",
+      "sublabel": "shared/data.js",
+      "pos": [
+        560,
+        400
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/shared/data.js",
+          "line": 1043,
+          "label": "applyOp"
+        }
+      ]
+    },
+    {
+      "id": "creds",
+      "type": "security",
+      "label": "凭据管理器",
+      "sublabel": "secrets.rs",
+      "pos": [
+        820,
+        400
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "win32",
+      "type": "backend",
+      "label": "Win32 / DWM",
+      "sublabel": "win32.rs",
+      "pos": [
+        300,
+        560
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src-tauri/src/win32.rs",
+          "line": 279,
+          "label": "apply_region"
+        },
+        {
+          "path": "src-tauri/src/win32.rs",
+          "line": 591,
+          "label": "set_focusable"
+        }
+      ]
+    },
+    {
+      "id": "host",
+      "type": "backend",
+      "label": "Tauri 宿主",
+      "sublabel": "lib.rs · 命令 / 托盘 / 快捷键",
+      "pos": [
+        560,
+        560
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src-tauri/src/lib.rs",
+          "line": 1411,
+          "label": "ai_chat"
+        }
+      ]
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "状态文件",
+      "sublabel": "dashboard1971-data.json",
+      "pos": [
+        820,
+        560
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src-tauri/src/lib.rs",
+          "line": 68,
+          "label": "state_commit"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "单进程 · WebView2 宿主",
+      "wraps": [
+        "layer",
+        "panel",
+        "agent",
+        "nlp",
+        "reducer",
+        "http",
+        "host",
+        "win32",
+        "creds"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-user-layer",
+      "from": "user",
+      "to": "layer",
+      "label": "点击 / 一句话",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-layer-agent",
+      "from": "layer",
+      "to": "agent",
+      "label": "✨ 排程",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-agent-nlp",
+      "from": "agent",
+      "to": "nlp",
+      "label": "日期本地解析"
+    },
+    {
+      "id": "c-agent-http",
+      "from": "agent",
+      "to": "http",
+      "label": "工具循环",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-http-llm",
+      "from": "http",
+      "to": "llm",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-agent-reducer",
+      "from": "agent",
+      "to": "reducer",
+      "label": "确认后 op()",
+      "variant": "emphasis",
+      "labelAt": [
+        645,
+        298
+      ]
+    },
+    {
+      "id": "c-panel-reducer",
+      "from": "panel",
+      "to": "reducer",
+      "label": "同一份 op"
+    },
+    {
+      "id": "c-reducer-host",
+      "from": "reducer",
+      "to": "host",
+      "label": "state_commit",
+      "labelAt": [
+        645,
+        478
+      ]
+    },
+    {
+      "id": "c-host-state",
+      "from": "host",
+      "to": "state",
+      "label": "写 JSON",
+      "labelDy": 16
+    },
+    {
+      "id": "c-host-win32",
+      "from": "host",
+      "to": "win32",
+      "label": "区域 / 样式"
+    },
+    {
+      "id": "c-host-creds",
+      "from": "host",
+      "to": "creds",
+      "label": "取密钥",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "两个窗口，一份状态",
+      "items": [
+        "reducer 在渲染层，卡片层与任务面板共用",
+        "两个窗口都通过 invoke 调用宿主命令",
+        "状态每次改动即写盘"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "排程助手",
+      "items": [
+        "模型定意图，时间戳由 nlp.js 本地解析",
+        "provider 返回的是草稿，确认后才落库",
+        "方言调用可读回，错选工具做纠正"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "窗口层",
+      "items": [
+        "卡片层常驻 WS_EX_NOACTIVATE，平时拒绝激活",
+        "弹窗期间区域放弃顶部 34 px",
+        "密钥在凭据管理器，不进状态文件"
+      ]
+    }
+  ]
+}
