@@ -3092,6 +3092,29 @@
       '    <div class="row"><input class="input" id="rcpDir" placeholder="留空 = 使用默认文件夹" /><button class="btn sm" id="rcpDirUse">用这个</button></div>' +
       '    <div class="row" style="margin-top:6px"><span class="set-hint" id="rcpDirHint">定时出票会把 PNG 直接写进这个文件夹</span><span class="spacer"></span><button class="btn sm" id="rcpDirOpen">打开文件夹</button></div>' +
       '  </div>' +
+      '  <div class="panel hud-thin" id="panelAi">' +
+      '    <h3>AI 助手 / AGENT <span class="tiny faint" id="aiNow"></span></h3>' +
+      '    <div id="aiRows"></div>' +
+      '    <div class="divider"></div>' +
+      '    <label class="label">接口 / ENDPOINT</label>' +
+      '    <div class="row"><input class="input" id="aiBase" placeholder="https://api.openai.com/v1" /><button class="btn sm" id="aiBaseUse">应用</button></div>' +
+      '    <div class="mon-row" id="aiPresets" style="margin-top:6px"></div>' +
+      '    <div class="row" style="margin-top:8px"><span class="tiny faint">模型</span><input class="input" id="aiModel" placeholder="gpt-4o-mini" /><button class="btn sm" id="aiModelUse">应用</button></div>' +
+      '    <label class="label" style="margin-top:8px">可用模型 / MODELS</label>' +
+      '    <div class="row"><select class="select" id="aiModelPick"><option value="">（点下面「测试连通性」列出）</option></select></div>' +
+      '    <div class="row" style="margin-top:6px"><button class="btn sm" id="aiProbe">测试连通性 · 不耗额度</button><button class="btn sm" id="aiTry">试一次调用 · 消耗少量额度</button></div>' +
+      '    <div class="set-hint" id="aiOut" style="margin-top:6px;min-height:15px;line-height:1.5"></div>' +
+      '    <div class="divider"></div>' +
+      '    <div class="row"><span class="set-hint" id="aiTraceCount">轨迹 0 条</span><span class="spacer"></span>' +
+      '      <button class="btn sm" id="aiTraceReload">刷新</button>' +
+      '      <button class="btn sm" id="aiTraceCopy">复制 JSON</button>' +
+      '      <button class="btn sm ghost" id="aiTraceDel">清空</button></div>' +
+      '    <div class="ai-trace" id="aiTrace"></div>' +
+      '    <div class="divider"></div>' +
+      '    <label class="label">API 密钥 / KEY</label>' +
+      '    <div class="row"><span class="set-hint" id="aiKeyHint">—</span><input class="input" id="aiKey" type="password" placeholder="粘贴密钥" autocomplete="off" /><button class="btn sm" id="aiKeyUse">保存</button><button class="btn sm ghost" id="aiKeyDel">清除</button></div>' +
+      '    <div class="set-hint" style="margin-top:7px">密钥只写进 Windows 凭据管理器：不进数据文件、不随「导出」离开这台机器，请求由宿主进程发出，页面读不到它。开启后每次发送的是你输入的那句话加上当前任务列表；关闭后不发任何请求。</div>' +
+      '  </div>' +
       '  <div class="panel hud-thin" id="panelPalette">' +
       '    <h3>调色台 / COLOUR LAB <span class="tiny faint" id="palTheme"></span></h3>' +
       '    <div class="row" style="margin-bottom:6px">' +
@@ -3350,6 +3373,169 @@
             if (!d) { toast('还没有保存位置', 'warn'); return; }
             Promise.resolve(API.openDir(d)).catch((e) => toast('打开失败：' + e, 'warn'));
           });
+        }
+      }
+      /* ---- AI 助手 ------------------------------------------------------------
+         Three fields, and a key that is deliberately not one of them. Whether the switch
+         can be on at all is decided by the endpoint (data.js clamps it identically on the
+         read and the write path), so a half-configured agent never offers a ✨ button that
+         could only fail. */
+      const aiHost = $('#aiRows', root);
+      if (aiHost) {
+        const ai = st.ai || {};
+        const baseBox = $('#aiBase', root), modelBox = $('#aiModel', root);
+        const keyHint = $('#aiKeyHint', root);
+        baseBox.value = ai.base || '';
+        modelBox.value = ai.model || '';
+        const asave = (patch) => {
+          const cur = (S.state.settings && S.state.settings.ai) || {};
+          return API.op({ type: 'settings:update', patch: { ai: {
+            on: patch.on !== undefined ? patch.on : cur.on === true,
+            base: patch.base !== undefined ? patch.base : cur.base || '',
+            model: patch.model !== undefined ? patch.model : cur.model || ''
+          } } });
+        };
+        aiHost.appendChild(switchRow('启用 AI 助手', '快速登记里出现 ✨ 安排；关闭后不发送任何请求', ai.on === true, (v) => {
+          if (v && !String(baseBox.value || '').trim()) { toast('先填接口地址才能开启', 'warn'); return; }
+          asave({ on: v });
+          const now2 = $('#aiNow', root);
+          if (now2) now2.textContent = v ? '开 · ' + (baseBox.value.trim() && (modelBox.value || '')) : '关';
+          toast(v ? 'AI 助手已开启' : 'AI 助手已关闭（不再发送请求）');
+        }));
+        const now = $('#aiNow', root);
+        if (now) now.textContent = ai.on ? '开 · ' + (ai.model || '') : '关';
+        $('#aiBaseUse', root).addEventListener('click', () => {
+          const v = String(baseBox.value || '').trim();
+          asave({ base: v });
+          toast(v ? '接口已更新' : '接口已清空，助手随之关闭');
+        });
+        $('#aiModelUse', root).addEventListener('click', () => { asave({ model: String(modelBox.value || '').trim() }); toast('模型已更新'); });
+        [['OpenAI', 'https://api.openai.com/v1', 'gpt-4o-mini'],
+         ['DeepSeek', 'https://api.deepseek.com/v1', 'deepseek-chat'],
+         ['Moonshot', 'https://api.moonshot.cn/v1', 'moonshot-v1-8k'],
+         ['智谱', 'https://open.bigmodel.cn/api/paas/v4', 'glm-4-flash'],
+         /* the /openai suffix is the whole story with Google: its console prints /v1beta,
+            which is the native dialect, and pointing the agent there fails as a 404 that
+            looks like a bad key */
+         ['Google AI Studio', 'https://generativelanguage.googleapis.com/v1beta/openai', 'models/gemini-2.5-flash'],
+         ['本地 mock', 'http://127.0.0.1:8787/v1', 'mock']].forEach((p) => {
+          const b = doc.createElement('button');
+          b.className = 'btn sm';
+          b.textContent = p[0];
+          b.title = p[1];
+          b.addEventListener('click', () => {
+            baseBox.value = p[1]; modelBox.value = p[2];
+            asave({ base: p[1], model: p[2] });
+            toast(p[0] + '：填好密钥后即可开启');
+          });
+          $('#aiPresets', root).appendChild(b);
+        });
+        const showHint = () => Promise.resolve(API.aiKeyHint()).then((h) => { keyHint.textContent = '密钥：' + h; });
+        showHint();
+        $('#aiKeyUse', root).addEventListener('click', () => {
+          const v = String($('#aiKey', root).value || '');
+          if (!v.trim()) { toast('先粘贴密钥', 'warn'); return; }
+          Promise.resolve(API.aiKeySave(v)).then((h) => {
+            $('#aiKey', root).value = '';
+            keyHint.textContent = '密钥：' + h;
+            toast('密钥已存入 Windows 凭据管理器');
+          }, (e) => toast('保存失败：' + e, 'warn'));
+        });
+        $('#aiKeyDel', root).addEventListener('click', () => {
+          Promise.resolve(API.aiKeyClear()).then((h) => { keyHint.textContent = '密钥：' + h; toast('已清除'); });
+        });
+        /* Two probes, split by what they cost. Listing models is free and answers "配好了
+           吗" — including the trap where the console prints the provider's *native* URL
+           (Google's /v1beta) while the agent needs its OpenAI-compatible one. A real
+           completion costs quota, so it stays behind its own labelled button. */
+        const out = $('#aiOut', root);
+        const modelSel = $('#aiModelPick', root);
+        function say(html) { out.innerHTML = html; }
+        $('#aiProbe', root).addEventListener('click', () => {
+          const base = String(baseBox.value || '').trim();
+          if (!base) { say('先填接口地址'); return; }
+          if (!window.Agent) { say('agent.js 未加载'); return; }
+          say('正在列出模型…（不消耗额度）');
+          Agent.probe(base).then((p) => {
+            modelSel.innerHTML = '<option value="">（手填模型名）</option>' +
+              (p.models || []).map((m) => '<option value="' + escapeHtml(m) + '">' + escapeHtml(m) + '</option>').join('');
+            const cur = String(modelBox.value || '');
+            if ((p.models || []).indexOf(cur) >= 0) modelSel.value = cur;
+            say((p.ok ? '✓ ' : '✕ ') + escapeHtml(p.hint) +
+              (p.models && p.models.length ? ' · 已填入下面的下拉，选一个再点「试一次调用」' : ''));
+          });
+        });
+        $('#aiTry', root).addEventListener('click', () => {
+          const base = String(baseBox.value || '').trim();
+          const model = String(modelSel.value || modelBox.value || '').trim();
+          if (!base || !model) { say('接口地址和模型都要填'); return; }
+          say('正在调用 ' + escapeHtml(model) + '…（会消耗少量额度）');
+          Promise.resolve(Agent.tryCall(base, model)).then((r) => {
+            if (!r.ok) { say('✕ ' + escapeHtml(r.error || '调用失败')); return; }
+            modelBox.value = model;
+            say((r.toolCalling ? '✓ 工具调用可用' : '✕ 这个模型不会调用工具，它回了正文：「' + escapeHtml(r.content) + '」——排程助手需要支持 function calling 的模型') +
+              ' · ' + r.ms + 'ms · ' + r.tokens + ' tokens' +
+              (r.toolCalling ? ' · ping(' + escapeHtml(r.args) + ')' : ''));
+          }, (e) => say('✕ ' + escapeHtml(String((e && e.message) || e))));
+        });
+        $('#aiModelPick', root).addEventListener('change', () => {
+          const v = String(modelSel.value || '');
+          if (v) { modelBox.value = v; asave({ model: v }); toast('模型已设为 ' + v); }
+        });
+
+        /* ---- 轨迹 ----------------------------------------------------------
+           The whole point of the panel is that every stage of a turn is visible in the
+           order it happened: what was sent, which tool the model chose, what our parser
+           turned the words into, what the user then changed, and what finally reached the
+           store. Without it, "the AI got it wrong" has no answer; with it, most reports
+           split into "the model said X" and "we resolved X to Y", which are two different
+           bugs in two different layers. */
+        /* the wording lives in agent.js so the panel and the draft sheet cannot disagree */
+        function detail(e) { return window.Agent ? Agent.explain(e) : JSON.stringify(e).slice(0, 120); }
+        function drawTrace(list) {
+          const host = $('#aiTrace', root);
+          const rows = (list || []).slice(-40).reverse();
+          let lastTurn = null;
+          host.innerHTML = rows.map(function (e) {
+            let head = '';
+            if (e.turn !== lastTurn) {
+              lastTurn = e.turn;
+              head = '<div class="trh">回合 ' + (e.turn || 0) + ' · ' + escapeHtml(String(e.at || '').slice(11, 19)) + '</div>';
+            }
+            const warn = /^(refused-tool|unknown-id|bad-args|error|no-tool-call)/.test(e.stage) ? ' warn' : '';
+            return head + '<div class="tr' + warn + '"><b>' + escapeHtml(e.stage || '?') + '</b><span>' +
+              escapeHtml(detail(e)) + '</span></div>';
+          }).join('') || '<div class="set-hint">还没有记录。开启后在桌面双击卡盒展开 → 输入一句话 → ✨ 安排。</div>';
+        }
+        function reloadTrace() {
+          Promise.resolve(API.aiTraceList()).then(function (l) {
+            $('#aiTraceCount', root).textContent = '轨迹 ' + (l || []).length + ' 条';
+            drawTrace(l);
+          }, () => drawTrace([]));
+        }
+        reloadTrace();
+        $('#aiTraceReload', root).addEventListener('click', reloadTrace);
+        $('#aiTraceDel', root).addEventListener('click', () => {
+          Promise.resolve(API.aiTraceClear()).then(reloadTrace);
+        });
+        $('#aiTraceCopy', root).addEventListener('click', () => {
+          Promise.resolve(API.aiTraceList()).then(function (l) {
+            const text = JSON.stringify(l, null, 1);
+            const done = () => toast('已复制 ' + (l || []).length + ' 条轨迹');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+            } else fallbackCopy(text, done);
+          });
+        });
+        function fallbackCopy(text, done) {
+          const ta = doc.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.left = '-2000px';
+          doc.body.appendChild(ta);
+          ta.select();
+          try { doc.execCommand('copy'); done(); } catch (e) { toast('复制失败，请手动选择', 'warn'); }
+          ta.remove();
         }
       }
       toggles.appendChild(switchRow('显示桌面卡片层', '透明提词层，随时悬浮在桌面边缘', st.overlay !== false, (v) => API.op({ type: 'settings:update', patch: { overlay: v } })));

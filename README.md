@@ -11,7 +11,7 @@ resident memory and package size, and both improved by roughly an order of magni
 
 ---
 
-![The same dashboard in six materials](docs/media/materials-morph.gif)
+![The same dashboard as it changes materials](docs/media/materials-morph.gif)
 
 ---
 
@@ -55,21 +55,29 @@ itself to the edge when idle.
   panel closed, saves itself, and stays put until you pull the sheet off it — the body
   drags out of the way first if you need to. The hour, the switch and the save folder live
   in Settings → RECEIPT.
-- **Pomodoro, memo, reminders, sound, tray, autostart**, and six materials, each with its own
+- **Pomodoro, memo, reminders, sound, tray, autostart**, and nine materials, each with its own
   day and night palette: **印刷 1971** (the terminal sheet — square plates, hard print shadow,
   paper grain), **餐厅 DINER** (Googie console: enamel cream, chrome trim, rounded corners),
   **群青构成 IKB** (constructivist: flat, 2 px rules, International Klein Blue), **晨雾花园 GARDEN**
   (dawn light: a rose-to-cream ramp on every plate, acid-mint lattice, deep teal-black ink),
   **电蓝海报 POSTER** (screen print: electric blue doing the structure, acidic lime, hard-cut
-  shapes, halftone dots, no shadows at all) and **指令台 RETRO** (mission console: bolted flange
-  screws, bezel edge, scanline strips). Each is named for its visual language, not for a work.
+  shapes, no shadows at all), **指令台 RETRO** (mission console: bolted flange
+  screws, bezel edge, scanline strips), **图纸 BLUEPRINT** (technical drawing: one grey ladder,
+  hairline compass circles, a dashed axis, no elevation at all), **紫电拼贴 COLLAGE** (electric
+  purple and cobalt stacked on white, each plate casting a flat block of its own colour) and
+  **黑黄战术 HI-VIS** (signage paint: hi-vis yellow on black, barcode telemetry, target brackets
+  at the four corners of a dialog). Each is named for its visual language, not for a work.
   Labels take the material's typeface; every readout stays monospaced so the ledger columns
   line up. The colour lab overrides any token live and saves it per day/night.
 
 Dates carry both solar and lunar labels (`9月20日 · 周日 · 农历八月初十`), and a task can
 repeat on the lunar calendar year by year.
 
-## The six materials
+## The materials
+
+Six of the nine are pictured below; the switcher in Settings offers all of them, and the
+three newest — 图纸, 紫电拼贴, 黑黄战术 — are documented in `src/theme.css` with their own
+token blocks.
 
 A material changes the surface, the outline, the corner radii, the typeface of the labels
 and the day/night palette together — the card deck and the desk follow, not just the panel.

@@ -45,17 +45,38 @@
      and rewritten rather than rejected, because it is what every existing data file holds
      and an unresolved style would drop the whole desk back to 印刷. */
   var STYLE_WAS = { p3: 'poster', unp: 'console' };
-  var STYLE_IS = ['print', 'diner', 'ikb', 'garden', 'poster', 'console'];
+  var STYLE_IS = ['print', 'diner', 'ikb', 'garden', 'poster', 'console',
+    'blueprint', 'memphis', 'hazard'];
   function styleKey(v) {
     var k = String(v || '');
     if (STYLE_WAS[k]) k = STYLE_WAS[k];
     return STYLE_IS.indexOf(k) >= 0 ? k : 'print';
   }
 
+  /* The agent's settings, rebuilt rather than filtered.
+     Rebuilt is the point: this runs both when the file is read and when a settings write
+     lands, so the object that reaches disk has exactly three fields no matter what a
+     hand-edited file or a crafted patch tried to put under `ai` — including an API key,
+     which belongs in the credential store and would otherwise be exported with the task
+     list the next time the user shares their data.
+     The endpoint is pinned to https, with one exception: loopback, so a local mock provider
+     can drive the whole chain in a test without a real key. */
+  function clampAi(a) {
+    var v = a && typeof a === 'object' ? a : {};
+    var base = typeof v.base === 'string' ? v.base.trim().slice(0, 200) : '';
+    var ok = /^https:\/\//i.test(base) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/i.test(base);
+    if (!ok) base = '';
+    return {
+      on: v.on === true && !!base,
+      base: base,
+      model: typeof v.model === 'string' ? v.model.trim().slice(0, 80) : ''
+    };
+  }
+
   var SETTING_KEYS = [
     'edge', 'overlay', 'alwaysOnTop', 'launchAtLogin', 'reminders', 'opacity',
     'animations', 'shortcuts', 'hideCompleted', 'pinned', 'activeGroupId', 'hotkey',
-    'simple', 'muted', 'deckMonitor',
+    'simple', 'muted', 'deckMonitor', 'ai',
     'dockScale', 'autoScale',
     'desktopOnly', 'dockPos', 'deckScale', 'cardScale', 'uiScale', 'dockMovable', 'sideWidth', 'sideCollapsed', 'sound',
     'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'theme', 'style', 'palette',
@@ -382,6 +403,13 @@
          edited file) falls back to the one the reference sheet used */
       bg: ['none', 'rose', 'cream', 'paper', 'brick', 'ink'].indexOf(rp.bg) >= 0 ? rp.bg : 'rose'
     };
+    /* The agent. Off by default, and the switch is the whole privacy story: with `on`
+       false nothing renders the ✨ entry and no request is ever composed.
+       The API key is NOT here — it lives in Windows' credential store, because this object
+       is plaintext on disk and the settings panel can export it in two clicks. What is
+       stored instead is where to call and what to call it, and the endpoint is pinned to
+       https (loopback excepted, so a local mock can be used to test the chain). */
+    settings.ai = clampAi(settings.ai);
     /* v2 settings: dock position + split deck/card sizes + interface scale */
     if (s.settings && typeof s.settings === 'object' &&
       s.settings.cardScale === undefined && s.settings.deckScale === undefined && s.settings.dockScale !== undefined) {
@@ -883,6 +911,9 @@
       /* the material is a closed set like the edge: a typo would leave the sheet with a
          data-style nothing matches, which reads as a half-styled window */
       s.settings.style = styleKey(s.settings.style);
+      /* the same rebuild on the write path as on the read path, so a patch cannot smuggle a
+         fourth field (a key) into the object that gets saved */
+      s.settings.ai = clampAi(s.settings.ai);
       s.settings.opacity = Math.min(1, Math.max(0.3, Number(s.settings.opacity) || 1));
       s.settings.dockScale = Math.min(2, Math.max(0.6, Number(s.settings.dockScale) || 1));
       s.settings.dockPos = Math.min(1, Math.max(0, isFinite(s.settings.dockPos) ? Number(s.settings.dockPos) : 0.5));

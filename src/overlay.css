@@ -674,6 +674,21 @@ body[data-mode="deployed"] .todo-card:hover { z-index: 80 !important; }
 .quick-preview.ok { color: var(--teal); }
 .quick-preview.warn { color: var(--brick); }
 
+/* The agent's draft sheet. It lives under the one-line box and above the buttons, and it
+   is deliberately a form rather than a chat: every row is a field you can fix, because the
+   point of the confirmation step is that the model is often slightly wrong about something. */
+.ai-box { margin-top: 9px; display: flex; flex-direction: column; gap: 6px; }
+.ai-wait, .ai-reason { line-height: 1.5; }
+.ai-err { color: var(--brick); line-height: 1.45; }
+.ai-q { font-size: calc(12px * var(--cs, 1)); line-height: 1.5; }
+.ai-opts { display: flex; flex-wrap: wrap; gap: 5px; }
+.ai-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 6px; align-items: center; }
+.ai-row .ai-title { min-width: 0; }
+.ai-row .ai-when { font-size: calc(11px * var(--cs, 1)); }
+.ai-row .ai-when.warn { border-color: var(--brick); }
+.ai-row .ai-said { grid-column: 1 / -1; margin-top: -2px; }
+.ai-foot { display: flex; gap: 6px; justify-content: flex-end; margin-top: 2px; }
+
 /* the deck takes its corners from the same material tokens as the panel — a rounded
    console with a square card box is what made the diner style look half-finished */
 .deck-face, .deck-sheet, .todo-card { border-radius: var(--r-plate); }
@@ -714,16 +729,35 @@ body[data-mode="deployed"] .todo-card:hover { z-index: 80 !important; }
    anyway — so drop them and give the whole card over to the title. */
 body.simple .todo-card .card-bot { display: none; }
 /* A scattered sheet keeps the height it was sized for even with the badge row gone, which
-   leaves the title hanging at the top of a mostly empty card. Centring the body fixes that
-   but moves the tack, and the tack is a thing you reach for at the top of the paper — so
-   the body takes the whole card instead, and the two auto margins split what is left:
-   pin at the top, title and notes centred in the space under it. */
+   leaves the title hanging at the top of a mostly empty card. The centring box is the whole
+   card — not the space under the tack — so the tack leaves the flow and stays where it is
+   drawn, at the top of the paper, while the title and notes centre over the entire sheet.
+   Auto margins will not do this job: they only distribute what the tack leaves over, and a
+   task with no notes hides the row that carried the lower one, which is how some titles came
+   to sit at the bottom-left. */
 body.simple .todo-card { display: flex; }
-body.simple .todo-card .card-body { flex: 1 1 auto; }
-body.simple .todo-card .card-top { margin-top: auto; }
-body.simple .todo-card .card-notes { margin-bottom: auto; }
+body.simple .todo-card .card-body { flex: 1 1 auto; justify-content: center; }
+body.simple .todo-card .card-pin { position: absolute; top: 0; left: 0; }
+body.simple .todo-card .card-top { margin-top: 0; }
+body.simple .todo-card .card-notes { margin-bottom: 0; }
 body.simple .todo-card .card-title {
   font-size: calc(19px * var(--cs, 1) * var(--fontk, 1));
   line-height: 1.25;
   -webkit-line-clamp: 3;
 }
+
+/* The same trace, one turn wide, under the draft sheet — because the moment a person
+   wonders "why did it put that there?" is before they confirm, not afterwards. */
+.ai-trace-inline { margin-top: 4px; font-size: calc(10px * var(--cs, 1)); }
+.ai-trace-inline summary { cursor: pointer; color: var(--ink-3); }
+.ai-trace-inline .tr { display: flex; gap: 6px; padding: 2px 0; border-bottom: 1px dotted var(--rule); }
+.ai-trace-inline .tr b { flex: 0 0 84px; font-family: var(--font-mono); color: var(--ink-2); }
+.ai-trace-inline .tr span { flex: 1 1 auto; min-width: 0; word-break: break-word; }
+
+/* While the box is opening the cards take no pointer at all, which is the only way to stop
+   the hover lift — it is driven by `:hover`, and `popGuardUntil` in overlay.js can hold back
+   the JS half of the spread but not the style engine. The mode is repeated in the selector
+   because the rule that switches pointer events *on* in these two modes already carries an
+   attribute and a class, and a guard that loses on specificity is not a guard. */
+body[data-mode="overview"].popping .todo-card,
+body[data-mode="deployed"].popping .todo-card { pointer-events: none; }

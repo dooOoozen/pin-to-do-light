@@ -8,6 +8,8 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
 
 
+mod net;
+mod secrets;
 mod shell;
 mod win32;
 
@@ -206,6 +208,17 @@ static FORCE_SHOW_UNTIL: AtomicI64 = AtomicI64::new(0);
 /// The layer's HWND, so a background thread can keep an eye on its styles without
 /// asking Tauri for a window handle off the main thread.
 static LAYER_HWND: AtomicIsize = AtomicIsize::new(0);
+
+/// The layer's last observed style, extended style and non-client height, so a caption
+/// incident can be reported as the transition that caused it instead of inferred from
+/// whichever sample the log happened to catch. -1 means "no previous sample", which is not the
+/// same statement as "0", and the difference is what makes the first line after boot readable.
+static FRAME_LAST_STYLE: AtomicIsize = AtomicIsize::new(-1);
+static FRAME_LAST_EX: AtomicIsize = AtomicIsize::new(-1);
+static FRAME_LAST_NC: AtomicIsize = AtomicIsize::new(-1);
+/// Whether the current "style bits clean, non-client height nonzero" episode has been said
+/// out loud yet, so the 120 ms poll reports it once rather than eight times a second.
+static FRAME_NC_NOTED: AtomicI32 = AtomicI32::new(0);
 static FRAME_DIRTY: AtomicI32 = AtomicI32::new(0);
 /// Region hit testing replaces the WS_EX_TRANSPARENT toggle entirely: the toggle is
 /// what tauri#15947 reports as turning transparent areas black, and it cannot be
@@ -289,15 +302,21 @@ fn build_layer(app: &AppHandle) -> Result<(), String> {
     if let Ok(h) = win.hwnd() {
         LAYER_HWND.store(h.0 as isize, Ordering::Relaxed);
         let (style, ex, cw, ch) = unsafe { win32::strip_frame(h.0 as win32::Hwnd) };
-        unsafe { win32::forbid_nc_painting(h.0 as win32::Hwnd) };
+        /* the two HRESULTs, once: an attribute the OS refused to apply and one it
+           applied have looked identical in every log so far */
+        let dwm = unsafe { win32::forbid_nc_painting(h.0 as win32::Hwnd) };
         /* installed from here because setup runs on the thread that owns the window, and the
            hook is called back on the thread that installs it */
         let hooked = unsafe { win32::watch_layer_styles(h.0 as win32::Hwnd) };
+        /* the frame is composed at creation with the toolkit's own style, before any of the
+           watchers below can exist — so the settle ladder has to start here, not only when
+           the layer is shown again later */
+        spawn_frame_settle(app.clone(), "build");
         let _ = boot_note(
             app.clone(),
             format!(
-                "[layer] style=0x{:08X} ex=0x{:08X} client={}x{} · hook={}",
-                style, ex, cw, ch, hooked
+                "[layer] style=0x{:08X} ex=0x{:08X} client={}x{} · hook={} · {}",
+                style, ex, cw, ch, hooked, dwm
             ),
         );
     }
@@ -328,13 +347,46 @@ fn repair_layer_frame(app: &AppHandle) {
        caught them before this poll could look. Those read identically without this number. */
     let (hooked, stripped) = win32::guard_status();
     let guard = format!("hook={} stripped={}", hooked, stripped);
+    /* the measurement that does not depend on the style bits at all: window height minus
+       client height is the caption's own size, so `nc=31` says a bar is being painted right
+       now whatever `style` claims, and `nc=0` says the bar on the screen is not this window's
+       non-client area. Read together with the transition log below, the two settle which of
+       the three standing explanations is true — a write we miss, a write we make ourselves,
+       or a bar that belongs to a window we have never looked at. */
+    let nc = unsafe { win32::surface_of(hwnd) }.non_client();
+    let prev_style = FRAME_LAST_STYLE.swap(style as isize, Ordering::SeqCst) as i32;
+    let prev_ex = FRAME_LAST_EX.swap(ex as isize, Ordering::SeqCst) as i32;
+    let prev_nc = FRAME_LAST_NC.swap(nc as isize, Ordering::SeqCst) as i32;
+    if prev_style >= 0 && (style != prev_style || ex != prev_ex || nc != prev_nc) {
+        let _ = boot_note(
+            app.clone(),
+            format!(
+                "[layer] frame CHANGED style {:#010X}->{:#010X} ex {:#010X}->{:#010X} nc {}->{} · {}",
+                prev_style, style, prev_ex, ex, prev_nc, nc, guard
+            ),
+        );
+        /* the tree, only when something moved: this is the line that can name the window
+           holding the bar, and it is too chatty to print every tick */
+        let _ = boot_note(app.clone(), format!("[layer] tree {}", unsafe { win32::frame_report(hwnd) }));
+    }
     /* WS_EX_LAYERED belongs to this window the same way WS_POPUP does — the log has seen
        the toolkit's rewrite drop it (0x14C80000/0x00040118 carries neither LAYERED nor
-       TOOLWINDOW) — so its absence counts as dirty and strip_frame puts it back. */
-    let dirty = style & win32::FRAME_BITS != 0
-        || ex & win32::WS_EX_APPWINDOW != 0
-        || ex & win32::WS_EX_LAYERED == 0;
+       TOOLWINDOW) — so its absence counts as dirty and strip_frame puts it back. The same
+       predicate the hook uses, now including the activation bit: see win32::frame_dirty. */
+    let dirty = win32::frame_dirty(style, ex);
     if !dirty {
+        if nc > 0 && FRAME_NC_NOTED.swap(1, Ordering::Relaxed) == 0 {
+            /* bits clean, bar measured: the case the style bits cannot see, and the reason the
+               caption kept surviving every fix aimed at them. Once per episode — the poll runs
+               at 120 ms and this state can persist for seconds. */
+            let _ = boot_note(
+                app.clone(),
+                format!("[layer] bits clean but nc={} · {}", nc, guard),
+            );
+        }
+        if nc == 0 {
+            FRAME_NC_NOTED.store(0, Ordering::Relaxed);
+        }
         if FRAME_DIRTY.swap(0, Ordering::Relaxed) != 0 {
             let _ = boot_note(app.clone(), format!("[layer] frame clean · {}", guard));
         }
@@ -401,6 +453,10 @@ fn overlay_show(app: AppHandle, show: bool) -> Result<(), String> {
         if let Ok(h) = win.hwnd() {
             unsafe { win32::reassert_topmost(h.0 as win32::Hwnd) };
         }
+    }
+
+    if show {
+        spawn_frame_settle(app.clone(), "show");
     }
     Ok(())
 }
@@ -754,6 +810,51 @@ fn spawn_foreground_watch(app: AppHandle) {
 /// the backstop for the cases where it does not, and at two `GetWindowLongW` calls a tick
 /// it is not worth being cleverer about. 120 ms keeps the flash shorter than the blink it
 /// was reported as, and stays readable in the log, which names every repair.
+/// Re-strip and re-compose the layer's frame a few times after it becomes visible.
+///
+/// The caption is composed by DWM at moments none of the style watchers see: measured, a boot
+/// where the window was created, shown, and never once wrote a style we caught — no hook
+/// strip, no repair, and a caption band on screen the whole time, on a window whose style
+/// reads clean and whose non-client height is 0. The frame was latched once, at creation, and
+/// nothing since has asked the compositor to build another one.
+///
+/// Only a size change does that, so this asks for one — a pixel out and a pixel back — on a
+/// short ladder after the window appears. It runs from the build path as well as from
+/// `overlay_show`, because the startup path is exactly the one that was never covered.
+fn spawn_frame_settle(app: AppHandle, why: &'static str) {
+    std::thread::spawn(move || {
+        let mut slept = 0u64;
+        for step in [150u64, 450, 900, 1_650] {
+            std::thread::sleep(std::time::Duration::from_millis(step));
+            slept += step;
+            let h = LAYER_HWND.load(Ordering::Relaxed);
+            if h == 0 {
+                return;
+            }
+            let hwnd = h as win32::Hwnd;
+            let (style, ex) = unsafe {
+                (
+                    win32::GetWindowLongW(hwnd, win32::GWL_STYLE),
+                    win32::GetWindowLongW(hwnd, win32::GWL_EXSTYLE),
+                )
+            };
+            let dirty = win32::frame_dirty(style, ex);
+            let (ns, nex, _, _) = unsafe { win32::strip_frame(hwnd) };
+            let did = unsafe { win32::recompose_frame_slow(hwnd) };
+            let _ = boot_note(
+                app.clone(),
+                format!(
+                    "[layer] settle({}) at {}ms: {} 0x{:08X}/0x{:08X} -> 0x{:08X}/0x{:08X} recompose={}",
+                    why,
+                    slept,
+                    if dirty { "DIRTY" } else { "clean" },
+                    style, ex, ns, nex, did
+                ),
+            );
+        }
+    });
+}
+
 fn spawn_frame_guard(app: AppHandle) {
     std::thread::spawn(move || {
         let mut last = -1isize;
@@ -763,6 +864,33 @@ fn spawn_frame_guard(app: AppHandle) {
             /* say so when the hook has had to act: the poll below it will find nothing to
                repair in exactly the same situation where nothing happened at all, and the
                two are only distinguishable by this line. */
+            /* the hook's own account of what it caught, written out here because that is the
+               thread holding an app handle. Every line names the bits that were wrong, the
+               event that woke us, the thread which caused it, and the window in front at the
+               time — the four things the bare counter never told. */
+            for e in win32::drain_frame_events() {
+                let _ = boot_note(app.clone(), format!("[layer] {}", e));
+            }
+            /* the deferred half of every repair the hook made: reallocating the surface in
+               the same breath as the strip puts the caption back, because the paint for the
+               captioned style was already on its way */
+            let due = win32::RECOMPOSE_DUE.load(Ordering::Relaxed);
+            if due != 0 {
+                let now_tick = unsafe { win32::GetTickCount() };
+                if now_tick.wrapping_sub(due) as i32 >= 0 {
+                    win32::RECOMPOSE_DUE.store(0, Ordering::Relaxed);
+                    let h = LAYER_HWND.load(Ordering::Relaxed);
+                    if h != 0 {
+                        /* on this thread, which is allowed to sleep — the realloc only works
+                           if the compositor gets a chance to see the smaller size first */
+                        let did = unsafe { win32::recompose_frame_slow(h as win32::Hwnd) };
+                        let _ = boot_note(
+                            app.clone(),
+                            format!("[layer] deferred recompose due={}ms ago acted={}", now_tick.wrapping_sub(due), did),
+                        );
+                    }
+                }
+            }
             let now = win32::guard_status().1;
             if now != last {
                 last = now;
@@ -773,6 +901,44 @@ fn spawn_frame_guard(app: AppHandle) {
             }
         }
     });
+}
+
+/// The hook's recent strips, for a test script to poll at its own rate. Peeked rather than
+/// drained, so the guard thread still gets to write every one of them into the boot log.
+#[tauri::command]
+fn layer_frame_events() -> String {
+    let v = win32::peek_frame_events(8);
+    if v.is_empty() {
+        return "none".to_string();
+    }
+    v.join(" || ")
+}
+
+/// Let the card layer be activated, or refuse it — the keyboard door for the modals, and the
+/// switch that decides whether DWM ever gets to compose the white band. See `win32::set_focusable`.
+#[tauri::command]
+fn layer_focus(app: AppHandle, on: bool) -> String {
+    let h = LAYER_HWND.load(Ordering::Relaxed);
+    if h == 0 {
+        return "layer hwnd not registered".to_string();
+    }
+    let line = unsafe { win32::set_focusable(h as win32::Hwnd, on) };
+    let _ = boot_note(app, format!("[layer] focus {}", line));
+    line
+}
+
+#[tauri::command]
+fn layer_frame_report() -> String {
+    /* the caption question asked from the renderer's side. The 120 ms guard can only ever
+       look at the handle this process chose to keep, so a bar painted by a window outside
+       that handle — the WebView2 child, or something else entirely — is invisible to it.
+       A test script polling this every few hundred ms can line a screenshot up with the
+       window that owns the strip. */
+    let h = LAYER_HWND.load(Ordering::Relaxed);
+    if h == 0 {
+        return "layer hwnd not registered".to_string();
+    }
+    unsafe { win32::frame_report(h as win32::Hwnd) }
 }
 
 #[tauri::command]
@@ -1220,6 +1386,182 @@ fn receipts_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     })
 }
 
+/* ---------------------------------------------------------------- agent transport
+   Everything the language model can do is reachable through these four commands, and the
+   shape is deliberate: the renderer composes an OpenAI-compatible request and names the
+   endpoint, while the secret and the socket stay on this side. A non-streaming round trip
+   is enough here — one turn is one short JSON answer with at most a couple of tool calls,
+   and the UI is a confirmation sheet rather than a chat window. */
+
+/// Turn a base URL into a chat endpoint. Accepts what a user will actually paste —
+/// `https://api.x.com/v1`, with or without a trailing slash, or the full endpoint — and
+/// produces one of each.
+fn chat_endpoint(base: &str) -> Result<String, String> {
+    let trimmed = base.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        return Err("还没有填写接口地址".to_string());
+    }
+    if trimmed.ends_with("/chat/completions") {
+        return Ok(trimmed.to_string());
+    }
+    Ok(format!("{}/chat/completions", trimmed))
+}
+
+#[tauri::command]
+fn ai_chat(app: AppHandle, base: String, model: String, body: String) -> Result<String, String> {
+    let url = chat_endpoint(&base)?;
+    let key = secrets::load().unwrap_or_default();
+    let started = std::time::Instant::now();
+    let (status, text) = net::post_json(&url, &body, &key)?;
+    /* the request body carries the user's task list and the header carries the key, so the
+       log records only what cannot be inferred from a working call anyway: where it went,
+       which model answered, how long, how big, and what the provider said when it refused */
+    let host = url.split('/').nth(2).unwrap_or("?");
+    let _ = boot_note(
+        app.clone(),
+        format!(
+            "[ai] {} {} -> {} in {}ms, {}B",
+            host,
+            model,
+            status,
+            started.elapsed().as_millis(),
+            text.len()
+        ),
+    );
+    if (200..300).contains(&status) {
+        return Ok(text);
+    }
+    let mut snippet: String = text.chars().take(400).collect();
+    if text.chars().count() > 400 {
+        snippet.push('…');
+    }
+    Err(format!("HTTP {} · {}", status, snippet))
+}
+
+/// Ask the endpoint what it serves. Free of token cost, and it answers the two questions
+/// the settings screen cannot otherwise: is this URL + key reachable at all, and is this
+/// an OpenAI-shaped provider or a Gemini-shaped one.
+///
+/// The second one is not academic — Google's `/v1beta` is its native API, whose request
+/// body looks nothing like OpenAI's, while its OpenAI-compatible layer lives at
+/// `/v1beta/openai`. Pointing the agent at the native URL produces a 404 that reads like a
+/// broken key, so the shape is reported and the settings screen turns it into a sentence.
+#[tauri::command]
+fn ai_models(app: AppHandle, base: String) -> Result<serde_json::Value, String> {
+    let trimmed = base.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        return Err("还没有填写接口地址".to_string());
+    }
+    let url = format!("{}/models", trimmed);
+    let key = secrets::load().unwrap_or_default();
+    let started = std::time::Instant::now();
+    let (status, text) = net::get_json(&url, &key)?;
+    let ms = started.elapsed().as_millis() as u64;
+    let _ = boot_note(
+        app.clone(),
+        format!(
+            "[ai] GET {} -> {} in {}ms, {}B",
+            trimmed,
+            status,
+            ms,
+            text.len()
+        ),
+    );
+    let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(serde_json::Value::Null);
+    let mut ids: Vec<String> = Vec::new();
+    let mut shape = "unknown";
+    if let Some(arr) = v.get("data").and_then(|d| d.as_array()) {
+        shape = "openai";
+        for m in arr {
+            if let Some(id) = m.get("id").and_then(|i| i.as_str()) {
+                ids.push(id.to_string());
+            }
+        }
+    } else if let Some(arr) = v.get("models").and_then(|d| d.as_array()) {
+        // Gemini answers with {"models":[{"name":"models/gemini-2.5-flash", …}]}
+        shape = "gemini";
+        for m in arr {
+            if let Some(n) = m.get("name").and_then(|i| i.as_str()) {
+                ids.push(n.trim_start_matches("models/").to_string());
+            }
+        }
+    }
+    /* providers disagree on whether `error` is a string or an object with a message, and
+       this text is the whole point of the button — it is what tells the user their model
+       name is wrong rather than "连接失败" */
+    let err = match v.get("error") {
+        Some(e) => e
+            .get("message")
+            .and_then(|m| m.as_str())
+            .or_else(|| e.as_str())
+            .unwrap_or("")
+            .to_string(),
+        None => String::new(),
+    };
+    let err: String = err.chars().take(240).collect();
+    Ok(serde_json::json!({
+        "status": status,
+        "ms": ms,
+        "shape": shape,
+        "count": ids.len(),
+        "models": ids.into_iter().take(80).collect::<Vec<_>>(),
+        "error": err,
+    }))
+}
+
+/// The agent's own trace, kept in the host because the two windows are separate webviews:
+/// the turn happens in the card layer, the debug view is read in the panel, and neither
+/// shares a variable with the other.
+///
+/// Deliberately **not** in the data file. That file is the user's only copy of their tasks,
+/// it has no backup, and it is exportable in two clicks — diagnostic noise has no business
+/// living there, and a ring of the last steps is exactly what a restart is allowed to
+/// forget.
+static AI_TRACE: Mutex<Vec<serde_json::Value>> = Mutex::new(Vec::new());
+const AI_TRACE_CAP: usize = 80;
+
+#[tauri::command]
+fn ai_trace(entry: String) -> usize {
+    let v: serde_json::Value =
+        serde_json::from_str(&entry).unwrap_or_else(|_| serde_json::json!({ "raw": entry }));
+    let mut g = AI_TRACE.lock().unwrap_or_else(|p| p.into_inner());
+    g.push(v);
+    if g.len() > AI_TRACE_CAP {
+        let excess = g.len() - AI_TRACE_CAP;
+        g.drain(0..excess);
+    }
+    g.len()
+}
+
+#[tauri::command]
+fn ai_trace_list() -> Vec<serde_json::Value> {
+    AI_TRACE.lock().unwrap_or_else(|p| p.into_inner()).clone()
+}
+
+#[tauri::command]
+fn ai_trace_clear() -> usize {
+    let mut g = AI_TRACE.lock().unwrap_or_else(|p| p.into_inner());
+    g.clear();
+    g.len()
+}
+
+#[tauri::command]
+fn ai_key_save(key: String) -> Result<String, String> {
+    secrets::save(&key)?;
+    Ok(secrets::hint())
+}
+
+#[tauri::command]
+fn ai_key_hint() -> String {
+    secrets::hint()
+}
+
+#[tauri::command]
+fn ai_key_clear() -> Result<String, String> {
+    secrets::clear()?;
+    Ok(secrets::hint())
+}
+
 /// base64 by hand: the alternative was a new direct dependency on a crate that is only
 /// already in the tree because something else pulls it in, and this is 25 lines that
 /// cannot change under us.
@@ -1332,6 +1674,17 @@ pub fn run() {
             receipt_dir,
             monitors,
             set_deck_monitor,
+            ai_chat,
+            ai_models,
+            ai_trace,
+            ai_trace_list,
+            ai_trace_clear,
+            ai_key_save,
+            ai_key_hint,
+            layer_frame_report,
+            layer_frame_events,
+            layer_focus,
+            ai_key_clear,
             boot_note,
             app_info
         ])
@@ -1424,6 +1777,19 @@ pub fn run() {
                    white title bar reading "Pin To-Do 桌面卡片层" until the next repair.
                    repair_layer_frame no-ops when the style is already clean, and logs when
                    it is not — which also names the event that dirtied it. */
+                /* The band is not a live caption and not a style write: measured across a
+                   focus round trip, the style never changes and no repair fires, yet a cool
+                   grey strip with the window title appears the moment the layer is activated
+                   and stays. It is painted into the layered window's own redirection surface —
+                   DWM reports no frame at all (extended bounds == window rect) while the strip
+                   is plainly on screen. Only a size change reallocates that surface, and the
+                   moment it becomes visible to the user is when focus leaves this window, when
+                   the stale caption is shown in the inactive colour. So: one realloc, shortly
+                   after the loss. Not on Resized — that is what the realloc itself causes, and
+                   arming there would loop. */
+                if matches!(event, tauri::WindowEvent::Focused(false)) {
+                    win32::arm_recompose(300);
+                }
                 if let tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(_) = event {
                     let app = window.app_handle().clone();
                     if matches!(event, tauri::WindowEvent::Resized(_)) {

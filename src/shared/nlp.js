@@ -155,7 +155,10 @@
     m = cut(/(下{1,2}|本|这)?\s*(?:周|星期|礼拜)\s*([一二三四五六日天1-7])/);
     if (m) {
       out.dow = cnToNum(m[2].replace('天', '7').replace('日', '7'));
-      out.weekNext = m[1] ? (m[1].length >= 2 ? 2 : 1) : 0;
+      /* only 下 means "next". The length test that used to decide this counted characters
+         instead of meaning, so 本周五 and 这周五 — one character, like 下 — were pushed a
+         whole week forward, and "本周五交报告" landed seven days late. */
+      out.weekNext = m[1] && m[1].charAt(0) === '下' ? (m[1].length >= 2 ? 2 : 1) : 0;
     }
 
     /* ---- time ---- */

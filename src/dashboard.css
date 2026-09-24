@@ -1287,3 +1287,16 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
    a resolution, so they wrap instead of overflowing the panel. */
 .mon-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .mon-row .btn { font-size: 10px; }
+
+/* The agent's trace: one row per step, newest first, grouped under a turn header. It is
+   read in bursts while someone debugs a sentence, so it is a scroll box rather than a
+   growing list, and the warning stages have to be findable by eye alone. */
+.ai-trace { max-height: 220px; overflow: auto; margin-top: 6px; border: 1px solid var(--edge); }
+.ai-trace .trh { font-size: 9px; letter-spacing: .12em; color: var(--ink-3); padding: 3px 6px;
+  background: var(--paper-hi); border-bottom: 1px solid var(--edge); position: sticky; top: 0; }
+.ai-trace .tr { display: flex; gap: 8px; align-items: baseline; padding: 3px 6px;
+  border-bottom: 1px dotted var(--rule); font-size: 10px; line-height: 1.45; }
+.ai-trace .tr b { flex: 0 0 96px; font-weight: 700; color: var(--ink-2); font-family: var(--font-mono); }
+.ai-trace .tr span { flex: 1 1 auto; min-width: 0; word-break: break-word; }
+.ai-trace .tr.warn { background: color-mix(in srgb, var(--brick) 12%, transparent); }
+.ai-trace .tr.warn b { color: var(--brick); }

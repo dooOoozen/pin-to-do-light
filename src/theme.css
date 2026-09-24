@@ -1108,7 +1108,7 @@ input[type="range"] { accent-color: var(--brick); }
    ==========================================================================
    Not glass and not mist: a screen-printed poster. One saturated electric blue doing
    the structural work, white and near-black as the only other values, a lime disc for
-   the moon, and halftone where the print build uses paper grain. Flat again — the
+   the moon. Flat again — the
    reference gets its depth from overlapping shapes and hard cuts, not from shadows —
    so elevation is off and the rules are 2px. */
 
@@ -1196,9 +1196,11 @@ input[type="range"] { accent-color: var(--brick); }
   --plate-overdue: #04101c;
 }
 
-/* the screen-print: a dot where the grain was, at print frequency */
+/* the screen-print used to carry a halftone here; the dots were taken out on request, and
+   the material is all the flatter for it */
 :root[data-style="poster"] {
-  --tex-grain: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ink) 15%, transparent) 1px, transparent 1.7px);
+/* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
+  --tex-grain: none;
   --tex-size: 5px 5px;
   --tex-size-bg: 5px 5px;
   --tex-blend: normal;
@@ -1573,3 +1575,274 @@ input[type="range"] { accent-color: var(--brick); }
    the window click-through. The rig switches its own subtree back on. */
 .rcp-backdrop.rcp-auto { background: transparent; pointer-events: none; }
 .rcp-backdrop.rcp-auto .rcp { pointer-events: auto; }
+
+/* ==========================================================================
+   MATERIAL: 图纸 / TECHNICAL BLUEPRINT  (data-style="blueprint")
+   ==========================================================================
+   The drawing sheet, in one colour: hairline circles and a dashed axis where a header
+   would be, no paper grain at all, and no elevation — a plate
+   is held on the page by its 1px edge, not by a shadow. Every accent is a step on one grey
+   ladder, so priority is carried by weight and position and the only thing that can be red
+   is nothing. Small uppercase monospace labels, square corners, circles for the dots. */
+:root[data-style="blueprint"] {
+  --paper: #f6f6f4; --paper-hi: #ffffff; --paper-lo: #ecebe8; --paper-dim: #dedcd6;
+  --ink: #101010; --ink-2: #3c3c3a; --ink-3: #8b8b88;
+  --rule: color-mix(in srgb, var(--ink) 22%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 55%, transparent);
+  --grid-line: color-mix(in srgb, var(--ink) 6%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 11%, transparent);
+  /* the plate is held on the sheet by a hairline, not by elevation */
+  --pop-shadow: none; --pop-shadow-sm: none;
+  --ink-glow: color-mix(in srgb, var(--ink) 92%, transparent);
+  --hit-line: color-mix(in srgb, var(--ink) 30%, transparent);
+  --wm-ink: color-mix(in srgb, var(--ink) 12%, transparent);
+  --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
+  /* the brief is "no color", so every accent is a step on one grey ladder and the priority
+     signal has to be carried by weight and position instead */
+  --brick: #2a2a28; --brick-ink: #ffffff;
+  --vermillion: #4d4d4a; --honey: #6f6f6b; --sage: #5c5c59; --teal: #45453f;
+  --forest: #333330; --forest-ink: #f4f4f1; --slate: #6a6a66; --slate-ink: #ffffff;
+  --khaki: #8f8f8a; --plum: #3d3d3a; --ochre: #575753;
+  --cream: #ffffff; --surface-hi: #ffffff; --head-hi: #ffffff; --field-focus: #ffffff;
+  --plate-day: #ffffff; --plate-today: #f0f0ed; --plate-overdue: #e6e6e2;
+  --plate-mod: #ffffff;
+  --memo-rule: color-mix(in srgb, var(--ink) 18%, transparent);
+  --edge: var(--ink);
+  --r-plate: 0; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
+  --bevel: none;
+/* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
+  --tex-grain: none;
+  --tex-size: 7px 7px; --tex-size-bg: 7px 7px; --tex-blend: normal;
+  --font-display: var(--font-mono);
+}
+:root[data-style="blueprint"][data-theme="ink"] {
+  --paper: #0d0e0f; --paper-hi: #16181a; --paper-lo: #090a0a; --paper-dim: #1e2124;
+  --ink: #f2f2ef; --ink-2: #c3c4c0; --ink-3: #83858a;
+  --brick: #e4e4df; --brick-ink: #0d0e0f;
+  --vermillion: #b6b7b2; --honey: #93948f; --sage: #a9aaa5; --teal: #c2c3be;
+  --forest: #d4d5d0; --forest-ink: #0d0e0f; --slate: #8e9095; --slate-ink: #0d0e0f;
+  --khaki: #7c7e82; --plum: #cfd0cb; --ochre: #a5a6a1;
+  --cream: #16181a; --surface-hi: #16181a; --head-hi: #0d0e0f; --field-focus: #1c1f22;
+  --plate-day: #16181a; --plate-today: #1e2124; --plate-overdue: #26292c;
+  --plate-mod: #121314;
+/* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
+  --tex-grain: none;
+}
+:root[data-style="blueprint"] .hud-head {
+  /* the compass construction: two hairline circles and a dashed axis on bare paper */
+  background-color: var(--paper-hi);
+  background-image:
+    radial-gradient(circle at 50% 50%, transparent 0 7.4px, color-mix(in srgb, var(--ink) 60%, transparent) 7.4px 8px, transparent 8px),
+    radial-gradient(circle at 50% 50%, transparent 0 13px, color-mix(in srgb, var(--ink) 28%, transparent) 13px 13.6px, transparent 13.6px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--ink) 42%, transparent) 0 5px, transparent 5px 12px);
+  background-repeat: no-repeat, no-repeat, repeat-x;
+  background-size: 34px 34px, 30px 30px, auto 1px;
+  background-position: 12px 50%, 14px 50%, 0 50%;
+  border-bottom: 1px solid var(--edge);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+:root[data-style="blueprint"] .hud,
+:root[data-style="blueprint"] .hud-thin,
+:root[data-style="blueprint"] .modal-panel,
+:root[data-style="blueprint"] .plan-pop,
+:root[data-style="blueprint"] .deck-face,
+:root[data-style="blueprint"] .deck-sheet,
+:root[data-style="blueprint"] .todo-card { border-width: 1px; border-color: var(--edge); }
+:root[data-style="blueprint"] .idx-mark {
+  background: transparent; color: var(--ink);
+  border: 1px solid var(--edge); border-radius: 50%;
+  font-family: var(--font-mono); font-weight: 400;
+}
+:root[data-style="blueprint"] .btn,
+:root[data-style="blueprint"] .icon-btn {
+  background: transparent; color: var(--ink);
+  border: 1px solid var(--edge); border-radius: 0;
+  font-family: var(--font-mono); letter-spacing: .12em; text-transform: uppercase;
+}
+:root[data-style="blueprint"] .btn:hover,
+:root[data-style="blueprint"] .icon-btn:hover { background: var(--ink); color: var(--paper-hi); }
+:root[data-style="blueprint"] .btn.primary { background: var(--ink); color: var(--paper-hi); }
+:root[data-style="blueprint"] .day-head { font-family: var(--font-mono); letter-spacing: .14em; }
+
+/* ==========================================================================
+   MATERIAL: 紫电拼贴 / PURPLE COLLAGE  (data-style="memphis")
+   ==========================================================================
+   Two colours and a hard edge: electric purple and cobalt laid over white, each plate
+   casting a flat block of its own colour rather than a soft shadow, because the collage is
+   stacked rather than lifted. Halftone dots carry the page grain, the corners are generous,
+   and the pink and acid yellow the reference leans on are held back to ink — as a text
+   colour on the night plate they measured 1.53:1, which is not a restrained palette but a
+   missing one. */
+:root[data-style="memphis"] {
+  --paper: #f1eff6; --paper-hi: #ffffff; --paper-lo: #e6e3ef; --paper-dim: #d6d2e3;
+  --ink: #171225; --ink-2: #453a63; --ink-3: #7d739c;
+  --rule: color-mix(in srgb, var(--ink) 18%, transparent);
+  --rule-strong: color-mix(in srgb, var(--brick) 52%, transparent);
+  --grid-line: color-mix(in srgb, var(--brick) 7%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--brick) 13%, transparent);
+  /* the collage is stacked, so a plate casts a hard flat block of its own colour */
+  --pop-shadow: 6px 6px 0 color-mix(in srgb, var(--slate) 30%, transparent), 0 18px 34px rgba(23,18,37,.14), 0 34px 62px rgba(23,18,37,.10);
+  --pop-shadow-sm: 3px 3px 0 color-mix(in srgb, var(--slate) 26%, transparent);
+  --ink-glow: color-mix(in srgb, var(--ink) 92%, transparent);
+  --hit-line: color-mix(in srgb, var(--brick) 34%, transparent);
+  --wm-ink: color-mix(in srgb, var(--brick) 22%, transparent);
+  --hatch-line: color-mix(in srgb, var(--brick) 8%, transparent);
+  --brick: #6d28d9; --brick-ink: #f7f2ff;
+  --vermillion: #3a3350; --honey: #6f6a86; --sage: #2047d6; --teal: #00766c;
+  --forest: #2f2f8f; --forest-ink: #eef0ff; --slate: #2047d6; --slate-ink: #eef2ff;
+  --khaki: #6f6a86; --plum: #3a3350; --ochre: #6f6a86;
+  --cream: #fdfbff; --surface-hi: #ffffff; --head-hi: #6d28d9; --field-focus: #fbf7ff;
+  --plate-day: #ffffff;
+  --plate-today: color-mix(in srgb, var(--honey) 22%, var(--paper));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 16%, var(--paper));
+  --plate-mod: #ffffff;
+  --memo-rule: color-mix(in srgb, var(--brick) 26%, transparent);
+  --edge: var(--ink);
+  --r-plate: 20px; --r-ctl: 8px; --r-pill: 999px; --r-dot: 50%;
+  --bevel: none;
+/* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
+  --tex-grain: none;
+  --tex-size: 9px 9px; --tex-size-bg: 9px 9px; --tex-blend: normal;
+  --font-ui: "Segoe UI Variable Display", "Trebuchet MS", "Microsoft YaHei", ui-sans-serif, sans-serif;
+  --font-display: var(--font-ui);
+}
+:root[data-style="memphis"][data-theme="ink"] {
+  --paper: #120c24; --paper-hi: #1b1338; --paper-lo: #0c0819; --paper-dim: #241a47;
+  --ink: #f2ecff; --ink-2: #c3b4ea; --ink-3: #8d7cb8;
+  --brick: #a86bff; --brick-ink: #170f2b;
+  --vermillion: #c9b6ea; --honey: #9f93c4; --sage: #6f9cff; --teal: #35e0d0;
+  --forest: #7f7fff; --forest-ink: #120c24; --slate: #6f9cff; --slate-ink: #120c24;
+  --khaki: #9f93c4; --plum: #c9b6ea; --ochre: #9f93c4;
+  --cream: #1b1338; --surface-hi: #1b1338; --head-hi: #2a1c55; --field-focus: #221741;
+  --plate-day: #1b1338; --plate-today: #241a47; --plate-overdue: #3a1e3f;
+  --plate-mod: #171030;
+  --pop-shadow: 6px 6px 0 color-mix(in srgb, var(--slate) 40%, transparent), 0 18px 34px rgba(0,0,0,.5);
+  --pop-shadow-sm: 3px 3px 0 color-mix(in srgb, var(--slate) 34%, transparent);
+/* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
+  --tex-grain: none;
+}
+:root[data-style="memphis"] .hud-head {
+  /* a purple field with a pink wedge and a gold rule laid over it, cut off square */
+  background-color: var(--brick);
+  color: var(--brick-ink);
+  border-bottom: 2px solid var(--edge);
+  background-image:
+    linear-gradient(112deg, transparent 0 74%, color-mix(in srgb, var(--vermillion) 92%, transparent) 74% 82%, transparent 82%),
+    repeating-linear-gradient(112deg, transparent 0 13px, color-mix(in srgb, var(--honey) 60%, transparent) 13px 15px);
+  font-weight: 700; letter-spacing: .05em;
+}
+:root[data-style="memphis"] .hud,
+:root[data-style="memphis"] .hud-thin,
+:root[data-style="memphis"] .modal-panel,
+:root[data-style="memphis"] .plan-pop,
+:root[data-style="memphis"] .deck-face,
+:root[data-style="memphis"] .deck-sheet,
+:root[data-style="memphis"] .todo-card { border-width: 2px; border-color: var(--edge); }
+:root[data-style="memphis"] .idx-mark { background: var(--vermillion); color: #fff; border-color: var(--edge); border-radius: 5px; }
+:root[data-style="memphis"] .idx-mark.plain { background: transparent; color: var(--ink); }
+:root[data-style="memphis"] .btn,
+:root[data-style="memphis"] .icon-btn { border-width: 2px; box-shadow: var(--pop-shadow-sm); }
+:root[data-style="memphis"] .btn:hover,
+:root[data-style="memphis"] .icon-btn:hover { background: var(--honey); color: var(--ink); }
+:root[data-style="memphis"] .btn.primary { background: var(--ink); color: var(--paper-hi); }
+:root[data-style="memphis"] .mod-head { color: var(--brick); }
+
+/* ==========================================================================
+   MATERIAL: 黑黄战术 / BLACK AND HI-VIS  (data-style="hazard")
+   ==========================================================================
+   Signage paint on a dark floor: one hi-vis yellow does the work, and everything the
+   reference layers on top of it — radar arcs, barcodes, target brackets — is drawn with
+   gradients rather than clip-path, because a window region has to match the painted box or
+   the cut corners keep on swallowing desktop clicks. Daylight is the concrete-and-yellow
+   reading of the same material; hi-vis as a type colour on a light ground is unreadable, so
+   the cyan and magenta accents are held at ink until the plate goes dark. */
+:root[data-style="hazard"] {
+  /* daylight half of the same material: the concrete-and-yellow signage reading, because a
+     hi-vis accent that is legible as a block is not legible as type on a light ground */
+  --paper: #e6e6e1; --paper-hi: #f3f3ee; --paper-lo: #d8d8d2; --paper-dim: #c6c6bf;
+  --ink: #0d0f0c; --ink-2: #3a3f36; --ink-3: #757b6f;
+  --rule: color-mix(in srgb, var(--ink) 26%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 60%, transparent);
+  --grid-line: color-mix(in srgb, var(--ink) 7%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 14%, transparent);
+  --pop-shadow: 0 2px 0 color-mix(in srgb, var(--ink) 40%, transparent), 0 16px 30px rgba(13,15,12,.22), 0 32px 60px rgba(13,15,12,.14);
+  --pop-shadow-sm: 0 1px 0 color-mix(in srgb, var(--ink) 34%, transparent);
+  --ink-glow: color-mix(in srgb, var(--ink) 92%, transparent);
+  --hit-line: color-mix(in srgb, var(--brick) 46%, transparent);
+  --wm-ink: color-mix(in srgb, var(--ink) 16%, transparent);
+  --hatch-line: color-mix(in srgb, var(--brick) 22%, transparent);
+  --brick: #4a5307; --brick-ink: #f4ff9a;
+  --vermillion: #4a5057; --honey: #c9d400; --sage: #4a5057; --teal: #4a5057;
+  --forest: #23301c; --forest-ink: #eef5e2; --slate: #4a5057; --slate-ink: #eef1f4;
+  --khaki: #6f6a3a; --plum: #4a5057; --ochre: #6f6a3a;
+  --cream: #f3f3ee; --surface-hi: #f3f3ee; --head-hi: #0d0f0c; --field-focus: #f7f7f2;
+  --plate-day: #f3f3ee; --plate-today: color-mix(in srgb, var(--honey) 26%, var(--paper));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 18%, var(--paper));
+  --plate-mod: #ecece6;
+  --memo-rule: color-mix(in srgb, var(--ink) 22%, transparent);
+  --edge: var(--ink);
+  --r-plate: 2px; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
+  --bevel: none;
+  --tex-grain: repeating-linear-gradient(115deg, color-mix(in srgb, var(--ink) 5%, transparent) 0 1px, transparent 1px 26px);
+  --tex-size: auto; --tex-size-bg: auto; --tex-blend: normal;
+  --font-display: var(--font-mono);
+  --font-ui: "Segoe UI Variable Display", "Microsoft YaHei", ui-sans-serif, sans-serif;
+}
+:root[data-style="hazard"][data-theme="ink"] {
+  --paper: #0a0b09; --paper-hi: #141612; --paper-lo: #060706; --paper-dim: #1d201a;
+  --ink: #eef2e6; --ink-2: #b6bdab; --ink-3: #757c6c;
+  --brick: #d9ff2f; --brick-ink: #0a0b09;
+  --vermillion: #8fa0b0; --honey: #f0ff5a; --sage: #8fa0b0; --teal: #8fa0b0;
+  --forest: #9aa68c; --forest-ink: #0a0b09; --slate: #8fa0b0; --slate-ink: #0a0b09;
+  --khaki: #c9c07a; --plum: #8fa0b0; --ochre: #c9c07a;
+  --cream: #141612; --surface-hi: #141612; --head-hi: #0f110d; --field-focus: #191c16;
+  --plate-day: #141612; --plate-today: #1d201a; --plate-overdue: #241a22;
+  --plate-mod: #101210;
+  --pop-shadow: 0 0 0 1px color-mix(in srgb, var(--brick) 16%, transparent), 0 18px 40px rgba(0,0,0,.6);
+  --pop-shadow-sm: 0 0 0 1px color-mix(in srgb, var(--brick) 14%, transparent);
+  --tex-grain: repeating-linear-gradient(115deg, color-mix(in srgb, var(--brick) 5%, transparent) 0 1px, transparent 1px 26px);
+}
+:root[data-style="hazard"] .hud-head {
+  /* a black signage bar: hi-vis shard on the left, barcode telemetry on the right */
+  background-color: var(--head-hi);
+  color: var(--brick);
+  border-bottom: 1px solid var(--edge);
+  background-image:
+    linear-gradient(112deg, color-mix(in srgb, var(--honey) 92%, transparent) 0 3.5%, transparent 3.5%),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--brick) 70%, transparent) 0 1px, transparent 1px 4px, transparent 4px 7px, color-mix(in srgb, var(--brick) 40%, transparent) 7px 8px, transparent 8px 14px);
+  background-repeat: no-repeat, no-repeat;
+  background-size: 100% 100%, 84px 12px;
+  background-position: 0 0, calc(100% - 12px) 50%;
+  font-family: var(--font-mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+:root[data-style="hazard"] .hud,
+:root[data-style="hazard"] .hud-thin,
+:root[data-style="hazard"] .modal-panel,
+:root[data-style="hazard"] .plan-pop,
+:root[data-style="hazard"] .deck-face,
+:root[data-style="hazard"] .deck-sheet,
+:root[data-style="hazard"] .todo-card { border-width: 1px; border-color: var(--edge); }
+:root[data-style="hazard"] .modal-panel {
+  /* the target-lock brackets, four corners of the same gradient */
+  background-image:
+    linear-gradient(var(--brick), var(--brick)), linear-gradient(var(--brick), var(--brick)),
+    linear-gradient(var(--brick), var(--brick)), linear-gradient(var(--brick), var(--brick));
+  background-repeat: no-repeat;
+  background-size: 16px 2px, 2px 16px, 16px 2px, 2px 16px;
+  background-position: 6px 6px, 6px 6px, calc(100% - 6px) calc(100% - 7px), calc(100% - 7px) calc(100% - 6px);
+}
+:root[data-style="hazard"] .idx-mark { background: var(--honey); color: #0a0b09; border-color: var(--edge); border-radius: 0; font-family: var(--font-mono); }
+:root[data-style="hazard"] .btn,
+:root[data-style="hazard"] .icon-btn {
+  border: 1px solid color-mix(in srgb, var(--ink) 55%, transparent);
+  border-radius: 0; font-family: var(--font-mono); letter-spacing: .1em; text-transform: uppercase;
+}
+:root[data-style="hazard"] .btn:hover,
+:root[data-style="hazard"] .icon-btn:hover { background: var(--honey); color: #0a0b09; border-color: var(--edge); }
+:root[data-style="hazard"] .btn.primary { background: var(--brick); color: var(--brick-ink); border-color: var(--edge); }
+:root[data-style="hazard"] .day-head { font-family: var(--font-mono); letter-spacing: .14em; }
