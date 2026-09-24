@@ -85,6 +85,10 @@
          command arguments by name, and a mismatch silently yields None for an
          Option<Vec<T>>, which here meant "whole window" every single time */
       setShape: (spans) => { invoke('set_layer_shape', { spans: spans === null ? null : spans }); },
+      /* the card layer normally refuses window activation, which is what stops DWM
+         composing a caption band over the top of it. A modal with a text field is the
+         one thing that needs the keyboard, so it opens that door and closes it again. */
+      setLayerFocus: (value) => { invoke('layer_focus', { on: !!value }); return Promise.resolve(); },
       hideOverlay: () => window.API.op({ type: 'settings:update', patch: { overlay: false } }),
       showOverlay: () => window.API.op({ type: 'settings:update', patch: { overlay: true } }),
       forceShowOverlay: () => { invoke('overlay_show', { show: true }); invoke('cursor_watch', { on: true }); },
@@ -137,6 +141,29 @@
       receiptDir: () => invoke('receipt_dir'),
       monitors: () => invoke('monitors'),
       setDeckMonitor: (index) => invoke('set_deck_monitor', { index: Number(index) }),
+      /* The agent's whole network surface. `aiChat` takes the request body as a string and
+         returns the provider's response body as a string; the endpoint's base and the model
+         name come from the settings, and the API key never crosses into this process — the
+         host reads it from Credential Manager when it signs the request, which is why the
+         only thing the renderer can ask about the key is a hint. */
+      aiChat: (base, model, body) => invoke('ai_chat', {
+        base: String(base || ''), model: String(model || ''),
+        body: typeof body === 'string' ? body : JSON.stringify(body)
+      }),
+      /* free: asks the endpoint what it serves, so "配置对了吗" has an answer that does not
+         cost tokens — and reveals whether the URL is an OpenAI-shaped one at all */
+      aiModels: (base) => invoke('ai_models', { base: String(base || '') }),
+      /* the trace lives in the host so the panel can read what the card layer did */
+      aiTrace: (entry) => invoke('ai_trace', { entry: typeof entry === 'string' ? entry : JSON.stringify(entry) }),
+      aiTraceList: () => invoke('ai_trace_list'),
+      aiTraceClear: () => invoke('ai_trace_clear'),
+      aiKeySave: (key) => invoke('ai_key_save', { key: String(key || '') }),
+      aiKeyHint: () => invoke('ai_key_hint'),
+      /* the caption question: one line naming the layer window, its children and what is
+         in front of it, so a screenshot can be tied to the window that owns a strip */
+      frameReport: () => invoke('layer_frame_report'),
+      frameEvents: () => invoke('layer_frame_events'),
+      aiKeyClear: () => invoke('ai_key_clear'),
       workArea: async () => invoke('work_area'),
       appInfo: async () => invoke('app_info'),
       exportData: async () => JSON.stringify(state, null, 2),
@@ -210,6 +237,7 @@
     setIgnoreMouse: () => {},
     setShape: () => {},
     setLayerShape: () => {},
+    setLayerFocus: () => Promise.resolve(),
     hideOverlay: () => document.documentElement.classList.add('overlay-hidden'),
     showOverlay: () => document.documentElement.classList.remove('overlay-hidden'),
     forceShowOverlay: () => document.documentElement.classList.remove('overlay-hidden'),
@@ -237,6 +265,24 @@
     appInfo: async () => ({ version: 'web', mode: 'browser' }),
     exportData: async () => JSON.stringify(state, null, 2),
     importData: async () => ({ ok: false, error: 'browser-mode' }),
+    /* No host, no credential store, no socket: the agent is unavailable rather than
+       simulated, so a browser build can never look like it worked while sending nothing. */
+    aiChat: async () => { throw new Error('browser-mode：没有本地宿主，AI 不可用'); },
+    aiModels: async () => { throw new Error('browser-mode'); },
+    /* in a plain browser there is no host to hold the ring, so the page keeps its own */
+    aiTrace: async (entry) => {
+      var t = (window.__aiTrace = window.__aiTrace || []);
+      t.push(typeof entry === 'string' ? JSON.parse(entry) : entry);
+      if (t.length > 80) t.splice(0, t.length - 80);
+      return t.length;
+    },
+    aiTraceList: async () => (window.__aiTrace = window.__aiTrace || []),
+    aiTraceClear: async () => { window.__aiTrace = []; return 0; },
+    aiKeySave: async () => { throw new Error('browser-mode'); },
+    aiKeyHint: async () => '浏览器模式不可用',
+    frameReport: async () => '浏览器模式不可用',
+    frameEvents: async () => '浏览器模式不可用',
+    aiKeyClear: async () => '浏览器模式不可用',
     setLoginItem: async () => ({ ok: false, error: 'browser-mode' }),
     win: { minimize() {}, toggleMax() {}, close() { window.close(); } }
   };

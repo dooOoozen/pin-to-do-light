@@ -32,6 +32,7 @@
   let mode = 'collapsed';
   let activeGroupId = null;
   let modalOpen = false;
+  let modalPinned = false;
   let drag = null;
   let deckDrag = null;
   let suppressClickUntil = 0;
@@ -96,7 +97,10 @@
        so the assertions do not have to know which mechanism is switched on */
     swallowsAt: (x, y) => {
       if (shapeOn) {
-        const spans = buildSpans();
+        /* answer from the region the OS was actually handed, not from what the builder
+           intended: the caption-band clip happens at the push, and a probe that reads the
+           intent reports the region it wishes it had */
+        const spans = lastPushed === null ? buildSpans() : lastPushed;
         if (spans === null) return true;
         for (let i = 0; i < spans.length; i++) {
           const r = spans[i];
@@ -676,6 +680,22 @@
 
   /* ---------------------------------------------------------------- mode */
 
+  /* The hover lift is a CSS `:hover` rule, so no JS guard can talk it out of the way: a
+     pointer that arrives with the deck is already over wherever the cards are going to land,
+     and the card scales up while the box is still opening — which is what "悬停卡片和卡盒同时
+     弹出来，重叠在一起" describes. Taking the cards out of the pointer for the length of the
+     opening is the only thing that stops a lift that is driven by the style engine, and the
+     window is shorter than the animation, so no click a person aims at a card can fall in it. */
+  let popSuppressTimer = null;
+  function suppressHover(ms) {
+    doc.body.classList.add('popping');
+    if (popSuppressTimer) clearTimeout(popSuppressTimer);
+    popSuppressTimer = setTimeout(() => {
+      popSuppressTimer = null;
+      doc.body.classList.remove('popping');
+    }, ms);
+  }
+
   function setMode(next) {
     if (mode === next) return;
     const prev = mode;
@@ -699,6 +719,7 @@
       queueHitTest();
     });
     /* cards are still flying — refresh once they have landed */
+    if (prev === 'collapsed' && (next === 'overview' || next === 'deployed')) suppressHover(430);
     setTimeout(() => { refreshHitRects(true); hitTest(); }, 430);
   }
 
@@ -798,6 +819,7 @@
     applyTuck(false);
     markRectsDirty(900);
     popGuardUntil = Date.now() + 360;   /* let the pop finish before hover-spread */
+    suppressHover(380);
     setTimeout(() => { refreshHitRects(true); hitTest(); }, 340);
   }
 
@@ -1886,6 +1908,47 @@
     }, 40);
   }
 
+  /* DWM lays a caption band across the top of this window — see `win32::set_focusable` — and
+     the window region is the only thing that decides whether those pixels reach the screen,
+     because a region clips drawing as well as input. So: give up the strip, whenever nothing
+     paints there. That covers every state that claims the top edge — the modal, whose
+     backdrop wants the whole window, and the scatter, which wants it to gather the cards back
+     — instead of the first cut of this clip, which was gated to modals and so left the band
+     in place through a spread. A card up there outranks a caption, so the strip is only
+     handed back when something actually reaches it. */
+  const CAPTION_LOGICAL = 32;   /* SM_CYCAPTION plus the frame, in the same space as the spans */
+  function bandClipped(spans) {
+    const band = CAPTION_LOGICAL + 2;
+    /* The question is what paints up there, not what the claim covers: a full-window claim
+       always reaches y=0, and testing the claim is why the first cut of this clip never
+       fired once. The modal's own shell is skipped for the same reason — it is a full-window
+       positioning host by construction, and only the panel inside it puts pixels anywhere. */
+    let top = Infinity;
+    liveNodes().forEach((n) => {
+      if (n === el.modal) return;
+      const b = n.getBoundingClientRect();
+      if (b.width <= 0 || b.height <= 0) return;
+      /* a full-window positioning host paints nothing of its own — the layer has several
+         (#cardLayer, the toast column) and they all report top=0, which is the same trap
+         `regionLeaks()` already had to learn: measure what paints, not what is mounted */
+      if (b.width >= area.width * 0.98 && b.height >= area.height * 0.98) return;
+      if (b.top < top) top = b.top;
+    });
+    const panel = el.modal.querySelector ? el.modal.querySelector('.modal-panel') : null;
+    if (panel) {
+      const pb = panel.getBoundingClientRect();
+      if (pb.width > 0 && pb.height > 0 && pb.top < top) top = pb.top;
+    }
+    if (top < band) return spans;
+    const out = [];
+    for (let i = 0; i < spans.length; i++) {
+      const r = spans[i];
+      if (r.y + r.height <= band) continue;
+      out.push(r.y >= band ? r : { x: r.x, y: band, width: r.width, height: r.y + r.height - band });
+    }
+    return out.length ? out : spans;
+  }
+
   function applyShape() {
     const wasMoving = movingNow();
     const spans = buildSpans();
@@ -1899,8 +1962,13 @@
     /* a full-window rect rather than null: SetWindowRgn(NULL) is the one branch
        whose behaviour under software compositing is unverified, and an explicit
        rect the size of the window is the same shape without it */
-    API.setShape(spans === null ? [{ x: 0, y: 0, width: area.width, height: area.height }] : spans);
-    lastPushed = spans;
+    const push = bandClipped(spans === null
+      ? [{ x: 0, y: 0, width: area.width, height: area.height }]
+      : spans);
+    API.setShape(push);
+    /* record what was handed to the OS, not what was intended: `pushedLag()` exists to
+       catch the difference between the two */
+    lastPushed = push;
     shapePushed = true;
     /* the settle pass is the only moment the spread is exactly where it will live, so it
        is the only honest time to record the envelope */
@@ -2386,6 +2454,11 @@
     document.addEventListener('mousedown', (ev) => {
       if (!modalOpen) return;
       if (ev.target.closest('.modal-panel')) return;
+      /* The assistant answers seconds after the click, and while it is thinking the hand
+         goes somewhere else — to the clock, to the task the sentence refers to — and that
+         click used to throw the draft sheet away with nothing to come back to. Only the AI
+         flow raises this, so a plain quick-add still dismisses from the outside. */
+      if (modalPinned) return;
       if (ev.target.closest('.modal-backdrop')) closeModal();
     });
 
@@ -2715,6 +2788,10 @@
     el.modal.classList.add('open', 'interactive');
     trace('modal open:' + (($('h2', el.modal) || {}).textContent || '?'));
     setIgnore(false);
+    /* this is the one moment the layer is allowed to become the active window: a text field
+       in a window that refuses activation has no keyboard. Asked for before onMount, because
+       that is where the first input.focus() happens. */
+    API.setLayerFocus(true);
     markRectsDirty(500);
     refreshHitRects(true);
     const closeBtn = $('[data-act="close"]', el.modal);
@@ -2730,6 +2807,11 @@
 
   function closeModal() {
     modalOpen = false;
+    /* the pin belongs to this modal's AI flow, never to the next one to open */
+    modalPinned = false;
+    /* close the keyboard door again, and with it the window activation that lets DWM paint
+       the band: the host schedules the one realloc that clears whatever the session left */
+    API.setLayerFocus(false);
     el.modal.classList.remove('open', 'interactive');
     el.modal.innerHTML = '';
     if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }
@@ -2742,14 +2824,20 @@
   function openQuickModal() {
     cancelCollapse();
     if (mode === 'collapsed') setMode('overview');
+    /* The agent is opt-in twice over: the setting has to be on, and the endpoint has to be
+       https (see data.js). With it off this modal is exactly what it was before — no entry,
+       no request, nothing to click by accident. */
+    const ai = !!(window.Agent && Agent.settings(S).on);
     const body =
       '<div class="quick-line">' +
       '  <input class="input" id="qText" placeholder="明天五点吃火锅 -日常" autocomplete="off" />' +
       '  <span class="input-key">ENTER</span>' +
       '</div>' +
-      '<div class="quick-preview tiny faint" id="qPreview">一句话登记：自动识别日期、重复与分组</div>';
+      '<div class="quick-preview tiny faint" id="qPreview">一句话登记：自动识别日期、重复与分组</div>' +
+      (ai ? '<div id="qAi" class="ai-box"></div>' : '');
     const foot =
       '<div class="spacer"></div>' +
+      (ai ? '<button class="btn" data-act="ai" title="让助手安排（Shift+ENTER）">✨ 安排</button>' : '') +
       '<button class="btn ghost" data-act="cancel">取消</button>' +
       '<button class="btn primary" data-act="save">登记 ADD</button>';
 
@@ -2798,7 +2886,182 @@
       input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); save(); } });
       $('[data-act="save"]', root).addEventListener('click', save);
       $('[data-act="cancel"]', root).addEventListener('click', closeModal);
+      if (ai) bindAgent(root, input);
       setTimeout(() => input.focus(), 40);
+    });
+  }
+
+  /* ---- the agent inside the quick-add modal ----------------------------------------
+     Everything rendered here is a DRAFT. The only path to the store is the 确认写入 button,
+     which reads the DOM back — so what the user edited is what gets written, not what the
+     model said. A question from the model becomes chips rather than a chat bubble, because
+     one click and a re-ask is the whole clarification loop this needs. */
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function isoToLocalInput(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
+      'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+  function localInputToIso(v) {
+    if (!v) return null;
+    const d = new Date(String(v).replace(' ', 'T'));
+    return isNaN(d) ? null : d.toISOString();
+  }
+
+  function bindAgent(root, input) {
+    const box = $('#qAi', root);
+    const btn = $('[data-act="ai"]', root);
+    let result = null;
+    let asked = '';
+    let priorQs = [];
+
+    function fail(e) {
+      btn.disabled = false;
+      modalPinned = false;
+      box.innerHTML = '<div class="ai-err tiny">✕ ' + esc(String((e && e.message) || e)) + '</div>';
+    }
+
+    function ask(text) {
+      asked = text;
+      result = null;
+      /* Pinned from the first request onwards: the wait is precisely when the hand leaves
+         the panel, and a draft sheet that vanishes on an outside click is one that cannot
+         be finished. It stays pinned with the drafts up, so nothing is lost to a stray
+         click; only an error or an answer with nothing in it gives the pin back. */
+      modalPinned = true;
+      box.innerHTML = '<div class="ai-wait tiny">正在安排…（面板会等你，点外面不会关闭）</div>';
+      btn.disabled = true;
+      /* the questions this flow already answered go back with the next request: an assistant
+         that re-asks what it was just told is looping, not clarifying, and it has to be
+         recognisable as such */
+      Agent.run(text, S, { prior: priorQs }).then(function (r) {
+        btn.disabled = false;
+        result = r;
+        if (r.kind === 'question') priorQs.push(r.question);
+        if (r.kind === 'none') modalPinned = false;
+        show(r);
+      }, fail);
+    }
+
+    /* read the DOM back into the drafts: user edits win over model output, and the count of
+       edits is recorded so the trace can show where the assistant was wrong */
+    function readBack() {
+      let edited = 0;
+      const lists = { draft: result.drafts || [], update: result.updates || [] };
+      Array.prototype.forEach.call(box.querySelectorAll('.ai-row'), function (row) {
+        const d = (lists[row.dataset.kind] || [])[Number(row.dataset.i)];
+        if (!d) return;
+        const t = row.querySelector('.ai-title');
+        const w = row.querySelector('.ai-when');
+        if (t && t.value.trim() && t.value.trim() !== d.title) { d.title = t.value.trim(); edited++; }
+        if (w) {
+          const iso = localInputToIso(w.value);
+          if (iso && iso !== d.dueAt) { d.dueAt = iso; edited++; }
+        }
+      });
+      return edited;
+    }
+
+    /* The same trace the settings panel shows, narrowed to this turn and sitting under the
+       button — because the moment a person wonders "why did it put that there?" is before
+       they confirm, and a draft sheet that cannot explain itself asks them to trust it. */
+    function traceHtml() {
+      if (!window.Agent || !Agent.explain) return '';
+      const t = Agent.turnOf();
+      const rows = Agent.dump().filter(function (e) { return e.turn === t; });
+      if (!rows.length) return '';
+      return '<details class="ai-trace-inline"><summary>这一轮做了什么（' + rows.length + ' 步）</summary>' +
+        rows.map(function (e) {
+          return '<div class="tr"><b>' + esc(e.stage) + '</b><span>' + esc(Agent.explain(e)) + '</span></div>';
+        }).join('') + '</details>';
+    }
+
+    /* Both kinds of row carry `data-kind` + `data-i` so readBack can find the record it
+       belongs to. A change row gets the same time input as a new row: the model decides
+       *which* task and roughly *when*, and the person still has to be able to nudge 14:00
+       to 15:00 without rejecting the whole draft and retyping the sentence. */
+    function rowHtml(kind, x, i) {
+      return '<div class="ai-row" data-kind="' + kind + '" data-i="' + i + '">' +
+        '<input class="input ai-title" value="' + esc(x.title) + '" />' +
+        '<input class="input ai-when' + (x.dueAt ? '' : ' warn') + '" type="datetime-local" value="' +
+        esc(isoToLocalInput(x.dueAt)) + '" />' +
+        '<span class="ai-said tiny faint">' + esc(x.said && x.said.dateText || '') + ' ' +
+        esc(x.said && x.said.clockText || '') +
+        (kind === 'update' ? ' · 原 ' + esc(x.before ? isoToLocalInput(x.before) : '无日期') : '') +
+        (x.moved ? ' · 已错开 ' + x.moved + ' 分' : '') + (x.warning ? ' · ' + esc(x.warning) : '') + '</span>' +
+        '</div>';
+    }
+
+    function show(r) {
+      if (r.kind === 'question') {
+        box.innerHTML = '<div class="ai-q">' + esc(r.question) + '</div>' +
+          '<div class="ai-opts">' + (r.options || []).map(function (o, i) {
+            return '<button class="btn sm" data-opt="' + i + '">' + esc(o) + '</button>';
+          }).join('') + '</div>';
+        Array.prototype.forEach.call(box.querySelectorAll('[data-opt]'), function (b) {
+          b.addEventListener('click', function () {
+            /* the answer is appended to the original sentence and asked again — the model
+               gets a complete sentence rather than an isolated fragment */
+            ask(asked + '，' + r.options[Number(b.dataset.opt)]);
+          });
+        });
+        return;
+      }
+      if (r.kind === 'drafts') {
+        box.innerHTML = (r.reason ? '<div class="ai-reason tiny faint">' + esc(r.reason) + '</div>' : '') +
+          r.drafts.map(function (d, i) { return rowHtml('draft', d, i); }).join('') +
+          '<div class="ai-foot"><button class="btn primary" data-act="aiCommit">确认写入 ' +
+          r.drafts.length + ' 条</button><button class="btn ghost" data-act="aiAgain">重新安排</button></div>' +
+          traceHtml();
+        $('[data-act="aiCommit"]', box).addEventListener('click', commit);
+        $('[data-act="aiAgain"]', box).addEventListener('click', function () { ask(asked); });
+        return;
+      }
+      if (r.kind === 'updates') {
+        box.innerHTML = (r.reason ? '<div class="ai-reason tiny faint">' + esc(r.reason) + '</div>' : '') +
+          r.updates.map(function (u, i) { return rowHtml('update', u, i); }).join('') +
+          '<div class="ai-foot"><button class="btn primary" data-act="aiCommit">确认修改 ' +
+          r.updates.length + ' 条</button></div>' + traceHtml();
+        $('[data-act="aiCommit"]', box).addEventListener('click', commit);
+        return;
+      }
+      /* A refusal is an answer too: the fallback now declines to guess at a change sentence,
+         and the reason it says so is the only thing the user has to go on. */
+      box.innerHTML = '<div class="ai-err tiny">' +
+        esc(r.reason || '没有可安排的草稿。再说具体一点，比如「下周二下午面试三个人」。') + '</div>';
+    }
+
+    function commit() {
+      const edited = readBack();
+      box.innerHTML = '<div class="ai-wait tiny">写入中…</div>';
+      Agent.commit(result, new Array(edited)).then(function (n) {
+        closeModal();
+        defaultCache.clear();
+        renderAll();
+        toast('已写入 ' + n.added + ' 条' + (n.changed ? ' · 修改 ' + n.changed + ' 条' : '') +
+          (edited ? ' · 含你改的 ' + edited + ' 处' : ''));
+      }, function (e) {
+        box.innerHTML = '<div class="ai-err tiny">✕ 写入失败：' + esc(String((e && e.message) || e)) + '</div>';
+      });
+    }
+
+    btn.addEventListener('click', function () {
+      const t = input.value.trim();
+      if (t) ask(t);
+    });
+    input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' && ev.shiftKey) {
+        ev.preventDefault();
+        const t = input.value.trim();
+        if (t) ask(t);
+      }
     });
   }
 
