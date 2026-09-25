@@ -399,9 +399,13 @@ body[data-mode="overview"] .todo-card.compact .card-dot { display: none; }
 /* cards waiting to fly home after a group switch */
 .todo-card.leaving { pointer-events: none; }
 
-.todo-card.deployed { min-height: calc(var(--ch, 196px) * var(--cs, 1) * var(--fontk, 1)); }
-.todo-card.deployed .card-title { -webkit-line-clamp: 3; }
-.todo-card.deployed .card-notes { -webkit-line-clamp: 3; }
+/* The sheet on the desk is the size the layout reserved for it, and the font setting does
+   not get a vote: scaling the box with the type moved every card on the desktop while the
+   person was only trying to make one readable. What gives way instead is how many lines fit,
+   which is why the clamps below are two and not three. */
+.todo-card.deployed { min-height: calc(var(--ch, 196px) * var(--cs, 1)); }
+.todo-card.deployed .card-title { -webkit-line-clamp: 2; }
+.todo-card.deployed .card-notes { -webkit-line-clamp: 2; }
 
 body[data-mode="overview"] .todo-card:hover {
   transform: translate(-50%, -50%) rotate(0deg) scale(1.09);

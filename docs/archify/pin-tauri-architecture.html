@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark" data-preset="classic">
+<html lang="zh-CN" data-theme="dark" data-preset="hazard">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -396,6 +396,78 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       --toolbar-hover: #ffffff;
       --toolbar-menu-bg: #f9fdff;
     }
+    /* 黑黄战术 / HI-VIS: signage paint — one hi-vis yellow does the work, the rest of
+       the palette is concrete grey with cyan and magenta kept for the warnings. */
+    [data-preset="hazard"][data-theme="dark"] {
+      --bg: #0a0b09;
+      --grid: #1c2018;
+      --panel: rgba(16,18,15,0.94);
+      --panel-border: rgba(217,255,47,0.30);
+      --lane-fill: rgba(217,255,47,0.05);
+      --lane-stroke: rgba(217,255,47,0.22);
+      --text: #eef2e6;
+      --text-muted: #b6bdab;
+      --text-dim: #757c6c;
+      --text-faint: #8f9a86;
+      --mask: #0d0f0c;
+      --frontend-fill: rgba(217,255,47,0.10);
+      --frontend-stroke: #d9ff2f;
+      --backend-fill: rgba(238,242,230,0.07);
+      --backend-stroke: #cfd6c6;
+      --database-fill: rgba(255,180,61,0.10);
+      --database-stroke: #ffb43d;
+      --cloud-fill: rgba(143,160,176,0.10);
+      --cloud-stroke: #8fa0b0;
+      --security-fill: rgba(255,79,216,0.10);
+      --security-stroke: #ff4fd8;
+      --messagebus-fill: rgba(79,224,160,0.10);
+      --messagebus-stroke: #4fe0a0;
+      --external-fill: rgba(154,166,140,0.08);
+      --external-stroke: #9aa68c;
+      --arrow: #8f9a86;
+      --arrow-emphasis: #d9ff2f;
+      --toolbar-bg: rgba(16,18,15,0.94);
+      --toolbar-border: rgba(217,255,47,0.28);
+      --toolbar-text: #eef2e6;
+      --toolbar-hover: #191c16;
+      --toolbar-menu-bg: #101210;
+    }
+    /* 黑黄战术 / HI-VIS: signage paint — one hi-vis yellow does the work, the rest of
+       the palette is concrete grey with cyan and magenta kept for the warnings. */
+    [data-preset="hazard"][data-theme="light"] {
+      --bg: #e6e6e1;
+      --grid: #d4d4cd;
+      --panel: rgba(243,243,238,0.94);
+      --panel-border: #b3b3aa;
+      --lane-fill: rgba(13,15,12,0.04);
+      --lane-stroke: #adada3;
+      --text: #0d0f0c;
+      --text-muted: #3a3f36;
+      --text-dim: #757b6f;
+      --text-faint: #5a6053;
+      --mask: #f3f3ee;
+      --frontend-fill: rgba(201,212,0,0.20);
+      --frontend-stroke: #4a5307;
+      --backend-fill: rgba(13,15,12,0.06);
+      --backend-stroke: #23261f;
+      --database-fill: rgba(138,90,18,0.10);
+      --database-stroke: #8a5a12;
+      --cloud-fill: rgba(74,80,87,0.10);
+      --cloud-stroke: #4a5057;
+      --security-fill: rgba(122,47,102,0.08);
+      --security-stroke: #7a2f66;
+      --messagebus-fill: rgba(15,111,120,0.10);
+      --messagebus-stroke: #0f6f78;
+      --external-fill: rgba(74,83,7,0.08);
+      --external-stroke: #4a5307;
+      --arrow: #6b7265;
+      --arrow-emphasis: #4a5307;
+      --toolbar-bg: rgba(243,243,238,0.94);
+      --toolbar-border: #b3b3aa;
+      --toolbar-text: #0d0f0c;
+      --toolbar-hover: #ffffff;
+      --toolbar-menu-bg: #f3f3ee;
+    }
 
     /* ==========================================================
        EDITORIAL — a warm, publication-minded preset for design
@@ -502,6 +574,14 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         linear-gradient(90deg, var(--grid) 1px, transparent 1px);
       background-size: 32px 32px;
       background-position: -1px -1px;
+      background-attachment: fixed;
+    }
+    html[data-preset="hazard"] body {
+      background-image:
+        repeating-linear-gradient(115deg, transparent 0 26px, color-mix(in srgb, var(--arrow) 7%, transparent) 26px 27px),
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: auto, 40px 40px, 40px 40px;
       background-attachment: fixed;
     }
     html[data-preset="editorial"] body {
@@ -3385,6 +3465,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       border-radius: 0.16rem;
       background: rgba(34, 211, 238, 0.14);
     }
+    .preset-option-swatch.hazard {
+      background: linear-gradient(180deg, #0a0b09 0 58%, #d9ff2f 58% 100%);
+      border-color: rgba(217, 255, 47, 0.5);
+    }
     .preset-option-swatch.signal-flow {
       border-color: #29415f;
       background: linear-gradient(135deg, #07101e 10%, #10243c 100%);
@@ -5015,6 +5099,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <span class="preset-option-copy"><strong>蓝图</strong><small>工程评审</small></span>
           <span class="preset-option-check" aria-hidden="true"></span>
         </button>
+        <button class="preset-option" data-preset-value="hazard" type="button" role="menuitemradio" aria-checked="false" tabindex="-1">
+          <span class="preset-option-swatch hazard" aria-hidden="true"></span>
+          <span class="preset-option-copy"><strong>黑黄战术 HI-VIS</strong><small>标牌漆：黑底高视认黄</small></span>
+          <span class="preset-option-check" aria-hidden="true"></span>
+        </button>
         <button class="preset-option" data-preset-value="editorial" type="button" role="menuitemradio" aria-checked="false" tabindex="-1">
           <span class="preset-option-swatch editorial" aria-hidden="true"></span>
           <span class="preset-option-copy"><strong>编辑风格</strong><small>适合发布与上线说明</small></span>
@@ -5130,7 +5219,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / 图版 04">
-      <svg viewBox="0 0 1320 700" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="showcase">
+      <svg viewBox="0 0 1320 700" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="hazard" data-quality-profile="showcase">
         <title id="archify-diagram-title">Pin To-Do 架构</title>
         <desc id="archify-diagram-description">由 Archify 生成的架构图。</desc>
         <!-- Definitions -->
@@ -5679,12 +5768,15 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
        URL, or a later diagram's authored default.
        ============================================================ */
     Archify.preset = (function () {
-      var PRESETS = ['classic', 'signal-flow', 'blueprint', 'editorial'];
+      var PRESETS = ['classic', 'signal-flow', 'blueprint', 'editorial', 'hazard'];
       var LABELS = {
         classic: viewerText('viewer.preset.classic.short'),
         'signal-flow': viewerText('viewer.preset.flow.short'),
         blueprint: viewerText('viewer.preset.blueprint'),
-        editorial: viewerText('viewer.preset.editorial')
+        editorial: viewerText('viewer.preset.editorial'),
+        /* a locally added preset, so it has no i18n key of its own and says the same thing
+           in either language rather than falling back to a raw key */
+        hazard: 'HI-VIS'
       };
       var html = document.documentElement;
       var svg = document.querySelector('.diagram-container svg');

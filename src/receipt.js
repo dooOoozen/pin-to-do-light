@@ -862,12 +862,15 @@
     if (bg) {
       x.fillStyle = bg;
       x.fillRect(0, 0, w, h);
-      /* the sheet has to sit *on* that colour, not be pasted into it */
+      /* the sheet has to sit *on* that colour, not be pasted into it — and the shade under it
+         has to follow the torn edge. Casting the shadow from a fillRect gave a straight band
+         of shade below the teeth, which is exactly the "阴影和背景割裂" it now reads as: two
+         rectangles, one behind the other. drawImage casts from the paper's own alpha, so the
+         shade ends where the paper ends. */
       x.save();
       x.shadowColor = 'rgba(0,0,0,.34)';
       x.shadowBlur = 20; x.shadowOffsetY = 10;
-      x.fillStyle = bg;
-      x.fillRect(padX, mH - SHOT.lip, pw, ph);
+      x.drawImage(paper, padX, mH - SHOT.lip, pw, ph);
       x.restore();
     }
 
