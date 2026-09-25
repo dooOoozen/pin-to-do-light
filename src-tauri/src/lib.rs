@@ -107,11 +107,12 @@ fn work_area_rect<R: Runtime>(app: &AppHandle<R>) -> Result<(Rect, f64), String>
 static DECK_MONITOR: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(-1);
 
 fn monitor_index() -> Option<usize> {
-    let from_flag = arg_value("--monitor").and_then(|s| s.parse::<usize>().ok());
-    let chosen = match from_flag {
-        Some(n) if n >= 1 => return Some(n),
-        _ => DECK_MONITOR.load(Ordering::Relaxed),
-    };
+    /* The command line seeds this once, at startup, and never outranks it again — see the
+       store in `setup`. While the flag was consulted on every read, a deck launched with
+       `--monitor 2` ignored 切换屏幕 for the rest of the session: the write landed in
+       DECK_MONITOR and the next read went straight back to the command line, which is what
+       "第二屏卡片可以正常放到上面了，但是切换不了第一屏" was. */
+    let chosen = DECK_MONITOR.load(Ordering::Relaxed);
     if chosen >= 0 {
         Some(chosen as usize + 1)
     } else {
@@ -1699,6 +1700,16 @@ pub fn run() {
             }
             if shape_disabled_by_args() {
                 SHAPE_MODE.store(false, Ordering::Relaxed);
+            }
+            /* The command line says where the deck should *start*, and only while its display
+               is still "auto": a person who has chosen a screen in settings has said so in the
+               store, and a flag they never typed must not move them back after every launch. */
+            if DECK_MONITOR.load(Ordering::Relaxed) < 0 {
+                if let Some(n) = arg_value("--monitor").and_then(|s| s.parse::<isize>().ok()) {
+                    if n >= 1 {
+                        DECK_MONITOR.store(n - 1, Ordering::Relaxed);
+                    }
+                }
             }
 
             build_layer(&handle)?;
