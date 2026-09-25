@@ -1908,46 +1908,13 @@
     }, 40);
   }
 
-  /* DWM lays a caption band across the top of this window — see `win32::set_focusable` — and
-     the window region is the only thing that decides whether those pixels reach the screen,
-     because a region clips drawing as well as input. So: give up the strip, whenever nothing
-     paints there. That covers every state that claims the top edge — the modal, whose
-     backdrop wants the whole window, and the scatter, which wants it to gather the cards back
-     — instead of the first cut of this clip, which was gated to modals and so left the band
-     in place through a spread. A card up there outranks a caption, so the strip is only
-     handed back when something actually reaches it. */
-  const CAPTION_LOGICAL = 32;   /* SM_CYCAPTION plus the frame, in the same space as the spans */
-  function bandClipped(spans) {
-    const band = CAPTION_LOGICAL + 2;
-    /* The question is what paints up there, not what the claim covers: a full-window claim
-       always reaches y=0, and testing the claim is why the first cut of this clip never
-       fired once. The modal's own shell is skipped for the same reason — it is a full-window
-       positioning host by construction, and only the panel inside it puts pixels anywhere. */
-    let top = Infinity;
-    liveNodes().forEach((n) => {
-      if (n === el.modal) return;
-      const b = n.getBoundingClientRect();
-      if (b.width <= 0 || b.height <= 0) return;
-      /* a full-window positioning host paints nothing of its own — the layer has several
-         (#cardLayer, the toast column) and they all report top=0, which is the same trap
-         `regionLeaks()` already had to learn: measure what paints, not what is mounted */
-      if (b.width >= area.width * 0.98 && b.height >= area.height * 0.98) return;
-      if (b.top < top) top = b.top;
-    });
-    const panel = el.modal.querySelector ? el.modal.querySelector('.modal-panel') : null;
-    if (panel) {
-      const pb = panel.getBoundingClientRect();
-      if (pb.width > 0 && pb.height > 0 && pb.top < top) top = pb.top;
-    }
-    if (top < band) return spans;
-    const out = [];
-    for (let i = 0; i < spans.length; i++) {
-      const r = spans[i];
-      if (r.y + r.height <= band) continue;
-      out.push(r.y >= band ? r : { x: r.x, y: band, width: r.width, height: r.y + r.height - band });
-    }
-    return out.length ? out : spans;
-  }
+  /* The caption band DWM composes at the top of this window used to be answered here by
+     giving up the top 34 px of the region whenever nothing painted there. That traded one
+     artifact for a worse one: a card flying to the top of the screen arrived before the next
+     re-cut and came out with its top edge missing — the "散布卡片移动到上面时空缺了" report.
+     The clip is gone; the band is prevented upstream instead, by the layer refusing
+     activation (win32::set_focusable) and by the realloc that follows a modal. A white bar
+     that clears itself is survivable; a card with a piece missing is not. */
 
   function applyShape() {
     const wasMoving = movingNow();
@@ -1962,9 +1929,9 @@
     /* a full-window rect rather than null: SetWindowRgn(NULL) is the one branch
        whose behaviour under software compositing is unverified, and an explicit
        rect the size of the window is the same shape without it */
-    const push = bandClipped(spans === null
+    const push = spans === null
       ? [{ x: 0, y: 0, width: area.width, height: area.height }]
-      : spans);
+      : spans;
     API.setShape(push);
     /* record what was handed to the OS, not what was intended: `pushedLag()` exists to
        catch the difference between the two */

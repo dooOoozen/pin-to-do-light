@@ -481,12 +481,11 @@ body.fading { opacity: 0 !important; transition: opacity .18s steps(4) !importan
 body.appear { animation: overlay-appear .28s steps(5); }
 @keyframes overlay-appear { from { transform: translateY(4px); } to { transform: none; } }
 
-/* bigger, tighter compact chips */
+/* bigger, tighter compact chips. The font size lives in one place (the .compact rule by the
+   end of this sheet) so the chip setting cannot be re-set by mode from here. */
 body[data-mode="overview"] .todo-card.compact {
   padding: calc(7px * var(--cs, 1) * var(--ps, 1)) calc(9px * var(--cs, 1) * var(--ps, 1));
-  font-size: calc(13.5px * var(--cs, 1) * var(--ps, 1));
 }
-body[data-mode="overview"] .todo-card.compact .card-title { font-size: calc(13.5px * var(--cs, 1) * var(--ps, 1)); }
 
 /* the hover spread centres its content inside the chip: the markers stay pinned
    to the edges while the title sits in the middle of the card */
@@ -664,9 +663,13 @@ body.no-anim .todo-card.punch, body.no-anim .todo-card.fresh { animation: none; 
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* chip text has its own size setting */
-body[data-mode="overview"] .todo-card.compact,
-body[data-mode="overview"] .todo-card.compact .card-title { font-size: calc(13.5px * var(--cs, 1) * var(--chipk, 1) * var(--ps, 1)); }
+/* Chip text has its own size setting, and it follows the .compact class rather than the
+   mode: a card flying home is still a chip. Keyed to the mode, the full-card rule above took
+   over the instant the deck retracted — while the chip was still fading out at full size
+   (260ms) and its box was held at the spread scale. With 散布卡片文字 at its 1.6× top that
+   read as the title jumping half again bigger for a frame or two. */
+.todo-card.compact,
+.todo-card.compact .card-title { font-size: calc(13.5px * var(--cs, 1) * var(--chipk, 1) * var(--ps, 1)); }
 
 /* priority stacking: hovered cards always rise above the pile */
 body[data-mode="deployed"] .todo-card:hover { z-index: 80 !important; }
