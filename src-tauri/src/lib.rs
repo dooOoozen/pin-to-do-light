@@ -305,6 +305,10 @@ fn build_layer(app: &AppHandle) -> Result<(), String> {
         /* the two HRESULTs, once: an attribute the OS refused to apply and one it
            applied have looked identical in every log so far */
         let dwm = unsafe { win32::forbid_nc_painting(h.0 as win32::Hwnd) };
+        /* the refusal has to be in place before the first activation, and it is the message
+           side of the same problem: the attributes tell the painter not to run, this answers
+           the activation's repaint request without drawing */
+        let guard = unsafe { win32::guard_nc_messages(h.0 as win32::Hwnd) };
         /* installed from here because setup runs on the thread that owns the window, and the
            hook is called back on the thread that installs it */
         let hooked = unsafe { win32::watch_layer_styles(h.0 as win32::Hwnd) };
@@ -315,8 +319,8 @@ fn build_layer(app: &AppHandle) -> Result<(), String> {
         let _ = boot_note(
             app.clone(),
             format!(
-                "[layer] style=0x{:08X} ex=0x{:08X} client={}x{} · hook={} · {}",
-                style, ex, cw, ch, hooked, dwm
+                "[layer] style=0x{:08X} ex=0x{:08X} client={}x{} · hook={} · {} · {}",
+                style, ex, cw, ch, hooked, dwm, guard
             ),
         );
     }
@@ -844,11 +848,11 @@ fn spawn_frame_settle(app: AppHandle, why: &'static str) {
             let _ = boot_note(
                 app.clone(),
                 format!(
-                    "[layer] settle({}) at {}ms: {} 0x{:08X}/0x{:08X} -> 0x{:08X}/0x{:08X} recompose={}",
+                    "[layer] settle({}) at {}ms: {} 0x{:08X}/0x{:08X} -> 0x{:08X}/0x{:08X} recompose={} ncRefused={}",
                     why,
                     slept,
                     if dirty { "DIRTY" } else { "clean" },
-                    style, ex, ns, nex, did
+                    style, ex, ns, nex, did, win32::nc_refused()
                 ),
             );
         }

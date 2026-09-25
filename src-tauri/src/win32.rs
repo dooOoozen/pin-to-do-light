@@ -748,19 +748,84 @@ extern "system" {
 ///
 /// Two attributes, because they disable different painters and the first one was already in
 /// place when the bar survived:
-///   2  DWMWA_NCRENDERING_POLICY      = DISABLED  — the old composition path
-///   34 DWMWA_NONCLIENT_RAST_STYLE    = NONE      — the Win10+ non-client rasterizer, which is
-///       the one that draws a caption on a window whose WM_NCCALCSIZE already gave the client
-///       the whole frame. Measured: the incident leaves `nc=0` on the window the whole time,
-///       i.e. no space is taken and still a bar appears — that is a rasterizer, not a layout.
-/// Both return an HRESULT, and until now nobody looked at it: an attribute the OS refused to
-/// apply and one it applied happily produce the same behaviour-free log today.
+///   2 DWMWA_NCRENDERING_POLICY   = DISABLED — the old composition path
+///   8 DWMWA_NONCLIENT_RAST_STYLE = NONE     — the Win10+ non-client rasterizer, which is the
+///       one that draws a caption on a window whose WM_NCCALCSIZE already gave the client the
+///       whole frame. Measured: the incident leaves `nc=0` on the window the whole time, i.e.
+///       no space is taken and still a bar appears — that is a rasterizer, not a layout.
+///
+/// The index here was 34 and the value 3 until this was checked against the header. On Win11
+/// 34 is `DWMWA_BORDER_COLOR` and its argument is a COLORREF, so the "rasterizer off" call that
+/// reported S_OK twelve times was in fact asking for a near-black window border — and the real
+/// switch had never been touched. Both are corrected; 34 is now explicitly `COLOR_NONE`, which
+/// is the honest version of what the old call pretended to do. Every HRESULT is logged, because
+/// an attribute the OS refused and one it applied have looked identical in every log so far.
 pub unsafe fn forbid_nc_painting(hwnd: Hwnd) -> String {
     let policy: u32 = 1; /* DWMNCRP_DISABLED */
-    let rast: u32 = 3; /* DWM_NONCLIENT_RASTERIZATION_STYLE_NONE */
+    let rast: u32 = 1; /* NonClientRastaStyleNone */
+    let border: u32 = 0xFFFF_FFFE; /* DWMWA_COLOR_NONE */
     let a = DwmSetWindowAttribute(hwnd, 2 /* DWMWA_NCRENDERING_POLICY */, &policy, 4);
-    let b = DwmSetWindowAttribute(hwnd, 34 /* DWMWA_NONCLIENT_RAST_STYLE */, &rast, 4);
-    format!("ncpolicy={:#010X} rastsyle={:#010X}", a, b)
+    let b = DwmSetWindowAttribute(hwnd, 8 /* DWMWA_NONCLIENT_RAST_STYLE */, &rast, 4);
+    let c = DwmSetWindowAttribute(hwnd, 34 /* DWMWA_BORDER_COLOR */, &border, 4);
+    format!(
+        "ncpolicy={:#010X} rastsyle={:#010X} border={:#010X}",
+        a, b, c
+    )
+}
+
+/* ------------------------------------------------------------------ messages */
+
+const WM_NCACTIVATE: u32 = 0x0086;
+
+/// `SubclassProc` has one more pair of arguments than a window procedure, which is how the
+/// chain hands back what `SetWindowSubclass` was given.
+pub type SubclassProc =
+    unsafe extern "system" fn(hwnd: Hwnd, msg: u32, w: isize, l: isize, id: usize, item: usize) -> isize;
+
+#[link(name = "comctl32")]
+extern "system" {
+    fn SetWindowSubclass(hwnd: Hwnd, pfn: SubclassProc, id: usize, item: usize) -> i32;
+    fn DefSubclassProc(hwnd: Hwnd, msg: u32, w: isize, l: isize) -> isize;
+}
+
+/// How many activation repaints the subclass has refused. Counted because "installed" is not
+/// "called": the `GWLP_WNDPROC` patch below reported a non-null previous procedure and then
+/// never saw a single message, since tao's own subclass calls the procedure it captured at
+/// install time. A `SetWindowSubclass` entry is inserted above that chain, so this one does
+/// get first look — and the counter is what proves it rather than the return value.
+static NC_REFUSED: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
+static GUARDED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn nc_refused() -> isize {
+    NC_REFUSED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+unsafe extern "system" fn refuse_nc_paint(
+    hwnd: Hwnd,
+    msg: u32,
+    w: isize,
+    l: isize,
+    _id: usize,
+    _item: usize,
+) -> isize {
+    if msg == WM_NCACTIVATE {
+        /* Answer "yes, the non-client area is up to date" and draw nothing. The message is the
+           activation's own repaint request: it is what lays the caption into the window's
+           redirection surface, and `WM_NCCALCSIZE` has already given the client that ground —
+           so the only pixels this paint can produce are ours. */
+        NC_REFUSED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        return TRUE as isize;
+    }
+    DefSubclassProc(hwnd, msg, w, l)
+}
+
+/// Put the refusal in front of the toolkit's window procedure, once per window.
+pub unsafe fn guard_nc_messages(hwnd: Hwnd) -> String {
+    if GUARDED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        return format!("ncguard=already refused={}", nc_refused());
+    }
+    let ok = SetWindowSubclass(hwnd, refuse_nc_paint, 0x5054_4E43, 0);
+    format!("ncguard={} refused={}", ok != 0, nc_refused())
 }
 
 /// Make DWM let go of a frame it has already composed.

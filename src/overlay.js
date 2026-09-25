@@ -557,6 +557,28 @@
      clamped inside the box, so a larger font costs characters, not geometry. */
   function deployW() { return DEPLOY_W * cs; }
   function deployH() { return DEPLOY_H * cs; }
+
+  /* A card may never sit so that part of it falls outside the window: nothing paints there,
+     and the user reads the missing strip as a broken card — "卡片不能这样有缺口". The layout
+     clamps by the nominal box, but the box is `min-height`: a three-line title at the top of
+     the 散布卡片文字 range makes the sheet ~60 px taller than deployH(), and its top then ends
+     up above the screen. So clamp by the height the browser actually used, and by the extent
+     of the tilted box, which is what the rotation really costs. */
+  function keepOnDesk(card) {
+    const w = card.offsetWidth, h = card.offsetHeight;
+    if (!w || !h) return;
+    const rad = (parseFloat(card.style.getPropertyValue('--rot')) || 0) * Math.PI / 180;
+    const ca = Math.abs(Math.cos(rad)), sa = Math.abs(Math.sin(rad));
+    const halfH = (h * ca + w * sa) / 2, halfW = (h * sa + w * ca) / 2;
+    const tx = parseFloat(card.style.getPropertyValue('--tx'));
+    const ty = parseFloat(card.style.getPropertyValue('--ty'));
+    if (!isFinite(tx) || !isFinite(ty)) return;
+    /* a card taller than the desk keeps its centre rather than being pushed off the other side */
+    const cx = clamp(tx, Math.min(halfW, area.width / 2), Math.max(area.width - halfW, area.width / 2));
+    const cy = clamp(ty, Math.min(halfH, area.height / 2), Math.max(area.height - halfH, area.height / 2));
+    if (Math.abs(cx - tx) > 0.5) card.style.setProperty('--tx', Math.round(cx) + 'px');
+    if (Math.abs(cy - ty) > 0.5) card.style.setProperty('--ty', Math.round(cy) + 'px');
+  }
   function chipk() {
     return clamp(Number(S.settings.chipFontScale) || 1, 0.8, 1.6);
   }
@@ -1168,6 +1190,12 @@
       setTimeout(() => card.remove(), 760);
     });
     $$('.todo-card', el.cardLayer).forEach((c) => c.style.setProperty('--n', String(n)));
+    /* second pass, because the clamp needs the box the browser ended up with: the first loop
+       is where the title and notes text goes in, and reading a size before that measures the
+       previous render */
+    $$('.todo-card', el.cardLayer).forEach((c) => {
+      if (!c.classList.contains('docked')) keepOnDesk(c);
+    });
     renderEmptyState(n);
     markRectsDirty(500);
     refreshHitRects();
@@ -2664,8 +2692,12 @@
     if (deckDrag) { onDeckPointerMove(ev); return; }
     if (!drag) return;
     drag.lastMove = Date.now();
-    const x = clamp(ev.clientX - drag.dx, deployW() / 2, area.width - deployW() / 2);
-    const y = clamp(ev.clientY - drag.dy, deployH() / 2, area.height - deployH() / 2);
+    /* the measured box, not the nominal one: see `keepOnDesk`. A card whose title wrapped to
+       its third line is taller than deployH(), and the nominal clamp let a drag push its top
+       off the screen — where nothing can paint it. */
+    const bw = drag.card.offsetWidth, bh = drag.card.offsetHeight;
+    const x = clamp(ev.clientX - drag.dx, Math.min(bw / 2, area.width / 2), Math.max(area.width - bw / 2, area.width / 2));
+    const y = clamp(ev.clientY - drag.dy, Math.min(bh / 2, area.height / 2), Math.max(area.height - bh / 2, area.height / 2));
     if (Math.abs(ev.clientX - drag.startX) + Math.abs(ev.clientY - drag.startY) > 5) drag.moved = true;
     drag.x = x;
     drag.y = y;
