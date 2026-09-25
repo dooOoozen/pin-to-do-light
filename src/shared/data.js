@@ -46,7 +46,7 @@
      and an unresolved style would drop the whole desk back to 印刷. */
   var STYLE_WAS = { p3: 'poster', unp: 'console' };
   var STYLE_IS = ['print', 'diner', 'ikb', 'garden', 'poster', 'console',
-    'blueprint', 'memphis', 'hazard'];
+    'blueprint', 'memphis', 'hazard', 'chrome'];
   function styleKey(v) {
     var k = String(v || '');
     if (STYLE_WAS[k]) k = STYLE_WAS[k];
