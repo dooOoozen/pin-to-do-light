@@ -4,3 +4,4 @@ src-tauri/gen/
 dist/
 *.log
 docs/media/cand*/
+docs/media/promoted/
