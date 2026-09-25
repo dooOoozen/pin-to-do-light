@@ -1672,7 +1672,8 @@ input[type="range"] { accent-color: var(--brick); }
    ==========================================================================
    Two colours and a hard edge: electric purple and cobalt laid over white, each plate
    casting a flat block of its own colour rather than a soft shadow, because the collage is
-   stacked rather than lifted. Halftone dots carry the page grain, the corners are generous,
+   stacked rather than lifted. The corners are square (用户：直角), the halftone dots were
+   taken out on request,
    and the pink and acid yellow the reference leans on are held back to ink — as a text
    colour on the night plate they measured 1.53:1, which is not a restrained palette but a
    missing one. */
@@ -1701,7 +1702,9 @@ input[type="range"] { accent-color: var(--brick); }
   --plate-mod: #ffffff;
   --memo-rule: color-mix(in srgb, var(--brick) 26%, transparent);
   --edge: var(--ink);
-  --r-plate: 20px; --r-ctl: 8px; --r-pill: 999px; --r-dot: 50%;
+  /* square: the collage reads as cut paper, so nothing is rounded — plates, controls and
+     badges all meet at a corner, and only the status dot stays a dot */
+  --r-plate: 0; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
   --bevel: none;
 /* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
   --tex-grain: none;
@@ -1741,7 +1744,7 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="memphis"] .deck-face,
 :root[data-style="memphis"] .deck-sheet,
 :root[data-style="memphis"] .todo-card { border-width: 2px; border-color: var(--edge); }
-:root[data-style="memphis"] .idx-mark { background: var(--vermillion); color: #fff; border-color: var(--edge); border-radius: 5px; }
+:root[data-style="memphis"] .idx-mark { background: var(--vermillion); color: #fff; border-color: var(--edge); }
 :root[data-style="memphis"] .idx-mark.plain { background: transparent; color: var(--ink); }
 :root[data-style="memphis"] .btn,
 :root[data-style="memphis"] .icon-btn { border-width: 2px; box-shadow: var(--pop-shadow-sm); }
@@ -1846,3 +1849,343 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="hazard"] .icon-btn:hover { background: var(--honey); color: #0a0b09; border-color: var(--edge); }
 :root[data-style="hazard"] .btn.primary { background: var(--brick); color: var(--brick-ink); border-color: var(--edge); }
 :root[data-style="hazard"] .day-head { font-family: var(--font-mono); letter-spacing: .14em; }
+
+/* ==========================================================================
+   CANDIDATES — temporary, deleted once the pick is made
+   ==========================================================================
+   Keyed on `data-mv`, which the preview sweep sets (tests/cand-sweep.js). Nothing here is
+   registered in `STYLE_IS`, so a saved state can never reach it: the sweep writes the
+   attribute directly on the document. mv1 of each material is the version already in the
+   sheet, kept as the control the others get compared against. */
+
+/* ---- 电蓝海报 mv2: 纸白、粗黑、电蓝实块、信号红 ----------------------------
+   The reference structure without its paleness: the ground is paper white rather than
+   blue-tinted, the rules are 3px black, and blue is only ever used as a solid block —
+   header, primary button, today plate — where the current version lets it bleed into every
+   border. Lime becomes a signal red so the two accents are not both cool. */
+:root[data-style="poster"][data-mv="2"] {
+  --paper: #f7f9fc; --paper-hi: #ffffff; --paper-lo: #e4ebf5; --paper-dim: #ccd9ea;
+  --ink: #05121d; --ink-2: #1c3a55; --ink-3: #5c7891;
+  --edge: #05121d;
+  --rule: color-mix(in srgb, var(--ink) 30%, transparent);
+  --rule-strong: var(--ink);
+  --grid-line: color-mix(in srgb, var(--brick) 9%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--brick) 18%, transparent);
+  --brick: #0a6cf0; --brick-ink: #ffffff;
+  --vermillion: #e8320f; --honey: #ffd400; --sage: #0a6cf0; --teal: #0b3f8f;
+  --forest: #05121d; --forest-ink: #ffffff; --slate: #0b3f8f; --slate-ink: #eaf1ff;
+  --khaki: #5c7891; --plum: #5b3df0; --ochre: #e8320f;
+  --cream: #ffffff; --surface-hi: #ffffff; --head-hi: #0a6cf0; --field-focus: #ffffff;
+  --plate-day: #e4ebf5; --plate-mod: #ffffff;
+  --plate-today: color-mix(in srgb, var(--brick) 15%, var(--paper));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 14%, var(--paper));
+  --memo-rule: color-mix(in srgb, var(--ink) 16%, transparent);
+  --pop-shadow: none; --pop-shadow-sm: none;
+  --r-plate: 0; --r-ctl: 0; --r-pill: 0;
+}
+:root[data-style="poster"][data-mv="2"] .hud,
+:root[data-style="poster"][data-mv="2"] .hud-thin,
+:root[data-style="poster"][data-mv="2"] .modal-panel,
+:root[data-style="poster"][data-mv="2"] .plan-pop,
+:root[data-style="poster"][data-mv="2"] .deck-face,
+:root[data-style="poster"][data-mv="2"] .deck-sheet,
+:root[data-style="poster"][data-mv="2"] .todo-card { border-width: 3px; }
+:root[data-style="poster"][data-mv="2"] .hud-head {
+  background-image: none;
+  background-color: var(--brick);
+  color: #fff; border-bottom: 3px solid var(--edge);
+  font-family: var(--font-display); font-weight: 900; letter-spacing: .02em; text-transform: uppercase;
+}
+:root[data-style="poster"][data-mv="2"] .idx-mark { background: var(--honey); color: var(--ink); border-color: var(--edge); border-radius: 0; }
+/* mv2 had no night half: the day block below the base ink rule ties on specificity and
+   wins on order, so 夜 looked like a second copy of 白天 */
+:root[data-style="poster"][data-mv="2"][data-theme="ink"] {
+  --paper: #07121c; --paper-hi: #0e1e2c; --paper-lo: #040b12; --paper-dim: #16304a;
+  --ink: #f2f8ff; --ink-2: #b9d4ea; --ink-3: #7b9ab5;
+  --edge: #f2f8ff;
+  --rule: color-mix(in srgb, var(--ink) 34%, transparent);
+  --rule-strong: var(--ink);
+  --brick: #2f9bff; --brick-ink: #04101c;
+  --vermillion: #ff6a45; --honey: #ffd400; --sage: #2f9bff; --teal: #7cc4ff;
+  --forest: #2f9bff; --forest-ink: #04101c; --slate: #7cc4ff; --slate-ink: #04101c;
+  --khaki: #7b9ab5; --plum: #b9a6ff; --ochre: #ffb03a;
+  --cream: #0e1e2c; --surface-hi: #0e1e2c; --head-hi: #2f9bff; --field-focus: #16304a;
+  --plate-day: #0e1e2c; --plate-mod: #0a1826; --plate-today: #16304a; --plate-overdue: #3a1108;
+  --memo-rule: color-mix(in srgb, var(--ink) 22%, transparent);
+}
+:root[data-style="poster"][data-mv="2"][data-theme="ink"] .hud-head { color: #04101c; }
+:root[data-style="poster"][data-mv="2"][data-theme="ink"] .idx-mark { background: var(--honey); color: #04101c; }
+
+/* ---- 电蓝海报 mv3: 蓝与品红双色套印 --------------------------------------
+   Two inks on newsprint white, and the overlap is where the material lives: a plate that is
+   blue and a rule that is magenta make purple where they cross, which is what a two-pass
+   screen print actually looks like. Cobalt replaces the electric blue as the structural ink
+   because overprint purple only reads against a blue dark enough to mix with. */
+:root[data-style="poster"][data-mv="3"] {
+  --paper: #f4f1e6; --paper-hi: #fffdf4; --paper-lo: #e6e1d1; --paper-dim: #d5cfba;
+  --ink: #14100d; --ink-2: #35302a; --ink-3: #6d675d;
+  --edge: #123a9a;
+  --rule: color-mix(in srgb, var(--edge) 34%, transparent);
+  --rule-strong: color-mix(in srgb, var(--vermillion) 60%, transparent);
+  --grid-line: color-mix(in srgb, var(--edge) 8%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--edge) 16%, transparent);
+  --brick: #1257d8; --brick-ink: #f7f4ea;
+  --vermillion: #e5177b; --honey: #f2b705; --sage: #12a3a3; --teal: #0d7d7d;
+  --forest: #123a9a; --forest-ink: #eef2ff; --slate: #6b2fd6; --slate-ink: #f3ecff;
+  --khaki: #8a7b4f; --plum: #6b2fd6; --ochre: #b3560a;
+  --cream: #fffdf4; --surface-hi: #fffdf4; --head-hi: #1257d8; --field-focus: #fff8e2;
+  --plate-day: #eae5d4; --plate-mod: #fffdf4;
+  --plate-today: color-mix(in srgb, var(--brick) 12%, var(--paper));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 12%, var(--paper));
+  --memo-rule: color-mix(in srgb, var(--edge) 24%, transparent);
+  --pop-shadow: 5px 5px 0 color-mix(in srgb, var(--vermillion) 26%, transparent), 0 16px 30px rgba(18,16,13,.13);
+  --pop-shadow-sm: 3px 3px 0 color-mix(in srgb, var(--vermillion) 22%, transparent);
+  --r-plate: 0; --r-ctl: 0; --r-pill: 0;
+}
+:root[data-style="poster"][data-mv="3"] .hud-head {
+  background-image: linear-gradient(90deg, transparent 0 62%,
+    color-mix(in srgb, var(--vermillion) 85%, transparent) 62% 100%);
+  background-color: var(--head-hi); color: #fff; border-bottom: 2px solid var(--edge);
+}
+:root[data-style="poster"][data-mv="3"] .idx-mark { background: var(--vermillion); color: #fff; border-color: var(--edge); border-radius: 0; }
+:root[data-style="poster"][data-mv="3"][data-theme="ink"] {
+  --paper: #14101f; --paper-hi: #1e1830; --paper-lo: #0e0b16; --paper-dim: #2a2340;
+  --ink: #f6f1e4; --ink-2: #cfc6e8; --ink-3: #9a8fb8;
+  --edge: #4f8bff; --brick: #4f8bff; --brick-ink: #100c1a;
+  --vermillion: #ff4f9a; --honey: #ffd166; --slate: #a98bff; --forest: #4f8bff;
+  --cream: #1e1830; --surface-hi: #1e1830; --head-hi: #241a3f; --field-focus: #2a2340;
+  --plate-day: #1e1830; --plate-mod: #191327; --plate-today: #241a3f; --plate-overdue: #3a1330;
+  --pop-shadow: 5px 5px 0 color-mix(in srgb, var(--vermillion) 34%, transparent), 0 16px 30px rgba(0,0,0,.5);
+}
+
+/* ---- 电蓝海报 mv4: 电蓝实地、白纸卡 --------------------------------------
+   The poster reading taken seriously: the desk itself is the inked field and the cards are
+   sheets of paper laid on it. Custom properties cascade, so the ink is re-declared inside
+   the card rather than painted over — the notes and badges keep their three steps of
+   weight, now against white. */
+:root[data-style="poster"][data-mv="4"] {
+  --paper: #0a6cf0; --paper-hi: #1f83ff; --paper-lo: #0750b8; --paper-dim: #043b8c;
+  --ink: #f2f8ff; --ink-2: #c6ddff; --ink-3: #93bdf0;
+  --edge: #04203f;
+  --rule: color-mix(in srgb, var(--edge) 46%, transparent);
+  --rule-strong: var(--edge);
+  --grid-line: color-mix(in srgb, #ffffff 10%, transparent);
+  --grid-line-bold: color-mix(in srgb, #ffffff 20%, transparent);
+  --brick: #ffd400; --brick-ink: #04203f;
+  --vermillion: #ffc7d0; --honey: #ffffff; --sage: #7ce0ff; --teal: #00c2a8;
+  --forest: #0b3f8f; --forest-ink: #eaf6ff; --slate: #0b3f8f; --slate-ink: #eaf6ff;
+  --khaki: #c6ddff; --plum: #b9a6ff; --ochre: #ffb03a;
+  --cream: #ffffff; --surface-hi: #ffffff; --head-hi: #04203f; --field-focus: #ffffff;
+  --plate-day: #0750b8; --plate-mod: #0b57c4;
+  --plate-today: #ffd400; --plate-overdue: #04203f;
+  --memo-rule: color-mix(in srgb, #ffffff 34%, transparent);
+  --pop-shadow: 6px 6px 0 rgba(4,32,63,.55), 0 18px 34px rgba(4,32,63,.35);
+  --pop-shadow-sm: 3px 3px 0 rgba(4,32,63,.45);
+  --r-plate: 0; --r-ctl: 0; --r-pill: 0;
+}
+:root[data-style="poster"][data-mv="4"] .todo-card,
+:root[data-style="poster"][data-mv="4"] .deck-sheet {
+  --ink: #05121d; --ink-2: #1c3a55; --ink-3: #5c7891;
+  --rule: color-mix(in srgb, var(--ink) 26%, transparent);
+  background-color: #ffffff; color: var(--ink); border: 3px solid var(--edge);
+}
+:root[data-style="poster"][data-mv="4"] .hud-head {
+  background-image: none; background-color: var(--head-hi); color: #fff;
+  border-bottom: 3px solid var(--edge);
+  font-family: var(--font-display); font-weight: 900; text-transform: uppercase; letter-spacing: .02em;
+}
+:root[data-style="poster"][data-mv="4"] .idx-mark { background: #ffd400; color: #04203f; border-color: var(--edge); border-radius: 0; }
+:root[data-style="poster"][data-mv="4"][data-theme="ink"] {
+  --paper: #04203f; --paper-hi: #0a3a6e; --paper-lo: #02132a; --paper-dim: #0d4a86;
+  --ink: #eaf6ff; --ink-2: #a8cdf2; --ink-3: #6f9dc9;
+  --edge: #00e0c0; --brick: #00e0c0; --brick-ink: #02132a;
+  --honey: #ffd400; --plate-today: #0d4a86; --plate-day: #0a3a6e; --plate-mod: #062a52;
+  --head-hi: #00e0c0; --surface-hi: #0a3a6e; --cream: #0a3a6e;
+}
+:root[data-style="poster"][data-mv="4"][data-theme="ink"] .hud-head { color: #02132a; }
+
+/* ---- 铬黄丝网 (new material, data-style="chrome") mv1: 黄地、黑墨、白块 ----
+   A sheet printed with one ink: chrome yellow as the ground, black as the only type colour,
+   white as the second pass, and one red for the thing that has to be seen. Square corners,
+   2-3px black rules, and depth from a hard offset block rather than a soft shadow, because
+   a screen print does not cast light. */
+:root[data-style="chrome"][data-mv="1"] {
+  --paper: #f5c518; --paper-hi: #ffd83d; --paper-lo: #d9a800; --paper-dim: #c09200;
+  --ink: #14120d; --ink-2: #33302a; --ink-3: #6b6558;
+  --edge: #14120d;
+  --rule: color-mix(in srgb, var(--ink) 40%, transparent);
+  --rule-strong: var(--ink);
+  --grid-line: color-mix(in srgb, var(--ink) 7%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 14%, transparent);
+  --brick: #14120d; --brick-ink: #f5c518;
+  /* #d8341a measured 3.14 against the yellow plate — a red that is only a flag when it is
+     also readable, so the print-dark one */
+  --vermillion: #a8210a; --honey: #ffffff; --sage: #1f7a4d; --teal: #0d6e75;
+  --forest: #14120d; --forest-ink: #ffd83d; --slate: #1a3f8f; --slate-ink: #f0f4ff;
+  --khaki: #6b6558; --plum: #6f6ae8; --ochre: #a3560a;
+  --cream: #fffaf0; --surface-hi: #fffaf0; --head-hi: #14120d; --field-focus: #ffffff;
+  --plate-day: #ffd83d; --plate-mod: #f7cf2e;
+  --plate-today: #14120d; --plate-overdue: #d8341a;
+  --memo-rule: color-mix(in srgb, var(--ink) 26%, transparent);
+  --wm-ink: color-mix(in srgb, var(--ink) 16%, transparent);
+  --hit-line: color-mix(in srgb, var(--ink) 55%, transparent);
+  --hatch-line: color-mix(in srgb, var(--ink) 12%, transparent);
+  --ink-glow: color-mix(in srgb, var(--ink) 92%, transparent);
+  --pop-shadow: 7px 7px 0 var(--ink), 0 20px 34px rgba(20,18,13,.22);
+  --pop-shadow-sm: 3px 3px 0 var(--ink);
+  --bevel: none;
+  --r-plate: 0; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
+  --tex-grain: none; --tex-size: 6px 6px; --tex-size-bg: 6px 6px; --tex-blend: normal;
+  --font-ui: "Helvetica Neue", Helvetica, Arial, "Segoe UI", sans-serif;
+  --font-display: "Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+:root[data-style="chrome"][data-mv="1"] .hud-head {
+  /* a black slab with the title knocked out of it, and a red block at the end */
+  background-image: linear-gradient(90deg, transparent 0 88%, var(--vermillion) 88% 100%);
+  background-color: var(--head-hi); color: var(--paper);
+  border-bottom: 3px solid var(--edge);
+  font-family: var(--font-display); font-weight: 900; letter-spacing: .01em; text-transform: uppercase;
+}
+:root[data-style="chrome"][data-mv="1"] .hud,
+:root[data-style="chrome"][data-mv="1"] .hud-thin,
+:root[data-style="chrome"][data-mv="1"] .modal-panel,
+:root[data-style="chrome"][data-mv="1"] .plan-pop,
+:root[data-style="chrome"][data-mv="1"] .deck-face,
+:root[data-style="chrome"][data-mv="1"] .deck-sheet,
+:root[data-style="chrome"][data-mv="1"] .todo-card { border-width: 2px; border-color: var(--edge); }
+:root[data-style="chrome"][data-mv="1"] .idx-mark { background: var(--ink); color: var(--paper); border-color: var(--edge); border-radius: 0; }
+:root[data-style="chrome"][data-mv="1"] .btn,
+:root[data-style="chrome"][data-mv="1"] .icon-btn { border-width: 2px; box-shadow: var(--pop-shadow-sm); }
+:root[data-style="chrome"][data-mv="1"] .btn:hover,
+:root[data-style="chrome"][data-mv="1"] .icon-btn:hover { background: var(--ink); color: var(--paper); }
+:root[data-style="chrome"][data-mv="1"] .btn.primary { background: var(--ink); color: var(--paper-hi); }
+:root[data-style="chrome"][data-mv="1"] .mod-head { color: var(--ink); font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+/* the today plate is a black block, so its own text has to be the yellow */
+:root[data-style="chrome"][data-mv="1"] .day-head.today { color: var(--paper); }
+:root[data-style="chrome"][data-mv="1"][data-theme="ink"] {
+  /* the same poster with the ink swapped: black paper, chrome yellow type */
+  --paper: #14120d; --paper-hi: #211d15; --paper-lo: #0b0a07; --paper-dim: #2e2818;
+  --ink: #f5c518; --ink-2: #d9a800; --ink-3: #9a8544;
+  --edge: #f5c518;
+  --rule: color-mix(in srgb, var(--ink) 40%, transparent);
+  --brick: #f5c518; --brick-ink: #14120d;
+  --vermillion: #ff5a3c; --honey: #ffffff; --slate: #8f8bff; --plum: #8f8bff;
+  --khaki: #b0a98f; --ochre: #d9a800;
+  --forest: #f5c518; --forest-ink: #14120d; --teal: #35d6b0; --sage: #35d6b0;
+  --cream: #211d15; --surface-hi: #211d15; --head-hi: #f5c518; --field-focus: #2e2818;
+  --plate-day: #211d15; --plate-mod: #1a1710; --plate-today: #2e2818; --plate-overdue: #3a1508;
+  --pop-shadow: 7px 7px 0 var(--ink), 0 20px 34px rgba(0,0,0,.55);
+  --pop-shadow-sm: 3px 3px 0 var(--ink);
+}
+:root[data-style="chrome"][data-mv="1"][data-theme="ink"] .hud-head { color: #14120d; }
+:root[data-style="chrome"][data-mv="1"][data-theme="ink"] .idx-mark { background: var(--paper); color: var(--ink); }
+
+/* ---- 铬黄丝网 mv2: 黄黑分栏、长春花蓝大字 -------------------------------
+   The other trick in the sheet: the lettering is not black at all but a periwinkle laid on
+   yellow, and the black is reserved for full blocks. Here that means black header and today
+   slabs, a yellow page, and the display colour pulled to the blue-violet. */
+:root[data-style="chrome"][data-mv="2"] {
+  --paper: #f7ce1f; --paper-hi: #ffdf57; --paper-lo: #e0ae00; --paper-dim: #c79700;
+  --ink: #241f6b; --ink-2: #3a3488; --ink-3: #6b66a8;
+  --edge: #14120d;
+  --rule: color-mix(in srgb, var(--ink) 42%, transparent);
+  --rule-strong: var(--ink);
+  --grid-line: color-mix(in srgb, var(--ink) 8%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 16%, transparent);
+  --brick: #241f6b; --brick-ink: #ffdf57;
+  --vermillion: #e0322a; --honey: #14120d; --sage: #0d7a5c; --teal: #12889a;
+  --forest: #241f6b; --forest-ink: #ffdf57; --slate: #4b3fd6; --slate-ink: #ffffff;
+  --khaki: #6b66a8; --plum: #4b3fd6; --ochre: #14120d;
+  --cream: #fff6d8; --surface-hi: #fff6d8; --head-hi: #14120d; --field-focus: #ffffff;
+  --plate-day: #ffdf57; --plate-mod: #f9d63a; --plate-today: #14120d; --plate-overdue: #e0322a;
+  --memo-rule: color-mix(in srgb, var(--ink) 28%, transparent);
+  --wm-ink: color-mix(in srgb, var(--ink) 18%, transparent);
+  --hit-line: color-mix(in srgb, var(--ink) 55%, transparent);
+  --pop-shadow: 7px 7px 0 var(--ink), 0 18px 30px rgba(20,18,13,.2);
+  --pop-shadow-sm: 3px 3px 0 var(--ink);
+  --bevel: none; --tex-grain: none;
+  --r-plate: 0; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
+  --font-ui: "Helvetica Neue", Helvetica, Arial, "Segoe UI", sans-serif;
+  --font-display: "Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+:root[data-style="chrome"][data-mv="2"] .hud-head {
+  background-image: none; background-color: var(--head-hi); color: var(--plum);
+  border-bottom: 3px solid var(--edge);
+  font-family: var(--font-display); font-weight: 900; letter-spacing: .04em; text-transform: uppercase;
+}
+:root[data-style="chrome"][data-mv="2"] .idx-mark { background: var(--plum); color: #fff; border-color: var(--edge); border-radius: 0; }
+:root[data-style="chrome"][data-mv="2"] .hud,
+:root[data-style="chrome"][data-mv="2"] .modal-panel,
+:root[data-style="chrome"][data-mv="2"] .deck-face,
+:root[data-style="chrome"][data-mv="2"] .deck-sheet,
+:root[data-style="chrome"][data-mv="2"] .todo-card { border-width: 3px; }
+:root[data-style="chrome"][data-mv="2"] .day-head.today { color: var(--paper); }
+:root[data-style="chrome"][data-mv="2"][data-theme="ink"] {
+  --paper: #16122e; --paper-hi: #221a44; --paper-lo: #0d0a1c; --paper-dim: #2e2558;
+  --ink: #f7ce1f; --ink-2: #d9b63a; --ink-3: #9a8c66;
+  --edge: #f7ce1f; --brick: #f7ce1f; --brick-ink: #16122e;
+  /* the day sheet keeps ochre and khaki near-black on purpose; on the night plate that is
+     1.09:1, which is not a restrained colour but a missing one */
+  --vermillion: #ff5a3c; --honey: #ffffff; --slate: #8f8bff; --plum: #8f8bff;
+  --ochre: #d9b63a; --khaki: #9a8c66;
+  --forest: #f7ce1f; --forest-ink: #16122e; --teal: #35d6b0; --sage: #35d6b0;
+  --cream: #221a44; --surface-hi: #221a44; --head-hi: #f7ce1f; --field-focus: #2e2558;
+  --plate-day: #221a44; --plate-mod: #1b1638; --plate-today: #2e2558; --plate-overdue: #3a1508;
+  --pop-shadow: 7px 7px 0 var(--ink), 0 18px 30px rgba(0,0,0,.55);
+  --pop-shadow-sm: 3px 3px 0 var(--ink);
+}
+:root[data-style="chrome"][data-mv="2"][data-theme="ink"] .hud-head { color: #16122e; }
+:root[data-style="chrome"][data-mv="2"][data-theme="ink"] .idx-mark { background: var(--paper); color: var(--ink); }
+
+/* ---- 铬黄丝网 mv3: 白纸、大块黄 -----------------------------------------
+   For anyone who wants the yellow as an accent rather than as the room: paper is white, the
+   chrome is a slab — headers, today, badges, the watermark — and black does the typing. This
+   is also the only one of the three that keeps long notes readable at small sizes. */
+:root[data-style="chrome"][data-mv="3"] {
+  --paper: #fbfaf5; --paper-hi: #ffffff; --paper-lo: #f0eee2; --paper-dim: #e3e0d0;
+  --ink: #14120d; --ink-2: #3a362d; --ink-3: #7a7466;
+  --edge: #14120d;
+  --rule: color-mix(in srgb, var(--ink) 26%, transparent);
+  --rule-strong: var(--ink);
+  --grid-line: color-mix(in srgb, #f5c518 22%, transparent);
+  --grid-line-bold: color-mix(in srgb, #f5c518 40%, transparent);
+  --brick: #f5c518; --brick-ink: #14120d;
+  --vermillion: #d8341a; --honey: #f5c518; --sage: #1f7a4d; --teal: #0d6e75;
+  --forest: #14120d; --forest-ink: #f5c518; --slate: #1a3f8f; --slate-ink: #f0f4ff;
+  --khaki: #7a7466; --plum: #6f6ae8; --ochre: #a3560a;
+  --cream: #ffffff; --surface-hi: #ffffff; --head-hi: #f5c518; --field-focus: #fff6d8;
+  --plate-day: #f0eee2; --plate-mod: #ffffff; --plate-today: #f5c518; --plate-overdue: #d8341a;
+  --memo-rule: color-mix(in srgb, #f5c518 60%, transparent);
+  --wm-ink: color-mix(in srgb, #f5c518 55%, transparent);
+  --hit-line: color-mix(in srgb, var(--ink) 45%, transparent);
+  --pop-shadow: 6px 6px 0 var(--ink), 0 16px 28px rgba(20,18,13,.16);
+  --pop-shadow-sm: 3px 3px 0 var(--ink);
+  --bevel: none; --tex-grain: none;
+  --r-plate: 0; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
+  --font-ui: "Helvetica Neue", Helvetica, Arial, "Segoe UI", sans-serif;
+  --font-display: "Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+:root[data-style="chrome"][data-mv="3"] .hud-head {
+  background-image: none; background-color: var(--head-hi); color: var(--ink);
+  border-bottom: 3px solid var(--edge);
+  font-family: var(--font-display); font-weight: 900; letter-spacing: .02em; text-transform: uppercase;
+}
+:root[data-style="chrome"][data-mv="3"] .idx-mark { background: var(--ink); color: var(--honey); border-color: var(--edge); border-radius: 0; }
+:root[data-style="chrome"][data-mv="3"] .hud,
+:root[data-style="chrome"][data-mv="3"] .modal-panel,
+:root[data-style="chrome"][data-mv="3"] .deck-face,
+:root[data-style="chrome"][data-mv="3"] .deck-sheet,
+:root[data-style="chrome"][data-mv="3"] .todo-card { border-width: 2px; }
+:root[data-style="chrome"][data-mv="3"][data-theme="ink"] {
+  --paper: #14120d; --paper-hi: #211d15; --paper-lo: #0b0a07; --paper-dim: #2e2818;
+  --ink: #f6f3e8; --ink-2: #cbc6b4; --ink-3: #8f8a7a;
+  --edge: #f5c518; --brick: #f5c518; --brick-ink: #14120d;
+  --vermillion: #ff5a3c; --honey: #f5c518; --slate: #8f8bff; --plum: #8f8bff;
+  --forest: #f5c518; --forest-ink: #14120d; --teal: #35d6b0; --sage: #35d6b0;
+  --cream: #211d15; --surface-hi: #211d15; --head-hi: #f5c518; --field-focus: #2e2818;
+  --plate-day: #211d15; --plate-mod: #1a1710; --plate-today: #2e2818; --plate-overdue: #3a1508;
+  --wm-ink: color-mix(in srgb, var(--honey) 26%, transparent);
+  --pop-shadow: 6px 6px 0 var(--edge), 0 16px 28px rgba(0,0,0,.55);
+  --pop-shadow-sm: 3px 3px 0 var(--edge);
+}
+:root[data-style="chrome"][data-mv="3"][data-theme="ink"] .hud-head { color: #14120d; }

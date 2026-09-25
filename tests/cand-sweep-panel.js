@@ -5,12 +5,12 @@
 (function () {
   var API = window.API;
   function note(s) { try { API.bootNote('[P] ' + s); } catch (e) { /* no bridge */ } }
-  var SLOT = 2600;
+  var SLOT = 3200;
   var STATES = [];
-  ['blueprint', 'memphis', 'hazard'].forEach(function (st) {
-    ['1', '2', '3'].forEach(function (mv) {
-      STATES.push([st, mv, 'paper']);
-      STATES.push([st, mv, 'ink']);
+  [['poster', ['1', '2', '3', '4']], ['chrome', ['1', '2', '3']]].forEach(function (pair) {
+    pair[1].forEach(function (mv) {
+      STATES.push([pair[0], mv, 'paper']);
+      STATES.push([pair[0], mv, 'ink']);
     });
   });
   function lum(rgb) {
@@ -69,6 +69,9 @@
       measure(i + ' ' + s[0] + '/' + s[1] + '/' + s[2]);
     }
   }
-  tick();
-  setInterval(tick, 240);
+  /* every frame, not every 240 ms: the dashboard rewrites data-style from settings on its
+     own clock, and a slower assertion means the panel renders the user's saved material
+     while the sweep measures the candidate it set a frame earlier — the numbers were right
+     and the pixels were wrong */
+  (function loop() { tick(); requestAnimationFrame(loop); })();
 })();
