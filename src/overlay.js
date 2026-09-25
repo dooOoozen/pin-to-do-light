@@ -551,12 +551,12 @@
     doc.body.style.setProperty('--ds', ds.toFixed(3));
   }
 
-  function fontk() {
-    return clamp(Number(S.settings.cardFontScale) || 1.15, 0.8, 1.6);
-  }
-
-  function deployW() { return DEPLOY_W * cs * fontk(); }
-  function deployH() { return DEPLOY_H * cs * fontk(); }
+  /* The scatter box is sized by the card scale and the screen, never by the font scale: the
+     setting is called 散步卡片文字大小, and a sheet that grows with the type is a sheet that
+     moves every card on the desk while the person is only trying to read it. The title is
+     clamped inside the box, so a larger font costs characters, not geometry. */
+  function deployW() { return DEPLOY_W * cs; }
+  function deployH() { return DEPLOY_H * cs; }
   function chipk() {
     return clamp(Number(S.settings.chipFontScale) || 1, 0.8, 1.6);
   }

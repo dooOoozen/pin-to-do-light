@@ -53,7 +53,8 @@
         ],
         "note": "区域决定哪些像素可见，激活决定标题条是否被合成。"
       }
-    ]
+    ],
+    "visual_preset": "hazard"
   },
   "components": [
     {
