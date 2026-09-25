@@ -747,7 +747,11 @@ body.simple .todo-card .card-body { flex: 1 1 auto; justify-content: center; }
 body.simple .todo-card .card-pin { position: absolute; top: 0; left: 0; }
 body.simple .todo-card .card-top { margin-top: 0; }
 body.simple .todo-card .card-notes { margin-bottom: 0; }
-body.simple .todo-card .card-title {
+/* 19px is the size of a title on a full sheet, and the simplified chip has no sheet to fill:
+   this must not reach a `.compact` card. It used to lose to the mode-scoped chip rule, so the
+   day that rule stopped naming the mode, every hover chip jumped to the full-card size — with
+   散布卡片文字 at 1.6× that is 19px × cs × 1.6 against the chip's own 13.5px. */
+body.simple .todo-card:not(.compact) .card-title {
   font-size: calc(19px * var(--cs, 1) * var(--fontk, 1));
   line-height: 1.25;
   -webkit-line-clamp: 3;
