@@ -186,6 +186,7 @@
   /* ---------------------------------------------------------------- boot */
 
   init();
+  armCapsuleAtBoot();
 
   async function init() {
     el.cardLayer = $('#cardLayer');
@@ -546,7 +547,13 @@
   function computeScale() {
     const base = autoFactor();
     cs = clamp(base * (Number(S.settings.cardScale) || 1), 0.45, 2.4);
-    ds = clamp(base * (Number(S.settings.deckScale) || 1), 0.5, 2);
+    /* The 卡盒大小 slider runs to 2.5 and the clamp stopped at 2.0, so the last third of the
+       slider did nothing at all — the deck looked like it had stopped growing "wrong". It now
+       goes the whole way, and is capped instead by what the screen can hold: the deck's own
+       height is content-driven, so a big scale on a short display is what pushes the tool row
+       out of reach. */
+    const fit = Math.min(area.width, area.height) > 0 ? (Math.min(area.width, area.height) - 40) / 460 : 1;
+    ds = clamp(base * (Number(S.settings.deckScale) || 1), 0.5, Math.max(0.6, Math.min(2.5, fit)));
     doc.body.style.setProperty('--cs', cs.toFixed(3));
     doc.body.style.setProperty('--ds', ds.toFixed(3));
   }
@@ -698,6 +705,21 @@
       el.dock.style.left = Math.round(12 + range * pos) + 'px';
       el.dock.style.top = '';
     }
+    /* Whatever the numbers above decided, the deck's own frame has to end up inside the work
+       area: the CSS pins it to one edge (right: 14px) and JS pins it along the edge, and a
+       deck taller than the strip it lives on is the case where the tool row silently falls
+       off the screen. Re-measure and pull it back rather than trusting the arithmetic. */
+    const after = el.dock.getBoundingClientRect();
+    if (after.bottom > area.height - 8 || after.right > area.width - 8 ||
+        after.top < 0 || after.left < 0) {
+      const dy = Math.min(0, area.height - 8 - after.bottom) + Math.max(0, -after.top);
+      const dx = Math.min(0, area.width - 8 - after.right) + Math.max(0, -after.left);
+      if (isVerticalEdge()) {
+        el.dock.style.top = Math.round((parseFloat(el.dock.style.top) || 0) + dy) + 'px';
+      } else {
+        el.dock.style.left = Math.round((parseFloat(el.dock.style.left) || 0) + dx) + 'px';
+      }
+    }
   }
 
   /* ---------------------------------------------------------------- mode */
@@ -743,6 +765,8 @@
     /* cards are still flying — refresh once they have landed */
     if (prev === 'collapsed' && (next === 'overview' || next === 'deployed')) suppressHover(430);
     setTimeout(() => { refreshHitRects(true); hitTest(); }, 430);
+    /* let the cards finish flying home before the deck files itself away again */
+    syncCapsule(next === 'collapsed' ? 760 : 0);
   }
 
   /* putting the cards back may also retract the deck — unless the automatic
@@ -822,16 +846,61 @@
       cancelTuck();
       tucked = true;
       doc.body.classList.add('tucked');
+      /* a tucked deck is already the small thing, and the capsule is only for the one
+         sitting out — setMode('collapsed') above scheduled it before tucked flipped */
+      syncCapsule(0);
       markRectsDirty(900);
       refreshHitRects(true);
       setTimeout(() => { updateDockOrigin(); refreshHitRects(true); }, 260);
     } else {
       tucked = false;
       doc.body.classList.remove('tucked');
+      /* the untuck is the moment the resting state becomes real: the boot arm can land
+         while the deck is still filed away, and nothing else ever asks again */
+      syncCapsule(400);
       markRectsDirty(900);
       refreshHitRects(true);
       setTimeout(() => { updateDockOrigin(); hitTest(); refreshHitRects(true); }, 240);
     }
+  }
+
+  /* ---- the resting capsule ------------------------------------------------------------
+     The full deck is a large object to leave sitting on the desktop, and the user's own
+     report is that the pointer hits it on the way past. At rest it now keeps just the
+     number — a pill about a fifth of the area — and any pointer that comes near brings the
+     whole deck back. The point is not the smaller picture: the hit region is computed from
+     what actually paints, so a smaller box is a smaller piece of desktop the layer owns. */
+  let capsule = false;
+  let capsuleTimer = null;
+  function setCapsule(on) {
+    if (capsule === on) return;
+    capsule = on;
+    doc.body.classList.toggle('deck-capsule', on);
+    markRectsDirty(800);
+    /* the box is animating; the fly-home target and the region both follow the painted box,
+       so both have to be retaken once it has settled */
+    setTimeout(() => {
+      updateDockOrigin();
+      refreshHitRects(true);
+      shapeInvalidate(420);
+    }, 250);
+  }
+  /* the deck starts collapsed and setMode is never called for that, so the resting state has
+     to be asked for explicitly or the capsule never appears */
+  function armCapsuleAtBoot() {
+    setTimeout(() => syncCapsule(0), 1500);
+  }
+
+  function syncCapsule(delayMs) {
+    const want = mode === 'collapsed' && !modalOpen && !deckDrag && !drag && !tucked;
+    if (!want) {
+      if (capsuleTimer) { clearTimeout(capsuleTimer); capsuleTimer = null; }
+      setCapsule(false);
+      return;
+    }
+    if (capsuleTimer) clearTimeout(capsuleTimer);
+    capsuleTimer = setTimeout(() => { capsuleTimer = null; setCapsule(true); },
+      delayMs === undefined ? 260 : delayMs);
   }
 
   function popOut() {
@@ -1125,7 +1194,8 @@
   }
 
   function holdRects() {
-    const rects = [inflate(deckRect(), 6)];
+    /* the capsule is small enough that a pointer travelling to it deserves a head start */
+    const rects = [inflate(deckRect(), capsule ? 18 : 6)];
     if (mode === 'overview' && spread) {
       spread.slots.forEach((s) => {
         rects.push({ left: s.x - s.w / 2, top: s.y - s.h / 2, right: s.x + s.w / 2, bottom: s.y + s.h / 2 });
@@ -2256,6 +2326,7 @@
     }
     if (inside) {
       if (Date.now() < popGuardUntil) return;  /* the pop is still animating */
+      setCapsule(false);
       cancelCollapse();
       cancelTuck();
       if (tucked) popOut();                    /* a pointer that arrives and stops still opens it */
@@ -2304,6 +2375,9 @@
     el.face.addEventListener('click', (ev) => {
       ev.stopPropagation();
       if (Date.now() < suppressClickUntil) return;
+      /* the first click on a capsule opens it rather than scattering: the gesture that used
+         to mean "throw the cards out" would otherwise fire on the way past */
+      if (capsule) { setCapsule(false); return; }
       toggleDeploy();
     });
     el.face.addEventListener('dblclick', (ev) => { ev.stopPropagation(); openQuickModal(); });
@@ -2533,6 +2607,8 @@
     if (ev.target.closest('.dock-tools, .group-chips, button')) return;
     if (S.settings.dockMovable === false) return;
     markRectsDirty(900);
+    /* a drag is an explicit interaction with the deck, so it is the full deck while it lasts */
+    setCapsule(false);
     const rect = el.dock.getBoundingClientRect();
     deckDrag = {
       pointerId: ev.pointerId,
@@ -2596,6 +2672,7 @@
       toast('卡盒位置已保存 // DOCK MOVED');
     }
     deckDrag = null;
+    syncCapsule(200);
     dragSweep = null;         /* the swept area is only owed while the grab is live */
     markRectsDirty(700);
     refreshHitRects(true);
@@ -2791,6 +2868,7 @@
        in a window that refuses activation has no keyboard. Asked for before onMount, because
        that is where the first input.focus() happens. */
     API.setLayerFocus(true);
+    setCapsule(false);
     markRectsDirty(500);
     refreshHitRects(true);
     const closeBtn = $('[data-act="close"]', el.modal);
@@ -2811,6 +2889,7 @@
     /* close the keyboard door again, and with it the window activation that lets DWM paint
        the band: the host schedules the one realloc that clears whatever the session left */
     API.setLayerFocus(false);
+    syncCapsule(120);
     el.modal.classList.remove('open', 'interactive');
     el.modal.innerHTML = '';
     if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }

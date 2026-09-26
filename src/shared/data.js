@@ -948,11 +948,18 @@
       (function () {
         var dl = s.settings.dashLayout;
         var ids = ['clock', 'stats', 'pomo', 'today', 'memo', 'heat', 'mini'];
-        var ok = { order: [], span: {}, row: {} };
+        var ok = { order: [], span: {}, row: {}, collapsed: [] };
         if (dl && Array.isArray(dl.order)) {
           ok.order = dl.order.filter(function (id) { return ids.indexOf(id) >= 0; });
         }
         if (ok.order.length !== ids.length) ok.order = ids.slice();
+        /* a folded module still shows its head, which is the handle that unfolds it, so an
+           unknown id is dropped here rather than kept alive */
+        if (dl && Array.isArray(dl.collapsed)) {
+          dl.collapsed.forEach(function (id) {
+            if (ids.indexOf(id) >= 0 && ok.collapsed.indexOf(id) < 0) ok.collapsed.push(id);
+          });
+        }
         ['span', 'row'].forEach(function (key) {
           var allowed = key === 'span' ? DASH_SPANS : DASH_ROWS;
           var bag = dl && dl[key];

@@ -38,12 +38,16 @@
     var clipped = title && title.scrollWidth > title.clientWidth + 1;
     if (lineCount > 1) tall.push(m.dataset.mod + '=' + lineCount + ' rows @' + Math.round(hb.height) + 'px');
     if (clipped) wide.push(m.dataset.mod + '("' + (title.textContent || '').trim().slice(0, 12) + '…")');
+    var mark = head.querySelector('.idx-mark');
+    var markCut = mark && mark.scrollWidth > mark.clientWidth + 1;
+    if (markCut) tall.push(m.dataset.mod + ' index-square-cut ' + mark.clientWidth + '/' + mark.scrollWidth);
     note(m.dataset.mod + ' head=' + Math.round(hb.width) + 'x' + Math.round(hb.height) +
+      ' mark=' + (mark ? mark.clientWidth + '/' + mark.scrollWidth + (markCut ? ' CUT' : '') : '-') +
       ' rows=' + lineCount + ' title=' + (title ? (title.clientWidth) + '/' + title.scrollWidth : '-') +
       (clipped ? ' ELLIPSIS' : '') + ' children=' + head.children.length);
   });
   note('RESULT ' + (tall.length || grip ? 'FAIL ' + (grip ? grip + ' grips still mounted; ' : '') +
-    (tall.length ? 'heads over one line: ' + tall.join(', ') : '') :
+    (tall.length ? 'heads wrong: ' + tall.join(', ') : '') :
     'PASS every head is a single row and no grip remains' +
     (wide.length ? ' (' + wide.length + ' titles ellipsised: ' + wide.join(' ') + ')' : '')));
   }

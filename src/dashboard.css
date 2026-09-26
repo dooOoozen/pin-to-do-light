@@ -547,6 +547,26 @@ body.side-dragging { cursor: col-resize; }
    "POMODORO / 番…", which is the ellipsis this rule exists to avoid */
 @container (max-inline-size: 240px) { .mod-head .t-en { display: none; } }
 .mod-head .mtitle { display: block; }
+/* The index square is a label, not a flexible item. It inherited the head's "shrink and
+   ellipsis" rule, so a narrow module clipped half of 番/钟/列 away — the one glyph that says
+   which module this is. It now keeps its own width and its own ink. */
+.mod-head > .idx-mark { flex: 0 0 auto; overflow: visible; text-overflow: clip; }
+.mod-fold {
+  flex: none; width: 17px; padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: 9px; line-height: 1.4; color: var(--ink-3);
+}
+.mod-fold:hover { color: var(--paper); background: var(--ink); }
+.mod.folded .mod-fold { transform: rotate(-90deg); }
+.mod.folded { display: none; }
+.dash-folded { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
+.dash-folded[hidden] { display: none; }
+.folded-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border: 1px solid var(--edge); background: var(--paper-hi);
+  color: var(--ink-2); font-size: 9px; letter-spacing: .1em; cursor: pointer;
+}
+.folded-pill:hover { background: var(--ink); color: var(--paper); }
+.folded-pill .idx-mark { border: 0; }
 .mod-head > span { flex: 0 1 auto; min-width: 0; }
 .mod-head > .spacer { flex: 1 0 auto; min-width: 4px; }
 /* The title gives up its tail before the controls do, but it never disappears: at 159px the

@@ -772,3 +772,30 @@ body.simple .todo-card:not(.compact) .card-title {
    attribute and a class, and a guard that loses on specificity is not a guard. */
 body[data-mode="overview"].popping .todo-card,
 body[data-mode="deployed"].popping .todo-card { pointer-events: none; }
+
+/* ================================================================
+   the resting capsule — a pill with the number, not the whole deck
+   ================================================================
+   Everything the deck shows at rest is the count; the name, the meter, the tool row and the
+   group circles come back with the pointer. The face is laid out as a row so the pill stays
+   short on the left/right edges and thin on the top/bottom ones. */
+body.deck-capsule .deck,
+body.deck-capsule.edge-top .deck,
+body.deck-capsule.edge-bottom .deck { width: calc(78px * var(--ds, 1)); }
+body.deck-capsule .deck-face {
+  min-height: 0;
+  flex-direction: row; align-items: center; gap: calc(6px * var(--ds, 1));
+  padding: calc(5px * var(--ds, 1)) calc(8px * var(--ds, 1));
+}
+body.deck-capsule .deck-head,
+body.deck-capsule .deck-name,
+body.deck-capsule .deck-meter-row,
+body.deck-capsule .deck-hint,
+body.deck-capsule .dock-tools,
+body.deck-capsule .group-chips { display: none; }
+body.deck-capsule .deck-count { font-size: calc(21px * var(--ds, 1)); line-height: 1.1; }
+body.deck-capsule .deck-sheets .deck-sheet { transform: none !important; }
+.deck, .deck-face, .deck-count {
+  transition: width .18s cubic-bezier(.2, .9, .2, 1), min-height .18s ease,
+    padding .18s ease, font-size .18s ease;
+}

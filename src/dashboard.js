@@ -531,7 +531,13 @@
         if (ROWS.indexOf(Number(saved.row[k])) >= 0) row[k] = Number(saved.row[k]);
       });
     }
-    return { order: order, span: span, row: row };
+    const collapsed = [];
+    if (saved && Array.isArray(saved.collapsed)) {
+      saved.collapsed.forEach((id) => {
+        if (span[id] !== undefined && collapsed.indexOf(id) < 0) collapsed.push(id);
+      });
+    }
+    return { order: order, span: span, row: row, collapsed: collapsed };
   }
 
   let dashDrag = null;
@@ -552,6 +558,16 @@
       el.style.gridColumn = 'span ' + L.span[id];
       el.style.gridRow = 'span ' + (L.row[id] || 1);
       grid.appendChild(el);
+      if (!el.querySelector('.mod-fold')) {
+        const head = el.querySelector('.mod-head');
+        if (head) {
+          const fb = doc.createElement('button');
+          fb.className = 'mod-fold';
+          fb.type = 'button';
+          fb.textContent = '▾';
+          head.appendChild(fb);
+        }
+      }
       if (!el.querySelector('.mod-size')) {
         const g = doc.createElement('button');
         g.className = 'mod-size';
@@ -573,7 +589,62 @@
       }
       const s = el.querySelector('.mod-size');
       if (s) s.title = '当前 ' + L.span[id] + ' 列 × ' + (L.row[id] || 1) + ' 行，拖动缩放（自动吸附）';
+      const f = el.querySelector('.mod-fold');
+      const folded = L.collapsed.indexOf(id) >= 0;
+      el.classList.toggle('folded', folded);
+      if (f) {
+        f.title = folded ? '展开此模块' : '折叠此模块';
+        f.setAttribute('aria-expanded', folded ? 'false' : 'true');
+      }
     });
+    /* A folded module leaves the grid entirely. It used to stay in its cell with its body
+       hidden, which saved nothing at all: the rows are `minmax(168px, 1fr)`, so the hole is
+       the same height as the module. What is left behind is a pill in a strip under the grid,
+       which is both the space saving and the undo affordance in one object. */
+    const strip = ensureFoldStrip(grid);
+    strip.textContent = '';
+    L.collapsed.forEach((id) => {
+      const el = grid.querySelector('[data-mod="' + id + '"]');
+      if (!el) return;
+      const mark = el.querySelector('.idx-mark');
+      const zh = el.querySelector('.mtitle .t-zh');
+      const b = doc.createElement('button');
+      b.className = 'folded-pill';
+      b.type = 'button';
+      b.dataset.mod = id;
+      b.title = '点击展开';
+      b.innerHTML = '<span class="idx-mark plain">' + escapeHtml(mark ? mark.textContent : '') +
+        '</span><span>' + escapeHtml(zh ? zh.textContent : id) + '</span>';
+      strip.appendChild(b);
+    });
+    strip.hidden = !L.collapsed.length;
+  }
+
+  function ensureFoldStrip(grid) {
+    let strip = doc.getElementById('dashFolded');
+    if (strip) return strip;
+    strip = doc.createElement('div');
+    strip.className = 'dash-folded';
+    strip.id = 'dashFolded';
+    strip.hidden = true;
+    grid.insertAdjacentElement('afterend', strip);
+    strip.addEventListener('click', (ev) => {
+      const p = ev.target.closest('.folded-pill');
+      if (p) toggleFold(p.dataset.mod);
+    });
+    return strip;
+  }
+
+  function toggleFold(id) {
+    const L = dashLayout();
+    if (!L.span[id]) return;
+    const i = L.collapsed.indexOf(id);
+    if (i >= 0) L.collapsed.splice(i, 1); else L.collapsed.push(id);
+    const next = { order: L.order, span: L.span, row: L.row, collapsed: L.collapsed };
+    API.op({ type: 'settings:update', patch: { dashLayout: next } });
+    S.state.settings.dashLayout = next;
+    applyDashLayout();
+    toast(i >= 0 ? '已展开 // EXPANDED' : '已折叠 // FOLDED');
   }
 
   function persistDashLayout() {
@@ -585,7 +656,9 @@
       span[el.dataset.mod] = (parseInt(el.style.gridColumn.replace(/\D/g, ''), 10) || 2);
       row[el.dataset.mod] = (parseInt(el.style.gridRow.replace(/\D/g, ''), 10) || 1);
     });
-    const next = { order: order, span: span, row: row };
+    const foldedIds = [];
+    $$('.mod', grid).forEach((el) => { if (el.classList.contains('folded')) foldedIds.push(el.dataset.mod); });
+    const next = { order: order, span: span, row: row, collapsed: foldedIds };
     API.op({ type: 'settings:update', patch: { dashLayout: next } });
     /* Write the local copy too. The host's answer arrives a beat later, and in between
        anything that re-applies the layout — endSize does, on every release — reads the
@@ -699,7 +772,23 @@
       toast('模块尺寸已保存 // RESIZED');
     }
 
+    /* double-clicking the bar is the gesture people try first, and the head is the one part
+       of a folded module that stays on screen, so it has to work as well as the button */
+    grid.addEventListener('dblclick', (ev) => {
+      const head = ev.target.closest('.mod-head');
+      if (!head || ev.target.closest('button, select, input, textarea')) return;
+      const m = head.closest('.mod');
+      if (m) toggleFold(m.dataset.mod);
+    });
+
     grid.addEventListener('click', (ev) => {
+      const fold = ev.target.closest('.mod-fold');
+      if (fold) {
+        ev.stopPropagation();
+        const fm = fold.closest('.mod');
+        if (fm) toggleFold(fm.dataset.mod);
+        return;
+      }
       const b = ev.target.closest('.mod-span');
       if (!b) return;
       const mod = b.closest('.mod');
