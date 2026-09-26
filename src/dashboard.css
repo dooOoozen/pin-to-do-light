@@ -538,14 +538,22 @@ body.side-dragging { cursor: col-resize; }
 /* One row, always. The head used to wrap, so a narrow panel spent two and three lines on
    chrome — the ⠿ grip is gone (dragging anywhere on the head already moves the module), and
    the title now gives up characters instead of pushing the buttons onto their own row. */
-.mod-head { flex-wrap: nowrap; }
+.mod-head { flex-wrap: nowrap; container-type: inline-size; }
+/* Below this the head cannot hold both halves of a bilingual label, so the English goes and
+   the Chinese stays — the module keeps its name instead of keeping an ellipsis. Containment
+   is on the head rather than the module because the head has no absolutely positioned
+   children to relocate, and its own width is what decides whether the label fits. */
+/* 240px, measured: at 206px heads the latin half still won and two titles came out as
+   "POMODORO / 番…", which is the ellipsis this rule exists to avoid */
+@container (max-inline-size: 240px) { .mod-head .t-en { display: none; } }
+.mod-head .mtitle { display: block; }
 .mod-head > span { flex: 0 1 auto; min-width: 0; }
 .mod-head > .spacer { flex: 1 0 auto; min-width: 4px; }
 /* The title gives up its tail before the controls do, but it never disappears: at 159px the
    今日清单 head's group select took the whole row and the title measured 0px wide, which is a
    module with no name. A floor of four characters plus an ellipsis is the readable version. */
 .mod-head .select { flex: 0 1 auto; min-width: 0; max-width: 46%; }
-.mod-head > span:not(.spacer):not(.idx-mark) { flex: 1 1 auto; min-width: 4.2em; }
+.mod-head > span:not(.spacer):not(.idx-mark) { flex: 1 1 auto; min-width: 5.5em; }
 
 /* ---- the modules: pomodoro gauge, today ring, memo pad ---- */
 

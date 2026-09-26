@@ -516,7 +516,15 @@ fn spawn_script_channel(app: &AppHandle, label: &'static str, flag: &str, settle
         for _ in 0..40 {
             if runner.get_webview_window(label).is_some() {
                 let inject = runner.clone();
-                let body = js.clone();
+                /* Waiting for the *bridge*, not just the window. A panel created by a click
+                   rather than by `--panel` is injected with the moment its HWND exists, while
+                   its own scripts are still loading, so `window.API` is undefined and every
+                   `API.bootNote` in the test file was caught by its own try/catch and dropped:
+                   the run looked silent, i.e. like a test that found nothing, four times over. */
+                let body = String::from(
+                    "(function(){var t=0;function run(){if(!window.API||!window.API.bootNote){if(t++<80){setTimeout(run,250);}return;}",
+                ) + &js
+                    + "}run();})();";
                 let _ = runner.run_on_main_thread(move || {
                     if let Some(win) = inject.get_webview_window(label) {
                         let _ = boot_note(inject.clone(), format!("[test] eval -> {label}"));

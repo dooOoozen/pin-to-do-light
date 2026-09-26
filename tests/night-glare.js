@@ -45,6 +45,34 @@
   }
   function f(v) { return v === null ? 'n/a' : v.toFixed(1); }
 
+  /* The first version of this file only compared text against ground, and that is precisely
+     how it missed the complaint it was written for: a header bar painted in full chrome yellow
+     on a 1% room is 10.3:1 of nothing but light while its own label measures a comfortable
+     5:1. So every named element is now read as painted — its own colour on its own background,
+     and how bright that background is in absolute terms — because "刺眼" is about the light
+     leaving the screen, not about whether a glyph can be resolved. */
+  /* Only the surfaces that fill an area. A small accent-filled button at 86% luminance is a
+     deliberate object, not a lit room — the first pass flagged every material's primary button
+     and buried the two findings that matter, which are a header bar painted in full chrome and
+     a day plate left white by a night block that never overrode it. */
+  var PARTS = ['body', '.hud', '.modal-panel', '.mod', '.mod-body', '.hud-head', '.mod-head',
+               '.day-head', '.stat', '.input', '.mini-row'];
+  var SMALL = ['.btn', '.btn.primary', '.idx-mark', '.badge'];
+  function parts() {
+    var out = [];
+    PARTS.forEach(function (sel) {
+      var n = document.querySelector(sel);
+      if (!n) return;
+      var cs = getComputedStyle(n);
+      var bgc = cs.backgroundColor;
+      if (/rgba\(0,\s*0,\s*0,\s*0\)/.test(bgc)) return;   /* nothing painted, nothing to judge */
+      var l = lum(bgc);
+      if (l === null) return;
+      out.push({ sel: sel, y: l, r: ratio(cs.color, bgc), fg: cs.color, bg: bgc });
+    });
+    return out;
+  }
+
   function survey(style) {
     root.dataset.style = style;
     return wait(260).then(function () {
@@ -67,22 +95,47 @@
           if (r !== null && (low === null || r < low.r)) low = { t: t, r: r };
         });
       rows.push(['weakestAccent/plate', low ? low.t.replace('--', '') + ':' + f(low.r) : 'n/a']);
-      note(style + ' night ' + rows.map(function (r) { return r[0] + '=' + r[1]; }).join(' '));
-      return { style: style, body: body, weak: low ? low.r : null, weakName: low ? low.t : '-' };
+      var ps = parts();
+      /* a painted surface brighter than about a quarter of full white is the glare band; the
+         three materials nobody complains about sit at 1-8% */
+      var bright = ps.filter(function (p) { return p.y > 0.25; });
+      var unread = ps.filter(function (p) { return p.r !== null && p.r < 4.5; });
+      var small = [];
+      SMALL.forEach(function (sel) {
+        var n = document.querySelector(sel);
+        if (!n) return;
+        var cs = getComputedStyle(n);
+        if (/rgba\(0,\s*0,\s*0,\s*0\)/.test(cs.backgroundColor)) return;
+        var r = ratio(cs.color, cs.backgroundColor);
+        if (r !== null && r < 4.5) small.push(sel + '=r' + f(r));
+      });
+      note(style + ' ' + rows.map(function (r) { return r[0] + '=' + r[1]; }).join(' ') +
+        ' | painted: ' + ps.map(function (p) { return p.sel + ' Y' + Math.round(p.y * 100) + ' r' + f(p.r); }).join(' '));
+      if (bright.length) note(style + ' GLARE ' + bright.map(function (p) { return p.sel + '=Y' + Math.round(p.y * 100) + '%'; }).join(' '));
+      if (unread.length) note(style + ' UNREADABLE ' + unread.map(function (p) {
+        return p.sel + '=r' + f(p.r) + ' [' + p.fg + ' on ' + p.bg + ']';
+      }).join(' '));
+      if (small.length) note(style + ' small-chips ' + small.join(' '));
+      return { style: style, body: body, weak: low ? low.r : null, weakName: low ? low.t : '-',
+        bright: bright.map(function (p) { return p.sel; }), unread: unread.map(function (p) { return p.sel; }) };
     });
   }
 
   document.documentElement.appendChild(probe);
-  root.dataset.theme = 'ink';
+  root.dataset.theme = window.__hour || 'ink';
   var STYLES = ['ikb', 'blueprint', 'chrome', 'memphis', 'print', 'diner', 'garden', 'console', 'hazard'];
   var out = [];
   STYLES.reduce(function (p, s) {
     return p.then(function () { return survey(s).then(function (r) { out.push(r); }); });
   }, wait(300)).then(function () {
-    var glare = out.filter(function (r) { return r.body > 13.5; }).map(function (r) { return r.style + '(' + f(r.body) + ')'; });
+    var glare = out.filter(function (r) { return r.body > 13.5; }).map(function (r) { return r.style + '(text ' + f(r.body) + ')'; });
+    var fields = out.filter(function (r) { return r.bright.length; }).map(function (r) { return r.style + ' ' + r.bright.join(','); });
+    var unread = out.filter(function (r) { return r.unread.length; }).map(function (r) { return r.style + ' ' + r.unread.join(','); });
     var thin = out.filter(function (r) { return r.weak !== null && r.weak < 3; }).map(function (r) { return r.style + '(' + r.weakName + ' ' + f(r.weak) + ')'; });
     note('RESULT glare>13.5: ' + (glare.length ? glare.join(', ') : 'none') +
-      ' | accent<3: ' + (thin.length ? thin.join(', ') : 'none'));
+      ' | accent<3: ' + (thin.length ? thin.join(', ') : 'none') +
+      ' | field Y>25%: ' + (fields.length ? fields.join(' ; ') : 'none') +
+      ' | own-text<4.5: ' + (unread.length ? unread.join(' ; ') : 'none'));
     root.dataset.theme = was.theme;
     root.dataset.style = was.style;
   }).catch(function (e) {
