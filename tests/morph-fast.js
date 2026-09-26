@@ -1,6 +1,6 @@
 /* A fast material walk for the recorder: material-hold.js holds each one for twenty
    seconds so the outside-in tools can measure it, which is far too slow for a clip. This
-   spends about 1.1 s per material across all six, then the night half of three, and puts
+   spends about 1.1 s per material across the six, then the night half of three, and puts
    the user's own setting back at the end. Run with --test-script-panel. */
 (function () {
   var API = window.API;
@@ -16,10 +16,10 @@
   API.getState().then(function (st) {
     var before = { style: st.settings.style, theme: st.settings.theme };
     var chain = Promise.resolve();
-    ['print', 'diner', 'ikb', 'garden', 'poster', 'console'].forEach(function (s) {
+    ['print', 'diner', 'ikb', 'garden', 'frost', 'console'].forEach(function (s) {
       chain = chain.then(function () { return visit(s, 'paper'); });
     });
-    ['garden', 'poster', 'console'].forEach(function (s) {
+    ['garden', 'frost', 'console'].forEach(function (s) {
       chain = chain.then(function () { return visit(s, 'ink'); });
     });
     chain.then(function () { return visit(before.style, before.theme); })

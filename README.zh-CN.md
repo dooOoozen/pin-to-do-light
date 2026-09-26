@@ -26,15 +26,15 @@
 
 日期同时带公历与农历（`9月20日 · 周日 · 农历八月初十`），并支持按农历年重复。
 
-**十套材质**，每套都有独立的昼/夜配色：**印刷 1971**（终端打印件）、**餐厅 DINER**（Googie 搪瓷与铬条）、**群青构成 IKB**（构成主义、2px 粗线）、**晨雾花园 GARDEN**（桃红到奶油的渐变）、**电蓝海报 POSTER**（纸白粗黑 + 电蓝实块）、**指令台 RETRO**（任务台）、**图纸 BLUEPRINT**（纯黑白技术图纸）、**紫电拼贴 COLLAGE**（电紫与钴蓝，直角）、**黑黄战术 HI-VIS**（标牌漆）、**铬黄丝网 CHROME**（白纸大块黄）。材质一律按视觉语言命名，不指向任何具体作品。切换材质会同时改变表面纹理、描边、圆角、标签字体和昼/夜配色——卡盒和桌面跟着变，不只是面板；临时调色盘可以实时覆盖任意 token，并按昼/夜分别保存。
+**十套材质**，每套都有独立的昼/夜配色：**印刷 1971**（终端打印件）、**餐厅 DINER**（Googie 搪瓷与铬条）、**群青构成 IKB**（构成主义、2px 粗线）、**晨雾花园 GARDEN**（桃红到奶油的渐变）、**指令台 RETRO**（任务台）、**雾绿磨砂 FROST**（薄荷灰房间上的半透明磨砂面）、**图纸 BLUEPRINT**（纯黑白技术图纸）、**紫电拼贴 COLLAGE**（电紫与钴蓝，直角）、**黑黄战术 HI-VIS**（标牌漆）、**铬黄丝网 CHROME**（白纸大块黄）。材质一律按视觉语言命名，不指向任何具体作品。切换材质会同时改变表面纹理、描边、圆角、标签字体和昼/夜配色——卡盒和桌面跟着变，不只是面板；临时调色盘可以实时覆盖任意 token，并按昼/夜分别保存。
 
 | 印刷 1971 · PRINT | 餐厅 DINER | 群青构成 IKB |
 | --- | --- | --- |
 | ![print](docs/media/material-print.png) | ![diner](docs/media/material-diner.png) | ![ikb](docs/media/material-ikb.png) |
-| **晨雾花园 GARDEN** | **电蓝海报 POSTER** | **指令台 RETRO** |
-| ![garden](docs/media/material-garden.png) | ![poster](docs/media/material-poster.png) | ![console](docs/media/material-console.png) |
+| **晨雾花园 GARDEN** | **雾绿磨砂 FROST** | **指令台 RETRO** |
+| ![garden](docs/media/material-garden.png) | ![frost](docs/media/material-frost.png) | ![console](docs/media/material-console.png) |
 | 晨雾花园 · 夜 | 电蓝海报 · 夜 | 指令台 · 夜 |
-| ![garden night](docs/media/material-garden-night.png) | ![poster night](docs/media/material-poster-night.png) | ![console night](docs/media/material-console-night.png) |
+| ![garden night](docs/media/material-garden-night.png) | ![frost night](docs/media/material-frost-night.png) | ![console night](docs/media/material-console-night.png) |
 
 | 拖拽调整仪表盘模块 | 台账行的悬停态 |
 | --- | --- |

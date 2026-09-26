@@ -430,7 +430,6 @@ body.side-dragging { cursor: col-resize; }
   color: var(--paper); background: var(--brick);
 }
 .mod.sizing .mod-size-tag { display: block; }
-.mod-grip { flex: none; font-size: 11px; line-height: 1; color: var(--ink-3); letter-spacing: -1px; }
 .mod-span {
   flex: none; padding: 1px 5px; font-family: var(--font-mono);
   font-size: 8.5px; letter-spacing: .04em;
@@ -536,8 +535,17 @@ body.side-dragging { cursor: col-resize; }
 
 .hud-head { flex-wrap: nowrap; }
 .hud-head > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mod-head { flex-wrap: wrap; row-gap: 3px; }
-.mod-head > span { flex: 0 1 auto; }
+/* One row, always. The head used to wrap, so a narrow panel spent two and three lines on
+   chrome — the ⠿ grip is gone (dragging anywhere on the head already moves the module), and
+   the title now gives up characters instead of pushing the buttons onto their own row. */
+.mod-head { flex-wrap: nowrap; }
+.mod-head > span { flex: 0 1 auto; min-width: 0; }
+.mod-head > .spacer { flex: 1 0 auto; min-width: 4px; }
+/* The title gives up its tail before the controls do, but it never disappears: at 159px the
+   今日清单 head's group select took the whole row and the title measured 0px wide, which is a
+   module with no name. A floor of four characters plus an ellipsis is the readable version. */
+.mod-head .select { flex: 0 1 auto; min-width: 0; max-width: 46%; }
+.mod-head > span:not(.spacer):not(.idx-mark) { flex: 1 1 auto; min-width: 4.2em; }
 
 /* ---- the modules: pomodoro gauge, today ring, memo pad ---- */
 
