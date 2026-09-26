@@ -874,6 +874,13 @@ input[type="range"] { accent-color: var(--brick); }
 }
 
 :root[data-style="ikb"][data-theme="ink"] {
+  /* the day plates were never overridden here, so a date group header was near-white paper
+     with light ink on it — 1.2:1, an invisible row rather than a dark one */
+  --plate-day: #282d36; --plate-today: #303741; --plate-overdue: #3a1a1d;
+  --memo-rule: color-mix(in srgb, var(--ink) 22%, transparent);
+  /* the day sheet's forest and plum are near-black, which on a dark plate is not a dim colour
+     but no colour at all — 1.0:1 wherever a group colour is used as text */
+  --forest: #6f9ad8; --forest-ink: #10131a; --plum: #9db4ff;
   --paper:      #17191f;
   --paper-hi:   #1f252e;
   --paper-lo:   #1b1d21;
@@ -1164,6 +1171,10 @@ input[type="range"] { accent-color: var(--brick); }
 
 /* powered down: the panel is a dark screen and only the lamps are on */
 :root[data-style="console"][data-theme="ink"] {
+  /* same miss as ikb: the console's powered-down screen kept the daylight plates */
+  --plate-day: #333435; --plate-today: #3c3e3f; --plate-overdue: #4a2a22;
+  --memo-rule: color-mix(in srgb, var(--ink) 22%, transparent);
+  --plum: #b9a6ff; --khaki: #b3afa0;
   --paper:      #222324;
   --paper-hi:   #2a2c2e;
   --paper-lo:   #242524;
@@ -1617,7 +1628,8 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="memphis"] .btn:hover,
 :root[data-style="memphis"] .icon-btn:hover { background: var(--honey); color: var(--ink); }
 :root[data-style="memphis"] .btn.primary { background: var(--ink); color: var(--paper-hi); }
-:root[data-style="memphis"] .mod-head { color: var(--brick); }
+/* (no colour here on purpose: the module head is the purple field above, and a rule of
+   the same weight once painted its text that same purple — invisible labels in both hours) */
 
 /* ==========================================================================
    MATERIAL: 黑黄战术 / BLACK AND HI-VIS  (data-style="hazard")
@@ -1759,14 +1771,21 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="chrome"][data-theme="ink"] {
   --paper: #1f1d18; --paper-hi: #2c2820; --paper-lo: #201f1b; --paper-dim: #403a2b;
   --ink: #dbd8ce; --ink-2: #c0bbaa; --ink-3: #8f8a7a;
-  --edge: #f5c518;
+  /* The hairline around every panel, and the solid offset block under a lifted one, were the
+     full chrome: 59% luminance on a 1% room. Brass at 17% keeps the material readable as gold
+     without lighting the desk. */
+  --edge: #8a6f22;
   --rule: color-mix(in srgb, var(--ink) 26%, transparent);
   --rule-strong: var(--ink);
   --brick: #f5c518; --brick-ink: #14120d;
   --vermillion: #ff5a3c; --honey: #f5c518; --sage: #35d6b0; --teal: #35d6b0;
   --forest: #f5c518; --forest-ink: #14120d; --slate: #8f8bff; --slate-ink: #14120d;
   --khaki: #8f8a7a; --plum: #8f8bff; --ochre: #d9a800;
-  --cream: #343028; --surface-hi: #343028; --head-hi: #f5c518; --field-focus: #403a2b;
+  --cream: #343028; --surface-hi: #343028; --field-focus: #403a2b;
+  /* the header bar is the one large field this material has, and it was painted in the full
+     yellow — 10.3:1 of nothing but light against the room, which is the "刺眼" the text-ratio
+     probe could not see. A gold-lit plate at 10% still reads as this material at night. */
+  --head-hi: #6f5411;
   --plate-day: #343028; --plate-mod: #2e2b23; --plate-today: #403a2b; --plate-overdue: #4b291c;
   --memo-rule: color-mix(in srgb, var(--honey) 40%, transparent);
   --wm-ink: color-mix(in srgb, var(--honey) 26%, transparent);
@@ -1799,6 +1818,12 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="chrome"] .mod-head { color: var(--ink); font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 :root[data-style="chrome"] .day-head { border-width: 2px; }
 :root[data-style="chrome"] .day-head.overdue { color: #fff; }
+/* Two rules paint a chip in the ink colour and write the yellow on top of it. By day that is
+   black on yellow; by night the ink is a light grey and yellow on it measured 1.2:1, so the
+   index mark and the hover state simply stopped being readable. */
+:root[data-style="chrome"][data-theme="ink"] .idx-mark,
+:root[data-style="chrome"][data-theme="ink"] .btn:hover,
+:root[data-style="chrome"][data-theme="ink"] .icon-btn:hover { background: var(--honey); color: #14120d; }
 
 /* ==========================================================================
    MATERIAL: 雾绿磨砂 / MINT FROST GLASS  (data-style="frost")
