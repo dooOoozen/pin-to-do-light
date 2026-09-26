@@ -874,14 +874,14 @@ input[type="range"] { accent-color: var(--brick); }
 }
 
 :root[data-style="ikb"][data-theme="ink"] {
-  --paper:      #0b0e14;
-  --paper-hi:   #141a24;
-  --paper-lo:   #06080d;
-  --paper-dim:  #1d2530;
-  --ink:        #f2f1ec;
-  --ink-2:      #c3c8d2;
+  --paper:      #17191f;
+  --paper-hi:   #1f252e;
+  --paper-lo:   #1b1d21;
+  --paper-dim:  #303741;
+  --ink:        #d3d3cf;
+  --ink-2:      #b7bcc5;
   --ink-3:      #8e96a5;
-  --edge:       #f2f1ec;
+  --edge:       #d3d3cf;
   --brick:      #2e63d8;
   --brick-ink:  #0b0e14;
   --vermillion: #ff4a4a;
@@ -891,10 +891,10 @@ input[type="range"] { accent-color: var(--brick); }
   --sage:       #7ea6e8;
   --teal:       #2e63d8;
   --slate:      #2e63d8;
-  --cream:      #141a24;
-  --surface-hi: #141a24;
-  --head-hi:    #1d2530;
-  --field-focus: #1d2530;
+  --cream:      #282d36;
+  --surface-hi: #282d36;
+  --head-hi:    #303741;
+  --field-focus: #303741;
 }
 
 /* flat, and outlined harder rather than lifted */
@@ -1104,150 +1104,6 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="garden"] .btn.primary { background: var(--brick); color: var(--brick-ink); }
 
 /* ==========================================================================
-   MATERIAL: 电蓝海报 / BLUE SCREEN PRINT  (data-style="poster")
-   ==========================================================================
-   Not glass and not mist: a screen-printed poster. One saturated electric blue doing
-   the structural work, white and near-black as the only other values, a lime disc for
-   the moon. Flat again — the
-   reference gets its depth from overlapping shapes and hard cuts, not from shadows —
-   so elevation is off and the rules are 2px. */
-
-:root[data-style="poster"] {
-  /* paper white, not blue-tinted: the field colour is used for solid blocks — header,
-     primary, today — instead of bleeding into every border, and the second accent is a warm
-     signal red rather than a second cool one */
-  --paper:      #f7f9fc;
-  --paper-hi:   #ffffff;
-  --paper-lo:   #e4ebf5;
-  --paper-dim:  #ccd9ea;
-  --ink:        #05121d;
-  --ink-2:      #1c3a55;
-  --ink-3:      #5c7891;
-  --rule:       color-mix(in srgb, var(--ink) 30%, transparent);
-  --rule-strong: var(--ink);
-  --grid-line:  color-mix(in srgb, var(--brick) 9%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--brick) 18%, transparent);
-  --pop-shadow: none;
-  --pop-shadow-sm: none;
-  --ink-glow:   color-mix(in srgb, var(--ink) 94%, transparent);
-  --hit-line:   color-mix(in srgb, var(--brick) 45%, transparent);
-  --wm-ink:     color-mix(in srgb, var(--brick) 22%, transparent);
-  --hatch-line: color-mix(in srgb, var(--brick) 10%, transparent);
-
-  --brick:      #0a6cf0;   /* the field colour, and the primary */
-  --brick-ink:  #ffffff;
-  --vermillion: #e8320f;   /* a signal red, so the two accents are not both cool */
-  --honey:      #ffd400;
-  --sage:       #0a6cf0;
-  --teal:       #0b3f8f;
-  --forest:     #05121d;
-  --forest-ink: #ffffff;
-  --slate:      #0b3f8f;
-  --slate-ink:  #eaf1ff;
-  --khaki:      #5c7891;
-  --plum:       #5b3df0;
-  --ochre:      #e8320f;
-  --cream:      #ffffff;
-  --surface-hi: #ffffff;
-  --head-hi:    #0a6cf0;
-  --field-focus: #ffffff;
-
-  --plate-day:     #e4ebf5;
-  --plate-mod:     #ffffff;
-  --plate-today:   color-mix(in srgb, var(--brick) 15%, var(--paper));
-  --plate-overdue: color-mix(in srgb, var(--vermillion) 14%, var(--paper));
-  --memo-rule:     color-mix(in srgb, var(--brick) 40%, transparent);
-
-  --edge: #05121d;
-  --r-plate: 0; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
-  --bevel: none;
-  --font-ui: "Helvetica Neue", Helvetica, Arial, "Segoe UI", sans-serif;
-  --font-display: "Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif;
-}
-
-/* the same poster at night: the blue becomes the field, black stays the rule, and the
-   accents invert in role — lime and white carry what blue carried by day */
-:root[data-style="poster"][data-theme="ink"] {
-  /* the field drops to deep blue: #0a8cff is too light a ground for either black or
-     white type to clear 4.5:1, and the reference's dark panels are near-black with the
-     electric blue kept for the strips, the rules and the moon */
-  --paper:      #062a55;
-  --paper-hi:   #0a4a94;
-  --paper-lo:   #031b39;
-  --paper-dim:  #0d5aa8;
-  --ink:        #f2f9ff;
-  --ink-2:      #bcdcf7;
-  --ink-3:      #8fb6dd;
-  --edge:       #04101c;
-  --brick:      #c9f24e;
-  --brick-ink:  #04101c;
-  --ochre:      #ff9a55;
-  --vermillion: #ff8763;
-  --honey:      #c9f24e;
-  --sage:       #35c8ff;
-  --teal:       #7cc4ff;
-  --forest:     #c9f24e;
-  --slate:      #0a8cff;
-  --slate-ink:  #04101c;
-  --khaki:      #9fd0ff;
-  --plum:       #b9c6ff;
-  --cream:      #0a4a94;
-  --surface-hi: #0a4a94;
-  --head-hi:    #0a8cff;
-  --field-focus: #0d5aa8;
-  --plate-day:     #0a4a94;
-  --plate-today:   #0d5aa8;
-  --plate-overdue: #04101c;
-}
-
-/* the screen-print used to carry a halftone here; the dots were taken out on request, and
-   the material is all the flatter for it */
-:root[data-style="poster"] {
-/* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
-  --tex-grain: none;
-  --tex-size: 5px 5px;
-  --tex-size-bg: 5px 5px;
-  --tex-blend: normal;
-}
-:root[data-style="poster"] .hud,
-:root[data-style="poster"] .hud-thin,
-:root[data-style="poster"] .modal-panel,
-:root[data-style="poster"] .plan-pop,
-:root[data-style="poster"] .deck-face,
-:root[data-style="poster"] .deck-sheet,
-:root[data-style="poster"] .todo-card {
-  border-width: 3px;
-}
-:root[data-style="poster"] .hud-head {
-  /* a solid block of the field colour and nothing else: the two diagonal cuts that used to
-     sit at its right end are gone (用户：去掉斜杠) — on a white page with 3px black rules the
-     slab is already the mark, and the shards only made the bar look busy */
-  background-image: none;
-  background-color: var(--head-hi);
-  color: var(--brick-ink);
-  border-bottom: 3px solid var(--edge);
-  font-family: var(--font-display);
-  font-weight: 900;
-  letter-spacing: .02em;
-  text-transform: uppercase;
-}
-:root[data-style="poster"] .idx-mark { background: var(--honey); color: var(--ink); border-color: var(--edge); }
-:root[data-style="poster"][data-theme="ink"] .idx-mark {
-  /* the night half keeps lime as its lamp colour, and the night ink is white — the mark
-     would read 1.4:1 with the day pairing, so it carries the field's own dark */
-  color: #04101c;
-}
-:root[data-style="poster"] .idx-mark.plain { background: transparent; color: var(--brick-ink); }
-:root[data-style="poster"] .mod-head { color: var(--brick-ink); }
-:root[data-style="poster"] .btn { font-weight: 700; letter-spacing: .08em; border-width: 2px; }
-:root[data-style="poster"] .btn:hover,
-:root[data-style="poster"] .icon-btn:hover { background: var(--brick); color: var(--brick-ink); }
-:root[data-style="poster"] .btn.primary { background: var(--ink); color: var(--paper-hi); border-color: var(--edge); }
-:root[data-style="poster"] .day-head { border-width: 2px; }
-:root[data-style="poster"] .day-head.overdue { color: var(--paper-hi); }
-:root[data-style="poster"] .day-head.overdue b { color: var(--honey); }
-
-/* ==========================================================================
    MATERIAL: 指令台 / RETRO-FUTURE CONSOLE  (data-style="console")
    ==========================================================================
    The mission-console reading of retro-futurism: a bolted flange plate with four
@@ -1308,12 +1164,12 @@ input[type="range"] { accent-color: var(--brick); }
 
 /* powered down: the panel is a dark screen and only the lamps are on */
 :root[data-style="console"][data-theme="ink"] {
-  --paper:      #17181a;
-  --paper-hi:   #202225;
-  --paper-lo:   #101112;
-  --paper-dim:  #2a2d30;
-  --ink:        #f0ead8;
-  --ink-2:      #b8b3a4;
+  --paper:      #222324;
+  --paper-hi:   #2a2c2e;
+  --paper-lo:   #242524;
+  --paper-dim:  #3c3e3f;
+  --ink:        #e3decd;
+  --ink-2:      #b3afa0;
   --ink-3:      #8a8779;
   --edge:       #4a4e52;
   --bevel: inset 0 1px 0 rgba(255, 255, 255, .10), inset 0 -2px 0 rgba(0, 0, 0, .35);
@@ -1328,10 +1184,10 @@ input[type="range"] { accent-color: var(--brick); }
   --forest:     #4fc3d9;
   --slate:      #6d93b4;
   --khaki:      #d8ab4a;
-  --cream:      #202225;
-  --surface-hi: #202225;
-  --head-hi:    #2a2d30;
-  --field-focus: #2a2d30;
+  --cream:      #333435;
+  --surface-hi: #333435;
+  --head-hi:    #3c3e3f;
+  --field-focus: #3c3e3f;
 }
 
 /* the flange: four screws at the corners of every plate */
@@ -1626,15 +1482,15 @@ input[type="range"] { accent-color: var(--brick); }
   --font-display: var(--font-mono);
 }
 :root[data-style="blueprint"][data-theme="ink"] {
-  --paper: #0d0e0f; --paper-hi: #16181a; --paper-lo: #090a0a; --paper-dim: #1e2124;
-  --ink: #f2f2ef; --ink-2: #c3c4c0; --ink-3: #83858a;
+  --paper: #18191a; --paper-hi: #212325; --paper-lo: #1e1f1f; --paper-dim: #313436;
+  --ink: #d3d3d1; --ink-2: #b7b8b4; --ink-3: #83858a;
   --brick: #e4e4df; --brick-ink: #0d0e0f;
   --vermillion: #b6b7b2; --honey: #93948f; --sage: #a9aaa5; --teal: #c2c3be;
   --forest: #d4d5d0; --forest-ink: #0d0e0f; --slate: #8e9095; --slate-ink: #0d0e0f;
   --khaki: #7c7e82; --plum: #cfd0cb; --ochre: #a5a6a1;
-  --cream: #16181a; --surface-hi: #16181a; --head-hi: #0d0e0f; --field-focus: #1c1f22;
-  --plate-day: #16181a; --plate-today: #1e2124; --plate-overdue: #26292c;
-  --plate-mod: #121314;
+  --cream: #2a2c2d; --surface-hi: #2a2c2d; --head-hi: #222323; --field-focus: #2f3234;
+  --plate-day: #2a2c2d; --plate-today: #313436; --plate-overdue: #383b3e;
+  --plate-mod: #262728;
 /* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
   --tex-grain: none;
 }
@@ -1723,15 +1579,15 @@ input[type="range"] { accent-color: var(--brick); }
   --font-display: var(--font-ui);
 }
 :root[data-style="memphis"][data-theme="ink"] {
-  --paper: #120c24; --paper-hi: #1b1338; --paper-lo: #0c0819; --paper-dim: #241a47;
-  --ink: #f2ecff; --ink-2: #c3b4ea; --ink-3: #8d7cb8;
+  --paper: #1d172f; --paper-hi: #261e42; --paper-lo: #211d2e; --paper-dim: #372d58;
+  --ink: #d7d1e5; --ink-2: #b9aade; --ink-3: #8d7cb8;
   --brick: #a86bff; --brick-ink: #170f2b;
   --vermillion: #c9b6ea; --honey: #9f93c4; --sage: #6f9cff; --teal: #35e0d0;
   --forest: #7f7fff; --forest-ink: #120c24; --slate: #6f9cff; --slate-ink: #120c24;
   --khaki: #9f93c4; --plum: #c9b6ea; --ochre: #9f93c4;
-  --cream: #1b1338; --surface-hi: #1b1338; --head-hi: #2a1c55; --field-focus: #221741;
-  --plate-day: #1b1338; --plate-today: #241a47; --plate-overdue: #3a1e3f;
-  --plate-mod: #171030;
+  --cream: #2e274a; --surface-hi: #2e274a; --head-hi: #3c2f64; --field-focus: #352a52;
+  --plate-day: #2e274a; --plate-today: #372d58; --plate-overdue: #4b3150;
+  --plate-mod: #2b2443;
   --pop-shadow: 6px 6px 0 color-mix(in srgb, var(--slate) 40%, transparent), 0 18px 34px rgba(0,0,0,.5);
   --pop-shadow-sm: 3px 3px 0 color-mix(in srgb, var(--slate) 34%, transparent);
 /* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
@@ -1805,15 +1661,15 @@ input[type="range"] { accent-color: var(--brick); }
   --font-ui: "Segoe UI Variable Display", "Microsoft YaHei", ui-sans-serif, sans-serif;
 }
 :root[data-style="hazard"][data-theme="ink"] {
-  --paper: #0a0b09; --paper-hi: #141612; --paper-lo: #060706; --paper-dim: #1d201a;
-  --ink: #eef2e6; --ink-2: #b6bdab; --ink-3: #757c6c;
+  --paper: #151714; --paper-hi: #1f211d; --paper-lo: #1b1c1a; --paper-dim: #30332c;
+  --ink: #cfd3c8; --ink-2: #abb1a0; --ink-3: #757c6c;
   --brick: #d9ff2f; --brick-ink: #0a0b09;
   --vermillion: #8fa0b0; --honey: #f0ff5a; --sage: #8fa0b0; --teal: #8fa0b0;
   --forest: #9aa68c; --forest-ink: #0a0b09; --slate: #8fa0b0; --slate-ink: #0a0b09;
   --khaki: #c9c07a; --plum: #8fa0b0; --ochre: #c9c07a;
-  --cream: #141612; --surface-hi: #141612; --head-hi: #0f110d; --field-focus: #191c16;
-  --plate-day: #141612; --plate-today: #1d201a; --plate-overdue: #241a22;
-  --plate-mod: #101210;
+  --cream: #282a25; --surface-hi: #282a25; --head-hi: #232521; --field-focus: #2c2f29;
+  --plate-day: #282a25; --plate-today: #30332c; --plate-overdue: #362d34;
+  --plate-mod: #242623;
   --pop-shadow: 0 0 0 1px color-mix(in srgb, var(--brick) 16%, transparent), 0 18px 40px rgba(0,0,0,.6);
   --pop-shadow-sm: 0 0 0 1px color-mix(in srgb, var(--brick) 14%, transparent);
   --tex-grain: repeating-linear-gradient(115deg, color-mix(in srgb, var(--brick) 5%, transparent) 0 1px, transparent 1px 26px);
@@ -1901,8 +1757,8 @@ input[type="range"] { accent-color: var(--brick); }
 }
 /* the same print at night: black paper, and the yellow becomes the ink */
 :root[data-style="chrome"][data-theme="ink"] {
-  --paper: #14120d; --paper-hi: #211d15; --paper-lo: #0b0a07; --paper-dim: #2e2818;
-  --ink: #f6f3e8; --ink-2: #cbc6b4; --ink-3: #8f8a7a;
+  --paper: #1f1d18; --paper-hi: #2c2820; --paper-lo: #201f1b; --paper-dim: #403a2b;
+  --ink: #dbd8ce; --ink-2: #c0bbaa; --ink-3: #8f8a7a;
   --edge: #f5c518;
   --rule: color-mix(in srgb, var(--ink) 26%, transparent);
   --rule-strong: var(--ink);
@@ -1910,8 +1766,8 @@ input[type="range"] { accent-color: var(--brick); }
   --vermillion: #ff5a3c; --honey: #f5c518; --sage: #35d6b0; --teal: #35d6b0;
   --forest: #f5c518; --forest-ink: #14120d; --slate: #8f8bff; --slate-ink: #14120d;
   --khaki: #8f8a7a; --plum: #8f8bff; --ochre: #d9a800;
-  --cream: #211d15; --surface-hi: #211d15; --head-hi: #f5c518; --field-focus: #2e2818;
-  --plate-day: #211d15; --plate-mod: #1a1710; --plate-today: #2e2818; --plate-overdue: #3a1508;
+  --cream: #343028; --surface-hi: #343028; --head-hi: #f5c518; --field-focus: #403a2b;
+  --plate-day: #343028; --plate-mod: #2e2b23; --plate-today: #403a2b; --plate-overdue: #4b291c;
   --memo-rule: color-mix(in srgb, var(--honey) 40%, transparent);
   --wm-ink: color-mix(in srgb, var(--honey) 26%, transparent);
   --hit-line: color-mix(in srgb, var(--ink) 45%, transparent);
@@ -1943,3 +1799,129 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="chrome"] .mod-head { color: var(--ink); font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 :root[data-style="chrome"] .day-head { border-width: 2px; }
 :root[data-style="chrome"] .day-head.overdue { color: #fff; }
+
+/* ==========================================================================
+   MATERIAL: 雾绿磨砂 / MINT FROST GLASS  (data-style="frost")
+   ==========================================================================
+   A console laid out on frosted panes rather than printed on paper: a pale mint-grey room,
+   surfaces that are translucent white so the room shows through them, one teal for anything
+   interactive, and deep teal-navy for text. No hard shadows and no outlines that bite — the
+   edges are hairlines mixed from the ink, and elevation is a wide soft fall. The blur itself
+   is not reproducible here (a transparent webview has nothing behind it to sample), so the
+   frosting is done the way the browser can: alpha on the surfaces, not backdrop-filter.
+   Corners are generous and the type stays in sentence case, because the reference labels
+   rather than shouts. */
+:root[data-style="frost"] {
+  --paper:      #dfe8e4;
+  --paper-hi:   #f6faf8;
+  --paper-lo:   #cfdad6;
+  --paper-dim:  #c1cfc9;
+  --ink:        #17282e;
+  --ink-2:      #46616b;
+  --ink-3:      #7f959d;
+  --rule:       color-mix(in srgb, var(--ink) 11%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 26%, transparent);
+  --grid-line:  color-mix(in srgb, var(--ink) 5%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 9%, transparent);
+  --pop-shadow: 0 12px 28px rgba(23,40,46,.10), 0 2px 6px rgba(23,40,46,.06);
+  --pop-shadow-sm: 0 2px 8px rgba(23,40,46,.10);
+  --ink-glow:   color-mix(in srgb, var(--ink) 88%, transparent);
+  --hit-line:   color-mix(in srgb, var(--brick) 34%, transparent);
+  --wm-ink:     color-mix(in srgb, var(--brick) 13%, transparent);
+  --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
+
+  --brick:      #2f9e94;   /* the one interactive colour: teal */
+  --brick-ink:  #ffffff;
+  --vermillion: #c94f43;
+  --honey:      #c9922f;
+  --sage:       #3fae9c;
+  --teal:       #2f9e94;
+  --forest:     #2b7f78;
+  --forest-ink: #f2fbf9;
+  --slate:      #3f6d8e;
+  --slate-ink:  #f1f7fb;
+  --khaki:      #7f959d;
+  --plum:       #5d7fd0;
+  --ochre:      #a97134;
+  --cream:      #f7fbf9;
+  --surface-hi: #fbfdfc;
+  --head-hi:    #eef4f1;
+  --field-focus: #ffffff;
+
+  --plate-day:     #eaf2ef;
+  --plate-mod:     #f4f9f7;
+  --plate-today:   color-mix(in srgb, var(--brick) 13%, var(--paper-hi));
+  --plate-overdue: color-mix(in srgb, var(--vermillion) 12%, var(--paper-hi));
+  --memo-rule:     color-mix(in srgb, var(--brick) 22%, transparent);
+
+  --edge: color-mix(in srgb, var(--ink) 16%, transparent);
+  --r-plate: 16px; --r-ctl: 11px; --r-pill: 999px; --r-dot: 50%;
+  --bevel: inset 0 1px 0 rgba(255,255,255,.72);
+/* 无网点：这套材质靠半透明分层，加点阵立刻变脏 */
+  --tex-grain: none;
+  --tex-size: 8px 8px; --tex-size-bg: 8px 8px; --tex-blend: normal;
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, "Microsoft YaHei", sans-serif;
+  --font-display: var(--font-ui);
+}
+/* the same console with the room darkened: a deep teal slate, and the panes go smoky */
+:root[data-style="frost"][data-theme="ink"] {
+  --paper:      #18262c;
+  --paper-hi:   #2b3d44;
+  --paper-lo:   #121d22;
+  --paper-dim:  #34484f;
+  --ink:        #dfe9e6;
+  --ink-2:      #a9bdba;
+  --ink-3:      #7b938f;
+  --edge: color-mix(in srgb, #ffffff 22%, transparent);
+  --rule:       color-mix(in srgb, #ffffff 12%, transparent);
+  --rule-strong: color-mix(in srgb, #ffffff 28%, transparent);
+  --grid-line:  color-mix(in srgb, #ffffff 5%, transparent);
+  --grid-line-bold: color-mix(in srgb, #ffffff 9%, transparent);
+  --brick:      #4fd0c2; --brick-ink: #0d1a1e;
+  --vermillion: #ff8774; --honey: #f0c25f; --sage: #58d6bd; --teal: #4fd0c2;
+  --forest: #3fbfa8; --forest-ink: #0d1a1e; --slate: #7fb2d8; --slate-ink: #0d1a1e;
+  --khaki: #a9bdba; --plum: #9db4ff; --ochre: #e0a15f;
+  --cream: #22333a; --surface-hi: #24373f; --head-hi: #213339; --field-focus: #2c4149;
+  --plate-day: #22333a; --plate-mod: #1f3036;
+  --plate-today: #27424a; --plate-overdue: #3c262a;
+  --wm-ink:     color-mix(in srgb, var(--brick) 16%, transparent);
+  --memo-rule:  color-mix(in srgb, var(--brick) 26%, transparent);
+  --pop-shadow: 0 14px 30px rgba(0,0,0,.42), 0 2px 6px rgba(0,0,0,.3);
+  --bevel: inset 0 1px 0 rgba(255,255,255,.10);
+}
+/* the panes: translucent so the room reads through them, which is what makes it frosted */
+:root[data-style="frost"] .hud,
+:root[data-style="frost"] .modal-panel,
+:root[data-style="frost"] .plan-pop {
+  /* inside the panel this is a pane over the material's own ground, so 72% reads as glass */
+  background-color: color-mix(in srgb, var(--paper-hi) 74%, transparent);
+}
+:root[data-style="frost"] .deck-face,
+:root[data-style="frost"] .deck-sheet,
+:root[data-style="frost"] .todo-card {
+  /* on the desktop layer there is no ground behind the page — the window is transparent, so
+     the same alpha lets the wallpaper through the cards and a title lands on somebody's
+     poster. The frosting stays, but it stays readable. */
+  background-color: color-mix(in srgb, var(--paper-hi) 94%, transparent);
+}
+:root[data-style="frost"] .hud-head {
+  background-color: var(--head-hi);
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--rule);
+  letter-spacing: .02em;
+}
+:root[data-style="frost"] .idx-mark {
+  background: color-mix(in srgb, var(--brick) 16%, var(--paper-hi));
+  color: var(--forest); border-color: transparent; border-radius: 9px;
+}
+:root[data-style="frost"] .idx-mark.plain { background: transparent; color: var(--ink-2); }
+:root[data-style="frost"] .btn,
+:root[data-style="frost"] .icon-btn {
+  border-width: 1px; border-color: var(--rule-strong);
+  background: color-mix(in srgb, var(--paper-hi) 70%, transparent);
+}
+:root[data-style="frost"] .btn:hover,
+:root[data-style="frost"] .icon-btn:hover { background: var(--brick); color: var(--brick-ink); border-color: transparent; }
+:root[data-style="frost"] .btn.primary { background: var(--brick); color: var(--brick-ink); border-color: transparent; }
+:root[data-style="frost"] .mod-head { color: var(--ink-2); }
+:root[data-style="frost"] .day-head { border-width: 1px; }

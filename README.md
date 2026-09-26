@@ -26,15 +26,15 @@ This is the Tauri 2 rewrite of an Electron original, done for resident memory an
 
 Dates carry both solar and lunar labels (`9月20日 · 周日 · 农历八月初十`), and a task can repeat on the lunar year.
 
-**Ten materials**, each with its own day and night palette: 印刷 1971 (the terminal sheet), 餐厅 DINER (Googie enamel and chrome), 群青构成 IKB (constructivist, 2 px rules), 晨雾花园 GARDEN (a rose-to-cream ramp), 电蓝海报 POSTER (paper white and solid blocks of electric blue), 指令台 RETRO (mission console), 图纸 BLUEPRINT (monochrome technical drawing), 紫电拼贴 COLLAGE (purple and cobalt, cut square), 黑黄战术 HI-VIS (hi-vis signage) and 铬黄丝网 CHROME (white paper, chrome-yellow slabs). Each is named for its visual language, not for a work. A material switches surface, outline, corner radii, label typeface and palette together — the deck and the desk follow, not just the panel — and the colour lab overrides any token live, saving per day/night.
+**Ten materials**, each with its own day and night palette: 印刷 1971 (the terminal sheet), 餐厅 DINER (Googie enamel and chrome), 群青构成 IKB (constructivist, 2 px rules), 晨雾花园 GARDEN (a rose-to-cream ramp), 指令台 RETRO (mission console), 雾绿磨砂 FROST (frosted panes on a mint room), 图纸 BLUEPRINT (monochrome technical drawing), 紫电拼贴 COLLAGE (purple and cobalt, cut square), 黑黄战术 HI-VIS (hi-vis signage) and 铬黄丝网 CHROME (white paper, chrome-yellow slabs). Each is named for its visual language, not for a work. A material switches surface, outline, corner radii, label typeface and palette together — the deck and the desk follow, not just the panel — and the colour lab overrides any token live, saving per day/night.
 
 | 印刷 1971 · PRINT | 餐厅 DINER | 群青构成 IKB |
 | --- | --- | --- |
 | ![print](docs/media/material-print.png) | ![diner](docs/media/material-diner.png) | ![ikb](docs/media/material-ikb.png) |
-| **晨雾花园 GARDEN** | **电蓝海报 POSTER** | **指令台 RETRO** |
-| ![garden](docs/media/material-garden.png) | ![poster](docs/media/material-poster.png) | ![console](docs/media/material-console.png) |
-| 晨雾花园 · night | 电蓝海报 · night | 指令台 · night |
-| ![garden night](docs/media/material-garden-night.png) | ![poster night](docs/media/material-poster-night.png) | ![console night](docs/media/material-console-night.png) |
+| **晨雾花园 GARDEN** | **雾绿磨砂 FROST** | **指令台 RETRO** |
+| ![garden](docs/media/material-garden.png) | ![frost](docs/media/material-frost.png) | ![console](docs/media/material-console.png) |
+| 晨雾花园 · night | 雾绿磨砂 · night | 指令台 · night |
+| ![garden night](docs/media/material-garden-night.png) | ![frost night](docs/media/material-frost-night.png) | ![console night](docs/media/material-console-night.png) |
 
 | Resize a dashboard module | Hover a ledger row |
 | --- | --- |

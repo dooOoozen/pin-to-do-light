@@ -44,8 +44,8 @@
      and are now named after their own medium (poster, console). The old spelling is accepted
      and rewritten rather than rejected, because it is what every existing data file holds
      and an unresolved style would drop the whole desk back to 印刷. */
-  var STYLE_WAS = { p3: 'poster', unp: 'console' };
-  var STYLE_IS = ['print', 'diner', 'ikb', 'garden', 'poster', 'console',
+  var STYLE_WAS = { p3: 'frost', unp: 'console', poster: 'frost' };
+  var STYLE_IS = ['print', 'diner', 'ikb', 'garden', 'console', 'frost',
     'blueprint', 'memphis', 'hazard', 'chrome'];
   function styleKey(v) {
     var k = String(v || '');
