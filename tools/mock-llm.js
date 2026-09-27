@@ -72,6 +72,35 @@ function dayOf(text) {
   return (moved && moved[1]) || all[all.length - 1] || '';
 }
 
+/* Two endpoints that cannot do tool calls, on request:
+     MOCK_NO_TOOLS=dialect  — the model knows how to call a tool and writes it into the prose
+                              in its own markup (what Qwen does behind the HF router)
+     MOCK_NO_TOOLS=prose    — no call at all, just a sentence (what a small local model does
+                              when the compat endpoint has no tool_choice to honour)
+   This is the local-model question made measurable: same eval, same code, one knob. */
+const NO_TOOLS = process.env.MOCK_NO_TOOLS || '';
+
+function withoutToolCalls(r) {
+  if (!r.tool_calls || !r.tool_calls.length) return r;
+  const calls = r.tool_calls;
+  if (NO_TOOLS === 'dialect') {
+    return Object.assign({}, r, {
+      content: calls.map((c) => dialectCall(c.function.name, JSON.parse(c.function.arguments || '{}')))
+        .join(String.fromCharCode(10)),
+      tool_calls: undefined
+    });
+  }
+  /* prose: the intent survives as words, the structure does not */
+  const first = calls[0].function;
+  let args = {};
+  try { args = JSON.parse(first.arguments || '{}'); } catch (e) { /* the guard cases send junk */ }
+  const said = (args.drafts || []).map((d) => d.title).join('、') || (args.question || '');
+  return Object.assign({}, r, {
+    content: '我看了下任务，' + (said ? '可以安排：' + said : '不过还需要你确认一下') + '。',
+    tool_calls: undefined
+  });
+}
+
 function reply(body) {
   const last = (body.messages || []).filter((m) => m.role === 'user').pop();
   const text = String((last && last.content) || '');
@@ -264,7 +293,7 @@ const server = http.createServer((req, res) => {
        otherwise, and "what does the panel do while waiting" is untestable at that speed */
     const slow = /慢|slow/.test(String(((body.messages || []).filter((m) => m.role === 'user').slice(-1)[0] || {}).content || ''));
     setTimeout(() => {
-      const r = reply(body);
+      const r = NO_TOOLS ? withoutToolCalls(reply(body)) : reply(body);
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({
         id: 'chatcmpl-mock',
