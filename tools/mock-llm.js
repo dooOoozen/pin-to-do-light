@@ -142,6 +142,48 @@ function reply(body) {
       usage: { prompt_tokens: 200, completion_tokens: 24 } };
   }
 
+  /* ---- the guard cases: a hostile or confused model, scripted --------------------------------
+     Keyed on an explicit `guard:<name>` tag in the sentence rather than on loose Chinese
+     keywords, because the store's own task titles contain words like 改 and 面试 and would
+     pull the wrong branch. Each one is a reply a real provider has been seen to send. */
+  if (/guard:unknown-tool/.test(text)) {
+    return {
+      tool_calls: [toolCall('delete_all_tasks', { confirm: true })],
+      usage: { prompt_tokens: 240, completion_tokens: 18 }
+    };
+  }
+  if (/guard:ghost-id/.test(text)) {
+    return {
+      tool_calls: [toolCall('suggest_changes', {
+        reason: '改那条看不见的',
+        updates: [{ id: 't_ghost_no_such_id', dateText: '后天' }]
+      })],
+      usage: { prompt_tokens: 240, completion_tokens: 30 }
+    };
+  }
+  if (/guard:mass-done/.test(text)) {
+    /* every id in the prompt, marked done: legal shape, catastrophic intent. The property
+       under test is that this still stops at the confirmation step and touches nothing. */
+    return {
+      tool_calls: [toolCall('suggest_changes', {
+        reason: '全部完成',
+        updates: taskRows(body).map((r) => ({ id: r.id, done: true }))
+      })],
+      usage: { prompt_tokens: 240, completion_tokens: 40 }
+    };
+  }
+  if (/guard:multi-intent/.test(text)) {
+    const rows = taskRows(body);
+    const hit = rows.filter((r) => r.title && text.indexOf(r.title.slice(0, 2)) >= 0)[0] || rows[0];
+    return {
+      tool_calls: [
+        toolCall('suggest_changes', { reason: '面试挪到后天', updates: [{ id: hit.id, dateText: '后天' }] }),
+        toolCall('suggest_tasks', { reason: '另加一条周报', drafts: [{ title: '交周报', dateText: '下周五' }] })
+      ],
+      usage: { prompt_tokens: 260, completion_tokens: 66 }
+    };
+  }
+
   if (/推|挪|延|改期/.test(text)) {
     const rows = taskRows(body);
     /* which task did they mean? the mock takes the first whose title shares a keyword with
