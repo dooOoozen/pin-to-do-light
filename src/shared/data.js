@@ -79,7 +79,7 @@
     'simple', 'muted', 'deckMonitor', 'ai',
     'dockScale', 'autoScale',
     'desktopOnly', 'dockPos', 'deckScale', 'cardScale', 'uiScale', 'dockMovable', 'sideWidth', 'sideCollapsed', 'sound',
-    'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'theme', 'style', 'palette',
+    'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'deckShape', 'theme', 'style', 'palette',
     'memo', 'pomoDate', 'pomoCount', 'dashLayout', 'receipt'
   ];
 
@@ -270,6 +270,10 @@
         cardFontScale: 1.15,
         chipFontScale: 1,
         dockAutoTuck: true,
+        /* the deck's shape is a choice, not a state the deck falls into: 'stack' is the
+           square file box with its title, meter and progress; 'pill' is one row carrying the
+           number and the buttons. Nothing switches between them on its own. */
+        deckShape: 'stack',
         theme: 'paper',
         /* the material of the whole UI, independent of the hour: 'print' is the 1971
            terminal sheet, 'diner' the Googie console. Anything unknown falls back. */
@@ -451,6 +455,7 @@
     settings.cardFontScale = Math.min(1.6, Math.max(0.8, Number(settings.cardFontScale) || 1.15));
     settings.chipFontScale = Math.min(1.6, Math.max(0.8, Number(settings.chipFontScale) || 1));
     settings.dockAutoTuck = settings.dockAutoTuck !== false;
+    settings.deckShape = settings.deckShape === 'pill' ? 'pill' : 'stack';
     settings.hotkey = String(settings.hotkey == null ? 'Control+Alt+T' : settings.hotkey);
     if (!ids[settings.activeGroupId]) {
       settings.activeGroupId = out.todos[0] ? out.todos[0].groupId : out.groups[0].id;

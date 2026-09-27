@@ -60,11 +60,9 @@
   let popTimer = null;
   let tuckGuardUntil = 0;
   let popGuardUntil = 0;
+  let popOpenTimer = null;
   let hoverArmed = true;
   let hoverRearmAfter = 0;
-  /* the pointer's own verdict, kept as state: the cursor feed only sends frames while the
-     pointer *moves*, so "where is it now" has to survive until the next frame */
-  let pointerOnDeck = false;
   let audioCtx = null;
   let lastSound = '';
 
@@ -189,7 +187,6 @@
   /* ---------------------------------------------------------------- boot */
 
   init();
-  armCapsuleAtBoot();
 
   async function init() {
     el.cardLayer = $('#cardLayer');
@@ -206,6 +203,7 @@
     el.toolDashboard = $('#toolDashboard');
     el.toolSimple = $('#toolSimple');
     el.toolAutoTuck = $('#toolAutoTuck');
+    el.toolDeckShape = $('#toolDeckShape');
     el.chips = $('#groupChips');
     el.modal = $('#modalRoot');
     el.toast = $('#toastRoot');
@@ -771,8 +769,6 @@
     /* cards are still flying — refresh once they have landed */
     if (prev === 'collapsed' && (next === 'overview' || next === 'deployed')) suppressHover(430);
     setTimeout(() => { refreshHitRects(true); hitTest(); }, 430);
-    /* let the cards finish flying home before the deck files itself away again */
-    syncCapsule(next === 'collapsed' ? 760 : 0);
   }
 
   function toggleDeploy() {
@@ -846,86 +842,38 @@
       cancelTuck();
       tucked = true;
       doc.body.classList.add('tucked');
-      /* a tucked deck is already the small thing, and the capsule is only for the one
-         sitting out — setMode('collapsed') above scheduled it before tucked flipped */
-      syncCapsule(0);
       markRectsDirty(900);
       refreshHitRects(true);
       setTimeout(() => { updateDockOrigin(); refreshHitRects(true); }, 260);
     } else {
       tucked = false;
       doc.body.classList.remove('tucked');
-      /* the untuck is the moment the resting state becomes real: the boot arm can land
-         while the deck is still filed away, and nothing else ever asks again */
-      syncCapsule(400);
       markRectsDirty(900);
       refreshHitRects(true);
       setTimeout(() => { updateDockOrigin(); hitTest(); refreshHitRects(true); }, 240);
     }
   }
 
-  /* ---- the resting capsule ------------------------------------------------------------
-     The full deck is a large object to leave sitting on the desktop, and the user's own
-     report is that the pointer hits it on the way past. At rest it now keeps just the
-     number — a pill about a fifth of the area — and any pointer that comes near brings the
-     whole deck back. The point is not the smaller picture: the hit region is computed from
-     what actually paints, so a smaller box is a smaller piece of desktop the layer owns. */
-  let capsule = false;
-  let capsuleTimer = null;
-  let capsuleOpenTimer = null;
-  function setCapsule(on) {
-    if (capsule === on) return;
-    capsule = on;
-    /* arming the pill is the retraction happening; a tuck still in flight would undo it */
-    if (on) cancelTuck();
-    doc.body.classList.toggle('deck-capsule', on);
+  /* ---- the deck's shape ----------------------------------------------------------------
+     Two styles the user chooses between, and nothing else: 'stack' is the square file box
+     with its title, meter and progress, 'pill' is a single row carrying the number and the
+     buttons. The deck never morphs between them on its own — every automatic version of this
+     turned into a race against the pointer, the auto-tuck and the spread layout.
+
+     The box is what the hit region and the fly-home target are measured from, so both are
+     retaken once the new shape has been painted. */
+  let deckShape = '';
+  function applyDeckShape(shape) {
+    const want = shape === 'pill' ? 'pill' : 'stack';
+    if (deckShape === want) return;
+    deckShape = want;
+    doc.body.classList.toggle('deck-pill', want === 'pill');
     markRectsDirty(800);
-    /* the box is animating; the fly-home target and the region both follow the painted box,
-       so both have to be retaken once it has settled */
     setTimeout(() => {
       updateDockOrigin();
       refreshHitRects(true);
       shapeInvalidate(420);
     }, 250);
-  }
-  /* the deck starts collapsed and setMode is never called for that, so the resting state has
-     to be asked for explicitly or the capsule never appears */
-  function armCapsuleAtBoot() {
-    setTimeout(() => syncCapsule(0), 1500);
-  }
-
-  function capsuleWanted() {
-    /* 自动缩进 is now the switch for this: on means the deck retracts into the pill at rest,
-       off means it stays a full box. The 22 px edge sliver is still there for the deck's ▣
-       and the tray — nobody has to be told twice that the desktop is being reclaimed. */
-    if (mode !== 'collapsed' || modalOpen || deckDrag || drag || tucked) return false;
-    if (S.settings.dockAutoTuck === false || !autoTuck) return false;
-    if (Date.now() < popGuardUntil) return false;
-    if (pointerOnDeck) return false;
-    /* An inbound pointer is not an absent one. The pop and the untuck both fire while the
-       cursor is still travelling, and arming the pill in that gap is the flash the user
-       reported — pill for a frame, then the whole deck plus its spread. 40 px, not the 120
-       the hover re-arm uses: a cursor parked a hand's width from the deck, which is where a
-       taskbar sits, has to leave room for the resting state to exist. */
-    const p = lastPointer;
-    return !holdRects().some((r) => pointIn(p, inflate(r, 40)));
-  }
-
-  function syncCapsule(delayMs) {
-    const delay = delayMs === undefined ? 260 : delayMs;
-    if (!capsuleWanted()) {
-      /* the deck is being used right now — take the pill off, and drop any pending arm */
-      if (capsuleTimer) { clearTimeout(capsuleTimer); capsuleTimer = null; }
-      setCapsule(false);
-      return;
-    }
-    /* repeat calls are ignored while a decision is pending: this runs on every cursor frame
-       with the pointer off the deck, and restarting the timer each time would mean a person
-       who keeps moving the mouse never gets a resting pill at all */
-    if (capsuleTimer || capsule) return;
-    /* re-asked when it fires, because 400–760 ms is roughly how long a pointer takes to
-       arrive, and a pill that lands under an arriving cursor has to be taken back off */
-    capsuleTimer = setTimeout(() => { capsuleTimer = null; setCapsule(capsuleWanted()); }, delay);
   }
 
   function popOut() {
@@ -945,10 +893,10 @@
        resting pill never got to be what a person actually sees. The sliver is still one click
        away on the deck's own toolbar and in the tray. */
     if (S.settings.dockAutoTuck !== false) return;
-    if (!autoTuck || tucked || tuckTimer || capsule) return;
+    if (!autoTuck || S.settings.dockAutoTuck === false || tucked || tuckTimer) return;
     tuckTimer = setTimeout(() => {
       tuckTimer = null;
-      if (tucked || capsule) return;
+      if (tucked) return;
       const p = lastPointer;
       const near = holdRects().some((r) => pointIn(p, inflate(r, 40)));
       if (!near) applyTuck(true);
@@ -1050,6 +998,9 @@
        what makes a card three lines tall, and at a distance on a second monitor the title
        is the only thing that survives anyway — so give the title the room instead. */
     doc.body.classList.toggle('simple', st.simple === true);
+    /* the deck's shape is a choice the user makes in two places — this panel's settings and
+       the deck's own toolbar — and never something the deck decides for itself */
+    applyDeckShape(st.deckShape);
     if (window.UISound) window.__uiMuted = st.muted === true;
     /* The host owns where the window is, so the chosen display is pushed down rather than
        read here. set_deck_monitor no-ops when the index is unchanged, which makes this safe
@@ -1139,7 +1090,13 @@
     if (el.toolAutoTuck) {
       const auto = S.settings.dockAutoTuck !== false;
       el.toolAutoTuck.classList.toggle('on', auto);
-      el.toolAutoTuck.title = auto ? '静置时缩成胶囊（点击关闭）' : '静置时保持完整卡盒（点击开启）';
+      el.toolAutoTuck.title = auto ? '卡片堆会自动缩进屏幕（点击关闭）' : '卡片堆不再自动缩进（点击开启）';
+    }
+    if (el.toolDeckShape) {
+      /* the shape is a style, not a state, so the button reads as a switch with a name */
+      const pill = S.settings.deckShape === 'pill';
+      el.toolDeckShape.classList.toggle('on', pill);
+      el.toolDeckShape.title = pill ? '卡盒样式：胶囊（点击换成卡片堆）' : '卡盒样式：卡片堆（点击换成胶囊）';
     }
     if (el.toolSimple) {
       const simple = S.settings.simple === true;
@@ -1222,8 +1179,7 @@
   }
 
   function holdRects() {
-    /* the capsule is small enough that a pointer travelling to it deserves a head start */
-    const rects = [inflate(deckRect(), capsule ? 18 : 6)];
+    const rects = [inflate(deckRect(), 6)];
     if (mode === 'overview' && spread) {
       spread.slots.forEach((s) => {
         rects.push({ left: s.x - s.w / 2, top: s.y - s.h / 2, right: s.x + s.w / 2, bottom: s.y + s.h / 2 });
@@ -2347,7 +2303,6 @@
     const rects = holdRects();
     const inside = rects.some((r) => pointIn({ x: x, y: y }, r));
     const near = rects.some((r) => pointIn({ x: x, y: y }, inflate(r, HOVER_NEAR)));
-    pointerOnDeck = inside;
     if (!hoverArmed) {
       /* recalled: stay filed until the pointer is clearly away and the grace passed */
       if (Date.now() < hoverRearmAfter || near) return;
@@ -2355,33 +2310,26 @@
     }
     if (inside) {
       if (Date.now() < popGuardUntil) return;  /* the pop is still animating */
-      const wasCapsule = capsule, wasTucked = tucked;
-      setCapsule(false);
+      const wasTucked = tucked;
       cancelCollapse();
       cancelTuck();
       if (tucked) popOut();                    /* a pointer that arrives and stops still opens it */
       if (mode === 'collapsed') {
-        if (wasCapsule || wasTucked) {
-          /* The box is about to move under the pointer — a pill widening, or a tucked deck
-             sliding back from the edge — and computeSpread measures it live. Laid out during
-             the travel, the chips land where the deck *was* and the deck then arrives on top
-             of them, which is the "悬停卡片也一并叠在上面" report. Wait for the box to stop,
-             then re-check that the pointer is still here. */
-          clearTimeout(capsuleOpenTimer);
-          capsuleOpenTimer = setTimeout(() => {
-            if (pointerOnDeck && !tucked && mode === 'collapsed') setMode('overview');
-          }, wasTucked ? 400 : 230);
+        if (wasTucked) {
+          /* A tucked deck sliding back from the edge moves the box under the pointer, and
+             computeSpread measures that box live: laid out during the travel, the chips land
+             where the deck *was* and the deck then arrives on top of them. Wait for it to
+             stop, then re-check that the pointer is still here. */
+          clearTimeout(popOpenTimer);
+          popOpenTimer = setTimeout(() => {
+            if (!tucked && mode === 'collapsed') setMode('overview');
+          }, 400);
         } else {
           setMode('overview');
         }
       }
     } else {
-      clearTimeout(capsuleOpenTimer);
-      /* Every frame with the pointer off the deck asks for the pill. The cursor feed only
-         emits while the pointer moves, so this is also the only place that learns it left —
-         and that is the gesture a person actually makes: come, look, go. syncCapsule ignores
-         repeat calls while a decision is pending, so a moving pointer cannot starve it. */
-      syncCapsule(420);
+      clearTimeout(popOpenTimer);
       if (mode === 'overview') scheduleCollapse();
       maybeReTuck();
     }
@@ -2425,9 +2373,6 @@
     el.face.addEventListener('click', (ev) => {
       ev.stopPropagation();
       if (Date.now() < suppressClickUntil) return;
-      /* the first click on a capsule opens it rather than scattering: the gesture that used
-         to mean "throw the cards out" would otherwise fire on the way past */
-      if (capsule) { setCapsule(false); return; }
       toggleDeploy();
     });
     el.face.addEventListener('dblclick', (ev) => { ev.stopPropagation(); openQuickModal(); });
@@ -2556,10 +2501,14 @@
         if (!allPinned && mode !== 'deployed') setMode('deployed');
         toast(allPinned ? '已取消钉住 ' + list.length + ' 张卡片 // UNPINNED ALL'
           : '已钉住 ' + list.length + ' 张卡片 // PINNED ALL');
+      } else if (act === 'deckshape') {
+        const next = S.settings.deckShape === 'pill' ? 'stack' : 'pill';
+        API.op({ type: 'settings:update', patch: { deckShape: next } });
+        toast(next === 'pill' ? '卡盒改为胶囊 // PILL DECK' : '卡盒改为卡片堆 // STACK DECK');
       } else if (act === 'autotuck') {
         const next = S.settings.dockAutoTuck === false;
         API.op({ type: 'settings:update', patch: { dockAutoTuck: next } });
-        toast(next ? '静置时缩成胶囊 // RESTING PILL ON' : '静置时保持完整卡盒 // RESTING PILL OFF');
+        toast(next ? '卡片堆会自动缩进屏幕 // AUTO TUCK ON' : '卡片堆不再自动缩进 // AUTO TUCK OFF');
       } else if (act === 'hide') {
         doc.body.classList.add('fading');
         setTimeout(() => {
@@ -2655,8 +2604,6 @@
     if (ev.target.closest('.dock-tools, .group-chips, button')) return;
     if (S.settings.dockMovable === false) return;
     markRectsDirty(900);
-    /* a drag is an explicit interaction with the deck, so it is the full deck while it lasts */
-    setCapsule(false);
     const rect = el.dock.getBoundingClientRect();
     deckDrag = {
       pointerId: ev.pointerId,
@@ -2720,7 +2667,6 @@
       toast('卡盒位置已保存 // DOCK MOVED');
     }
     deckDrag = null;
-    syncCapsule(200);
     dragSweep = null;         /* the swept area is only owed while the grab is live */
     markRectsDirty(700);
     refreshHitRects(true);
@@ -2916,7 +2862,6 @@
        in a window that refuses activation has no keyboard. Asked for before onMount, because
        that is where the first input.focus() happens. */
     API.setLayerFocus(true);
-    setCapsule(false);
     markRectsDirty(500);
     refreshHitRects(true);
     const closeBtn = $('[data-act="close"]', el.modal);
@@ -2937,7 +2882,6 @@
     /* close the keyboard door again, and with it the window activation that lets DWM paint
        the band: the host schedules the one realloc that clears whatever the session left */
     API.setLayerFocus(false);
-    syncCapsule(120);
     el.modal.classList.remove('open', 'interactive');
     el.modal.innerHTML = '';
     if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }

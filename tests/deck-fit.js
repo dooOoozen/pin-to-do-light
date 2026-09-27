@@ -2,8 +2,7 @@
    is content-driven, so the only way to know what leaves the screen is to walk the slider and
    measure. Two edges, the whole range, and both ends of the along-edge position, because a tall
    deck at the far end of the strip is a different failure from a wide one in the middle. The
-   pointer is held on the deck throughout: the resting capsule measures 78px at every stop and
-   would hide exactly what is being looked for. */
+   pointer is held on the deck throughout so the deck is always the full box being measured. */
 (function () {
   var API = window.API, nd = window.__nd;
   function note(s) { try { API.bootNote('[F] ' + s); } catch (e) { /* no bridge */ } }
@@ -29,7 +28,7 @@
     var tl = box(document.getElementById('dockTools'));
     var g = box(document.getElementById('groupChips'));
     var bad = off(d, w, h) !== 'inside' || off(tl, w, h) !== 'inside' || off(g, w, h) !== 'inside';
-    note(tag + ' capsule=' + (document.body.classList.contains('deck-capsule') ? 'ON' : 'off') +
+    note(tag + ' shape=' + (document.body.classList.contains('deck-pill') ? 'pill' : 'stack') +
       ' area=' + w + 'x' + h +
       ' dock=' + (d ? (d.r - d.l) + 'x' + (d.b - d.t) + '@' + d.l + ',' + d.t : '-') +
       ' face=' + (f ? (f.r - f.l) + 'x' + (f.b - f.t) : '-') +
