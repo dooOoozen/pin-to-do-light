@@ -48,16 +48,49 @@ Type one sentence — `明天面试推迟到后天` — and the assistant works 
 - **Three tools, no writes.** `suggest_tasks`, `suggest_changes`, `ask_user`. The model returns a *draft*; every row is editable, and nothing touches the store until you press 确认.
 - **Provider dialects are normalised.** A call the model writes into `content` in its own markup is read back; a mis-picked tool is repaired deterministically when the sentence names exactly one task.
 - **Refusals and loops are handled.** A change sentence that cannot be resolved is refused with a reason rather than answered with a new task; a question already asked is cut off instead of asked twice.
-- **It is observable.** Every step — dialect read, repair, refusal, commit count — goes into a ring buffer shown in an in-app trace panel, and the same buffer answers over `ai_trace_list` for scripts.
+- **A write is not a write until the store says so.** After 确认, `commit` re-reads the state and compares it against what it asked for; an op that answers `ok` while changing nothing is reported as `verify-failed`, naming the title and the two times. This is not defensive theatre — `todo:update` once carried flat fields where the reducer reads `patch`, every op answered ok, and nothing moved.
+- **The hostile cases are in the suite.** An unregistered tool, an id that is not in the store, a legal-shaped order to finish everything, a task title that is itself a prompt injection, empty and absurd input, one sentence with two asks — each asserted against the store afterwards, not against the model's own account of what it did.
+- **It is observable, and it is on disk.** Every step — dialect read, repair, refusal, commit, verification — goes into a ring buffer shown in an in-app trace panel, and every turn is appended to `agent-trace.jsonl`. `node tools/replay.js 12` runs a recorded turn again and compares the two stage sequences.
 - **It is optional and bounded.** Off by default; the key lives in the Windows credential manager and never in the state file; requests leave from Rust over WinHTTP, so there is no `fetch` in the page and no CORS surface.
 
+### What it scores
+
+`node tools/eval.js` — no key, no network beyond loopback, and the same command gates every push in CI.
+
+| suite | what it pins | cases |
+| --- | --- | --- |
+| A · resolver | surface form → timestamp on a clock pinned to Thursday 2026-09-24, asserted to the day | 49 |
+| B · loop | request → `tool_calls` → resolve, against the mock | 3 |
+| C · write | the loop ending in the app's real reducer, read back afterwards | 17 |
+| D · guard | hostile and absurd input, read back afterwards | 10 |
+
+**79/79.** `--reps 3` runs the model-facing suites three times and prints only the disagreements — the only honest answer to "is it flaky?" when a model is in the loop. `--json <file>` appends each run (sha, per-suite pass counts, p50/p95, tokens, first-try rate) and prints the last five side by side, so "did the prompt change help?" is a table lookup rather than a memory. Without the mock running it reports suite A alone and says why.
+
+### What an endpoint shape costs
+
+Same suites, one knob on the mock (`MOCK_NO_TOOLS=dialect|prose`), because every real provider is one of these three:
+
+| endpoint shape | A | B | C | D | total | first try |
+| --- | --- | --- | --- | --- | --- | --- |
+| native `tool_calls` | 49/49 | 3/3 | 17/17 | 10/10 | **79/79** | 12/18 |
+| the call written into prose (Qwen behind the HF router) | 49/49 | 3/3 | 17/17 | 10/10 | **79/79** | 0/15 |
+| no tool calling at all (a local compat endpoint) | 49/49 | 1/3 | 7/17 | 8/10 | 65/79 | 0/17 |
+
+The middle row is what the dialect reader buys: the score does not move, the first-try rate goes to zero. The last row is the honest limit of the local fallback — creating tasks survives, because the app parses dates anyway; editing an existing one does not, because nothing can fall back to naming a record. That is an endpoint capability, not a prompt problem, and `node tools/provider-table.js` prints it.
+
+### Five minutes, in order
+
 ```bash
-node tools/mock-llm.js 8787   # a scripted provider, including its failure branches
-node tools/eval.js            # 34/34: 15 resolver cases on a pinned clock,
-                              # 3 loop cases, 16 write-path cases against the real reducer
+node tools/mock-llm.js 8787          # a scripted provider, failure branches included
+npx tauri build                      # or: npm run dev
 ```
 
-Without the mock running, the eval reports the resolver suite alone — it says so rather than printing a smaller number as if it were the whole thing.
+1. Settings → AI 排程 → on, base `http://127.0.0.1:8787/v1`, model `mock`. No key involved.
+2. On the deck, press ✨ and type `下周二下午我有三个人需要面试，帮我安排好时间`.
+3. Three drafts arrive, staggered 14:00 / 15:00 / 16:00. The day came from the local parser — the model was asked to say 下周二 and nothing more.
+4. Close it without pressing 确认. Nothing is in the store; the suite asserts exactly that (`只跑不确认 → 零写入`).
+5. Type `把明天的面试推到后天` with two tasks named 面试 — it asks, or it picks by the date in the sentence; the trace shows which.
+6. Open the trace panel and replay the turn: `node tools/replay.js <轮号>`.
 
 ## Numbers
 
@@ -65,12 +98,13 @@ Measured on the release build, x64, Windows 11:
 
 | | |
 | --- | --- |
-| Installer | 1.63 MB (NSIS) |
-| Executable | 4.98 MB |
+| Installer | 1.66 MB (NSIS) |
+| Executable | 4.90 MB |
 | Resident card layer | ~116 MB private working set, one process |
-| Host (Rust) | 3,553 lines across 6 files |
-| Renderer | 16,152 lines of JS, CSS and HTML |
-| Regression surface | 92 injected scripts, 46 outside-in probes |
+| Host (Rust) | 3,671 lines across 6 files |
+| Renderer | 16,688 lines of JS, CSS and HTML |
+| Regression surface | 108 injected scripts, 48 outside-in probes |
+| Agent eval | 79 cases in 4 suites, deterministic, gated in CI |
 
 The Electron original needed a Chromium runtime, several processes and roughly ten times the memory. `--disable-gpu` alone halved its footprint, which is the measure of how much of it was compositor overhead rather than the app.
 
@@ -89,7 +123,7 @@ Two windows, one process, WebView2 as the engine.
 
 **The caption a desktop widget must never show.** `decorations(false)` + `skip_taskbar(true)` still leave `WS_CAPTION` and `WS_EX_APPWINDOW` on the handle, and the toolkit rewrites its cached styles, so the layer is re-pinned to `WS_POPUP | WS_EX_TOOLWINDOW | WS_EX_LAYERED` by a window-event hook — a poll loses that race by a few hundred milliseconds every time. The remaining artifact was not a style write at all: DWM composes a caption into the layered window's own redirection surface **at the moment the window is activated**, and nothing removes it but reallocating that surface (a 1 px resize with a wait between the halves). So the layer carries `WS_EX_NOACTIVATE` and refuses activation entirely, except while a modal needs the keyboard, and hands the activation back to whoever had it when the modal closes. For the window of time a modal is up, the region gives up the top 34 px — the caption's only chance of being seen is a region that covers it — and only when nothing painted wants that strip.
 
-**Hand-declared Win32, no crates.** `src-tauri/src/win32.rs` declares the entry points it needs as `extern "system"`: cursor, region, styles, monitor geometry, foreground classification, DWM attributes and a `SetWinEventHook`. `net.rs` speaks WinHTTP and `secrets.rs` the credential manager, on the same principle. That is most of what keeps the installer at 1.63 MB.
+**Hand-declared Win32, no crates.** `src-tauri/src/win32.rs` declares the entry points it needs as `extern "system"`: cursor, region, styles, monitor geometry, foreground classification, DWM attributes and a `SetWinEventHook`. `net.rs` speaks WinHTTP and `secrets.rs` the credential manager, on the same principle. That is most of what keeps the installer at 1.66 MB.
 
 **Visibility policy** lives in the renderer: the user's switch wins, then a fullscreen rule, then the optional desktop-only rule. A foreground window on another monitor does not count as covering the desktop.
 
