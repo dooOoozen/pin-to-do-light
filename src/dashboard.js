@@ -3631,7 +3631,7 @@
       toggles.appendChild(switchRow('仅在桌面显示', '前台是其他窗口时隐藏卡片层', st.desktopOnly !== false, (v) => API.op({ type: 'settings:update', patch: { desktopOnly: v } })));
       toggles.appendChild(switchRow('按分辨率自动缩放', '根据显示器分辨率自动调整卡盒与卡片大小（推荐）', st.autoScale !== false, (v) => API.op({ type: 'settings:update', patch: { autoScale: v } })));
       toggles.appendChild(switchRow('隐藏已完成', '桌面卡片层不显示已完成任务', st.hideCompleted !== false, (v) => API.op({ type: 'settings:update', patch: { hideCompleted: v } })));
-      toggles.appendChild(switchRow('卡片堆自动缩进屏幕', '一段时间没有指针靠近时，卡片堆自动缩回屏幕边缘', st.dockAutoTuck !== false, (v) => API.op({ type: 'settings:update', patch: { dockAutoTuck: v } })));
+      toggles.appendChild(switchRow('卡盒静置缩成胶囊', '一段时间没有指针靠近时，卡盒只留数字胶囊；指针移上去恢复完整卡盒', st.dockAutoTuck !== false, (v) => API.op({ type: 'settings:update', patch: { dockAutoTuck: v } })));
       toggles.appendChild(switchRow('到期提醒', '任务到期时发送系统通知', st.reminders !== false, (v) => API.op({ type: 'settings:update', patch: { reminders: v } })));
       toggles.appendChild(switchRow('启用全局快捷键', '关闭后不注册系统级热键', st.shortcuts !== false, (v) => API.op({ type: 'settings:update', patch: { shortcuts: v } })));
       toggles.appendChild(switchRow('开机自动启动', '登录 Windows 后自动运行', !!st.launchAtLogin, async (v) => {

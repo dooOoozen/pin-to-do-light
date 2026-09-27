@@ -82,7 +82,7 @@
        let the boxes grow, and build the region from them directly rather than waiting for the
        push, which still carries the pill spans. */
     .then(function () {
-      nd.autoTuck(false); nd.tuck(false);
+      nd.tuck(false);   /* autoTuck stays on: the resting state this audits IS the pill */
       document.body.classList.remove('deck-capsule');
       return wait(500);
     })
