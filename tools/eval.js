@@ -57,30 +57,73 @@ function local(iso) {
 const RESOLVER = [
   /* asserted to the DAY, not just the weekday: a case that only checks 周几 passes while
      carrying the same off-by-one-week bug as 下周一, which is how a suite goes green on a
-     broken calendar */
-  { say: '下周二', m: 9, d: 29, wd: 2, knownBug: '下N 晚一周' },
-  { say: '明天', d: 25, m: 9 },
-  { say: '今天', d: 24, m: 9 },
+     broken calendar. NOW is Thursday 9/24, so this week is Mon 9/21 – Sun 9/27. */
+  { say: '下周一', m: 9, d: 28, wd: 1 },
+  { say: '下周二', m: 9, d: 29, wd: 2 },
+  { say: '下周三', m: 9, d: 30, wd: 3 },
+  /* the four that were wrong the other way: from Thursday, their next occurrence is already
+     inside this week, so 下N has to add the whole week the occurrence rule did not */
+  { say: '下周四', m: 10, d: 1, wd: 4 },
+  { say: '下周五', m: 10, d: 2, wd: 5 },
+  { say: '下周六', m: 10, d: 3, wd: 6 },
+  { say: '下周日', m: 10, d: 4, wd: 0 },
+  { say: '下星期天', m: 10, d: 4, wd: 0 },
+  { say: '下下周一', m: 10, d: 5, wd: 1 },
+  { say: '下下周三', m: 10, d: 7, wd: 3 },
+  { say: '下下下周二', m: 10, d: 13, wd: 2, note: 'each 下 is one more week' },
   { say: '本周五', d: 25, m: 9, note: 'this week’s Friday is tomorrow when today is Thursday' },
   { say: '这周五', d: 25, m: 9 },
-  /* KNOWN BUG, left failing on purpose: 下N is a week late. From Thursday 9/24 the next
-     Monday is 9/28 and that IS 下周一, but the formula adds weekNext on top of a delta
-     that already rolled forward, so 下周一 → 10/5 and 下下周一 → 10/12. The fix is to
-     anchor 下N on next Monday rather than on "next occurrence + N weeks"; it is left
-     unfixed here because it changes long-standing behaviour of the quick-add box and that
-     is the user's call, not a side effect of an agent branch. */
-  { say: '下下周一', m: 10, d: 5, wd: 1, knownBug: '下N 晚一周（delta 已经前滚，又加了 weekNext）' },
-  { say: '下周一', m: 9, d: 28, knownBug: '同上：应为 9/28，实得 10/5' },
+  { say: '本周日', d: 27, m: 9 },
+  /* this week’s Monday is behind us; the parser hands back the next one rather than nothing,
+     which is the right call for a task app and worth pinning either way */
+  { say: '本周一', d: 28, m: 9, note: 'past weekday rolls forward rather than returning nothing' },
+  { say: '这周三', d: 30, m: 9, note: '周三 has already passed this week' },
   { say: '周五', d: 25, m: 9 },
-  { say: '下周三', m: 9, d: 30, wd: 3, knownBug: '下N 晚一周' },
-  { say: '明天晚上8点', d: 25, h: 20 },
-  { say: '后天上午十点', d: 26, h: 10 },
+  { say: '星期天', d: 27, m: 9 },
+  { say: '礼拜六', d: 26, m: 9 },
+  { say: '明天', d: 25, m: 9 },
+  { say: '今天', d: 24, m: 9 },
+  { say: '后天', d: 26, m: 9 },
+  { say: '大后天', d: 27, m: 9 },
+  { say: '昨天', none: true, note: 'the past is not a due date' },
+  /* time of day, on top of a date */
+  { say: '下周二晚上8点', d: 29, m: 9, h: 20 },
+  { say: '下周三下午三点半', d: 30, m: 9, h: 15, min: 30 },
+  { say: '明早九点', d: 25, h: 9 },
+  { say: '今晚', d: 24, h: 20 },
+  { say: '明晚', d: 25, h: 20 },
+  { say: '后天中午', d: 26, h: 12, note: 'a bare time of day still says when' },
+  { say: '周五下午', d: 25, h: 14 },
+  { say: '周三早上', d: 30, h: 9 },
+  { say: '周六晚上七点半', d: 26, h: 19, min: 30 },
+  { say: '明天下午3点', d: 25, h: 15 },
+  { say: '3点后', d: 24, h: 15 },
   { say: '9月30日 14:30', m: 9, d: 30, h: 14, min: 30 },
-  { say: '每周一早上9点', repeat: 'weekly', h: 9 },
-  { say: '下周二 -工作', group: 'g_work', knownBug: '下N 晚一周' },
+  { say: '10月1日 15:00', m: 10, d: 1, h: 15 },
+  { say: '12月31日', m: 12, d: 31, h: 9 },
+  { say: '2027年1月1日早上8点', y: 2027, m: 1, d: 1, h: 8 },
+  { say: '每周一早上9点', repeat: 'weekly', d: 28, h: 9 },
+  { say: '每周五', repeat: 'weekly', d: 25 },
+  { say: '每月15号', repeat: 'monthly', m: 10, d: 15 },
+  { say: '下周二 -工作', d: 29, m: 9, group: 'g_work' },
   /* the lunar path only fires for a repeating anniversary — a bare 农历八月十五 is a date
      with no year rule, and the parser says so by returning nothing */
-  { say: '每年农历八月十五', lunarOk: true, note: 'resolved through the lunar table' }
+  { say: '每年农历八月十五', lunarOk: true, note: 'resolved through the lunar table' },
+  /* forms the parser does not claim. Asserted as "no date" so the boundary is explicit and
+     cannot start silently inventing one; tools/nlp-probe.js is how this list was found. */
+  { say: '下个月3号', none: true, note: 'no month arithmetic yet' },
+  { say: '12/25', none: true, note: 'numeric slash dates are not a supported surface form' },
+  { say: '下周', none: true, note: 'a week with no weekday inside it is not a day' },
+  { say: '月底前', none: true, note: 'no month-end rule yet' },
+  { say: '国庆第一天', none: true, note: 'no holiday calendar' }
+];
+
+/* What it does today that is arguably wrong but not worth a red run: printed as notes, not
+   assertions, so the number above stays the number and the limitation stays on the record. */
+const LIMITS = [
+  { say: '工作日下午', is: '今天 14:00 — 工作日 被忽略，只留下 下午' },
+  { say: '晚上', is: '今天 20:00 — 光杆时段落在今天' },
+  { say: '下下下下周二', is: '只吃三个 下，第四个留在标题里，答案同 下下下周二（10/13）' }
 ];
 
 function runResolver() {
@@ -99,6 +142,8 @@ function runResolver() {
     chk('日', c.d, at && at.d);
     chk('星期', c.wd, at && at.wd);
     chk('时', c.h, at && at.h);
+    if (c.y) chk('年', c.y, at && at.y);
+    if (c.none) chk('不该有日期', true, !at);
     chk('分', c.min === undefined ? (c.h === undefined ? undefined : 0) : c.min, at && at.min);
     if (c.repeat) chk('repeat', c.repeat, p.repeat);
     if (c.group) chk('分组', c.group, p.groupId);
@@ -563,6 +608,9 @@ function report(title, rows) {
 
   let total = { pass: 0, total: 0 };
   total = report('A · 时间解析（确定性，无网络）', runResolver());
+  /* the honest part of a score: what it gets wrong on purpose, printed rather than asserted */
+  console.log('  已知边界（不计分）');
+  LIMITS.forEach(function (l) { console.log('    · ' + l.say + ' → ' + l.is); });
 
   if (live) {
     console.log('\n[live] 走真实 provider：' + live.base + ' · ' + live.model + ' —— 这会消耗额度');

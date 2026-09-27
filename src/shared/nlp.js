@@ -152,13 +152,25 @@
     }
 
     /* ---- weekday (non repeating): 下周三 ---- */
-    m = cut(/(下{1,2}|本|这)?\s*(?:周|星期|礼拜)\s*([一二三四五六日天1-7])/);
+    m = cut(/(下{1,3}|本|这)?\s*(?:周|星期|礼拜)\s*([一二三四五六日天1-7])/);
     if (m) {
       out.dow = cnToNum(m[2].replace('天', '7').replace('日', '7'));
-      /* only 下 means "next". The length test that used to decide this counted characters
-         instead of meaning, so 本周五 and 这周五 — one character, like 下 — were pushed a
-         whole week forward, and "本周五交报告" landed seven days late. */
-      out.weekNext = m[1] && m[1].charAt(0) === '下' ? (m[1].length >= 2 ? 2 : 1) : 0;
+      /* only 下 means "next", and each 下 is one more week. The length test that used to
+         decide this counted characters instead of meaning, so 本周五 and 这周五 — one
+         character, like 下 — were pushed a whole week forward. */
+      out.weekNext = m[1] && m[1].charAt(0) === '下' ? m[1].length : 0;
+      /* 下N counts calendar weeks, not occurrences. Rolling the week offset onto
+         "next occurrence of that weekday" paid it twice: from Thursday, 下周一 became
+         10/5 — the Monday of the week after next — because the delta had already crossed
+         into next week. So work out which week the next occurrence already lands in and
+         charge only the difference; a bare 下N is then "the first week strictly ahead of
+         this one that contains that weekday". */
+      if (out.weekNext) {
+        var isoNow = (now.getDay() + 6) % 7;                        /* Mon=0 … Sun=6 */
+        var isoTarget = ((out.dow % 7) + 6) % 7;                    /* dow is 1..7 */
+        var weekIndex = Math.floor((isoNow + (isoTarget - isoNow + 7) % 7) / 7);
+        out.weekNext = Math.max(0, out.weekNext - weekIndex);
+      }
     }
 
     /* ---- time ---- */
@@ -176,6 +188,19 @@
     } else {
       m = cut(/([0-9]{1,2}):([0-9]{2})/);
       if (m) { out.hour = parseInt(m[1], 10); out.minute = parseInt(m[2], 10); out.hasTime = true; out.hourExplicit = true; }
+      else {
+        /* a time of day with no number still says when: 后天中午 is midday, not the 09:00
+           default. Explicit so the bare-hour promotions below leave it alone. */
+        m = cut(/(凌晨|清晨|早上|早晨|上午|中午|午后|下午|傍晚|晚上|夜里)/);
+        if (m) {
+          out.hour = { '凌晨': 1, '清晨': 7, '早上': 9, '早晨': 9, '上午': 9, '中午': 12,
+            '午后': 13, '下午': 14, '傍晚': 18, '晚上': 20, '夜里': 21 }[m[1]];
+          out.minute = 0;
+          out.hasTime = true;
+          out.hourExplicit = true;
+          out.evening = /傍晚|晚上|夜里/.test(m[1]);
+        }
+      }
     }
     if (!out.hasTime) {
       if (out.evening) { out.hour = 20; out.minute = 0; }
