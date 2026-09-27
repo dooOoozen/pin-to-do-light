@@ -43,51 +43,76 @@
     if (!spans) return -1;
     return union(spans, innerWidth, innerHeight);
   }
+  /* the pill has to carry the deck's controls, not just its number */
+  function controls() {
+    var missing = [];
+    var simple = document.getElementById('toolSimple');
+    if (!simple) missing.push('no #toolSimple');
+    var list = simple ? [simple] : [];
+    Array.prototype.forEach.call(document.querySelectorAll('.dock-tools .tool'), function (b) { list.push(b); });
+    list.forEach(function (b) {
+      var r = b.getBoundingClientRect();
+      if (!r.width || !r.height) { missing.push((b.id || b.dataset.act || '?') + ':zero'); return; }
+      var hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (!hit || !(hit === b || b.contains(hit))) {
+        missing.push((b.id || b.dataset.act || '?') + '->' + (hit ? (hit.className || hit.tagName) : 'nothing'));
+      }
+    });
+    return missing;
+  }
   function faceBox() {
     var r = document.getElementById('deckFace').getBoundingClientRect();
-    return Math.round(r.width) + 'x' + Math.round(r.height);
-  }
-  /* press what is actually under each button's centre, not what the markup claims */
-  function toolsReachable() {
-    var bad = [];
-    Array.prototype.forEach.call(document.querySelectorAll('.dock-tools .tool'), function (b) {
-      var r = b.getBoundingClientRect();
-      if (!r.width || !r.height) { bad.push((b.dataset.act || '?') + ':zero'); return; }
-      var hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      if (!hit || !(hit === b || b.contains(hit))) bad.push((b.dataset.act || '?') + '->' + (hit ? (hit.className || hit.tagName) : 'nothing'));
-    });
-    return bad;
+    return { w: Math.round(r.width), h: Math.round(r.height), s: Math.round(r.width) + 'x' + Math.round(r.height) };
   }
   function shape() { return document.body.classList.contains('deck-pill') ? 'pill' : 'stack'; }
   function set(v) { return API.op({ type: 'settings:update', patch: { deckShape: v } }).then(function () { return wait(1200); }); }
 
-  var was, stackClaim = 0, pillClaim = 0, unreachable = [];
+  var was, stackClaim = 0, pillClaim = 0, missing = [], rows = '', autoTucks = false;
   Promise.resolve(API.setDeckMonitor(1)).catch(function () { /* single-screen machine */ })
     .then(function () { return API.getState(); })
+    /* the tuck shifts the whole dock by its own width minus 22px, so a control probe or an
+       area measurement taken while it is tucked answers about pixels that are off screen */
     .then(function (st) { was = st.settings.deckShape; nd.autoTuck(false); nd.tuck(false); return wait(900); })
     .then(function () { return set('stack'); })
-    .then(function () { stackClaim = claim(); note('stack  shape=' + shape() + ' face=' + faceBox() + ' claim=' + Math.round(stackClaim / 1000) + 'kpx'); })
+    .then(function () { stackClaim = claim(); note('stack  shape=' + shape() + ' face=' + faceBox().s + ' claim=' + Math.round(stackClaim / 1000) + 'kpx'); })
     .then(function () { return set('pill'); })
     .then(function () {
       pillClaim = claim();
-      unreachable = toolsReachable();
-      note('pill   shape=' + shape() + ' face=' + faceBox() + ' claim=' + Math.round(pillClaim / 1000) + 'kpx' +
-        ' tools=' + document.querySelectorAll('.dock-tools .tool').length +
-        (unreachable.length ? ' UNREACHABLE ' + unreachable.join(',') : ' all reachable'));
-      /* the shape must not move under the pointer any more — that was the whole argument */
+      var f = faceBox();
+      missing = controls();
+      /* two lines, and narrower than the 297px single row it replaces */
+      rows = f.s + (f.h >= 45 && f.w <= 240 ? ' two rows' : ' NOT two rows');
+      note('pill   shape=' + shape() + ' face=' + f.s + ' claim=' + Math.round(pillClaim / 1000) + 'kpx' +
+        ' controls=' + (missing.length ? 'MISSING ' + missing.join(',') : 'all reachable'));
+      /* the pill must still file itself away on idle, like the stack always did */
+      nd.autoTuck(true);
+      nd.cursorFrame(40, 40, false);
+      return wait(1800);
+    })
+    .then(function () {
+      autoTucks = nd.hoverInfo().tucked === true;
+      note('idle auto-tuck in pill = ' + autoTucks + ' (mode=' + nd.mode() + ')');
+      /* and the shape must not move under the pointer any more — that was the whole argument */
+      nd.autoTuck(false);
+      nd.tuck(false);
+      return wait(700);
+    })
+    .then(function () {
       var c = nd.dockRect();
       nd.cursorCmd((c.left + c.right) / 2, (c.top + c.bottom) / 2, true);
       return wait(700);
     })
     .then(function () {
       var held = shape() === 'pill';
-      note('after hover shape=' + shape() + ' face=' + faceBox() + ' mode=' + nd.mode());
+      note('after hover shape=' + shape() + ' face=' + faceBox().s + ' mode=' + nd.mode());
       return set(was === undefined ? 'stack' : was).then(function () { return held; });
     })
     .then(function (held) {
-      var ok = held && pillClaim > 0 && pillClaim < stackClaim / 2 && !unreachable.length;
+      var ok = held && pillClaim > 0 && pillClaim < stackClaim / 2 && !missing.length &&
+        autoTucks && rows.indexOf('two rows') > 0;
       note('RESULT ' + (ok ? 'PASS' : 'FAIL') + ' stack=' + Math.round(stackClaim / 1000) + 'k' +
-        ' pill=' + Math.round(pillClaim / 1000) + 'k (x' + (stackClaim / Math.max(1, pillClaim)).toFixed(1) + ' smaller)' +
+        ' pill=' + Math.round(pillClaim / 1000) + 'k (x' + (stackClaim / Math.max(1, pillClaim)).toFixed(1) +
+        ')' + ' pillFace=' + rows + ' idleTuck=' + autoTucks + ' pillStaysOnHover=' + held +
         ' restored=' + JSON.stringify(was));
     })
     .catch(function (e) { note('RESULT ERROR ' + (e && e.message)); if (was) API.op({ type: 'settings:update', patch: { deckShape: was } }); });

@@ -83,6 +83,9 @@ body[data-mode="deployed"] .deck-sheet { opacity: 0; }
 body.edge-top .deck-face, body.edge-bottom .deck-face { min-height: calc(112px * var(--ds, 1)); }
 
 .deck-head { display: flex; align-items: center; gap: 6px; }
+/* the head and the number are one line in the pill and two in the stack; `contents` keeps
+   the stack exactly as it was, with no extra box in the way */
+.deck-top { display: contents; }
 .deck-tag { font-size: calc(9px * var(--uis)); letter-spacing: .22em; text-transform: uppercase; color: var(--ink-2); }
 .deck-count {
   font-size: calc(52px * var(--ds, 1)); line-height: .92; letter-spacing: -.04em;
@@ -789,27 +792,34 @@ body.deck-pill.edge-top .deck,
 body.deck-pill.edge-bottom .deck { width: auto; }
 body.deck-pill .deck-face {
   min-height: 0;
-  flex-direction: row; align-items: center; gap: calc(7px * var(--ds, 1));
-  padding: calc(5px * var(--ds, 1)) calc(9px * var(--ds, 1));
+  /* Two lines: the number with the group dot and the 简 switch above, the whole tool row
+     below. A single row of eight buttons measured 297px, which is a toolbar and not a card
+     box — and a wrapped row with flex-basis:100% on the second line inflated the container
+     to 315px, wider still, because that basis is what the box sizes itself against. */
+  flex-flow: column nowrap;
+  align-items: stretch;
+  gap: calc(2px * var(--ds, 1));
+  padding: calc(5px * var(--ds, 1)) calc(9px * var(--ds, 1)) calc(6px * var(--ds, 1));
   border-radius: var(--r-pill);
 }
+body.deck-pill .deck-top {
+  display: flex; flex-direction: row; align-items: center;
+  gap: calc(6px * var(--ds, 1));
+}
+body.deck-pill .deck-count { font-size: calc(22px * var(--ds, 1)); line-height: 1; }
+body.deck-pill .deck-head { flex: 0 0 auto; gap: calc(3px * var(--ds, 1)); }
 body.deck-pill .deck-tag,
-body.deck-pill .head-toggle,
 body.deck-pill .deck-head .spacer,
 body.deck-pill .deck-name,
 body.deck-pill .deck-meter-row,
 body.deck-pill .deck-hint { display: none; }
-body.deck-pill .deck-head { flex: 0 0 auto; gap: calc(3px * var(--ds, 1)); }
-body.deck-pill .deck-count {
-  font-size: calc(25px * var(--ds, 1)); line-height: 1; letter-spacing: -.02em;
-}
 body.deck-pill .dock-tools {
-  flex: 0 0 auto; flex-direction: row; gap: calc(1px * var(--ds, 1));
-  margin: 0 0 0 calc(3px * var(--ds, 1)); padding: 0 0 0 calc(7px * var(--ds, 1));
-  border-top: 0; border-left: 1px dashed var(--rule-strong);
+  flex-direction: row; gap: calc(1px * var(--ds, 1));
+  margin-top: 0; padding: calc(3px * var(--ds, 1)) 0 0;
+  border-top: 1px dashed var(--rule-strong);
 }
 body.deck-pill .tool {
-  width: calc(21px * var(--ds, 1)); height: calc(21px * var(--ds, 1));
+  flex: 0 0 auto; width: calc(21px * var(--ds, 1)); height: calc(20px * var(--ds, 1));
   font-size: calc(11px * var(--ds, 1));
 }
 body.deck-pill .deck-sheets .deck-sheet {

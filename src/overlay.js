@@ -771,12 +771,16 @@
     setTimeout(() => { refreshHitRects(true); hitTest(); }, 430);
   }
 
+  /* the scatter is a transient look at the desk: putting the cards back also files the deck
+     away against the edge, in either shape */
+  function tuckAfterRecall() {
+    if (S.settings.dockAutoTuck !== false) setTucked(true);
+  }
+
   function toggleDeploy() {
     if (mode === 'deployed') {
-      /* putting the cards back leaves the deck collapsed, which is what arms the resting
-         pill — it used to also file the deck to an edge sliver here, and that sliver is
-         what the user kept pointing at and calling 卡片堆 */
       recall();
+      tuckAfterRecall();
       return;
     }
     deploy();
@@ -870,6 +874,10 @@
     doc.body.classList.toggle('deck-pill', want === 'pill');
     markRectsDirty(800);
     setTimeout(() => {
+      /* the box changed size, so where it sits on the edge has to be worked out again —
+         the dock is anchored by its own width, and without this a wide pill hangs off the
+         screen and its buttons land outside the window */
+      layoutDock();
       updateDockOrigin();
       refreshHitRects(true);
       shapeInvalidate(420);
@@ -888,11 +896,10 @@
   }
 
   function maybeReTuck() {
-    /* Retired in favour of the pill, and the race is the reason: 600 ms of idle beat the
-       760 ms the collapse waits out, so the deck filed itself to a 22 px stack sliver and the
-       resting pill never got to be what a person actually sees. The sliver is still one click
-       away on the deck's own toolbar and in the tray. */
-    if (S.settings.dockAutoTuck !== false) return;
+    /* idle: after a while without the pointer near the deck it retracts itself
+       (the automatic retraction can be switched off from the deck toolbar). In both shapes —
+       the pill is a layout, not a retraction, and an inverted guard here once turned the
+       auto-tuck off for both and the deck stopped filing itself away entirely. */
     if (!autoTuck || S.settings.dockAutoTuck === false || tucked || tuckTimer) return;
     tuckTimer = setTimeout(() => {
       tuckTimer = null;
@@ -2536,8 +2543,9 @@
       if (ev.target.closest('.dock') || ev.target.closest('.todo-card')) return;
       if (Date.now() < suppressCardClickUntil) return;   /* a card was just dragged */
       if (mode === 'deployed') {
-        /* scattered cards: any click puts them back, and the deck collapses into its pill */
+        /* scattered cards: any click puts them back and retracts the deck */
         recall();
+        tuckAfterRecall();
         return;
       }
       if (mode === 'overview') setMode('collapsed');
@@ -2547,6 +2555,7 @@
       if (modalOpen || mode !== 'deployed') return;
       ev.preventDefault();
       recall();
+      tuckAfterRecall();
     }, { passive: false });
   }
 
