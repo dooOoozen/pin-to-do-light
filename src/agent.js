@@ -485,8 +485,11 @@
     turn++;
     var sent = {
       /* `at` is wall clock, not the duration: the eval measures the round trip itself so a
-         provider that answers in 15ms and one that takes 4s are not reported the same */
-      stage: 'request', at: Date.now(), chars: text.length, model: cfg.model, base: cfg.base,
+         provider that answers in 15ms and one that takes 4s are not reported the same.
+         `say` is what makes the disk trace replayable — without the sentence a logged turn
+         is a post-mortem of something you cannot reproduce. */
+      stage: 'request', at: Date.now(), say: String(text || '').slice(0, 200),
+      chars: text.length, model: cfg.model, base: cfg.base,
       tasks: (state.todos || []).length, tools: TOOLS.length
     };
     record(sent);

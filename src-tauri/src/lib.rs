@@ -1534,16 +1534,46 @@ static AI_TRACE: Mutex<Vec<serde_json::Value>> = Mutex::new(Vec::new());
 const AI_TRACE_CAP: usize = 80;
 
 #[tauri::command]
-fn ai_trace(entry: String) -> usize {
+fn ai_trace(app: AppHandle, entry: String) -> usize {
     let v: serde_json::Value =
         serde_json::from_str(&entry).unwrap_or_else(|_| serde_json::json!({ "raw": entry }));
     let mut g = AI_TRACE.lock().unwrap_or_else(|p| p.into_inner());
-    g.push(v);
+    g.push(v.clone());
     if g.len() > AI_TRACE_CAP {
         let excess = g.len() - AI_TRACE_CAP;
         g.drain(0..excess);
     }
-    g.len()
+    /* The ring is what the panel shows; this is what survives the reason to look. A turn that
+       misbehaved once in three days is not reproducible from memory — and "reproducible" is
+       the whole point, so the same entries go to a JSONL beside the data file (never inside
+       it: that file is the user's only copy of their tasks and is exportable in two clicks).
+       The pid is stamped per line so two instances writing at once stay separable after the
+       fact instead of interleaving into nonsense. */
+    let line = format!("{} {}", pid_line_prefix(), serde_json::to_string(&v).unwrap_or(entry));
+    drop(g);
+    append_trace(&app, &line);
+    AI_TRACE.lock().map(|x| x.len()).unwrap_or(0)
+}
+
+fn pid_line_prefix() -> String {
+    format!("[pid:{}]", std::process::id())
+}
+
+fn append_trace(app: &AppHandle, line: &str) {
+    use std::io::Write;
+    let Ok(dir) = config_dir(app) else { return };
+    let path = dir.join("agent-trace.jsonl");
+    // ~40 lines a turn is small, but this runs for the lifetime of a 24/7 widget
+    const CAP: u64 = 512 * 1024;
+    if std::fs::metadata(&path).map(|m| m.len() > CAP * 2).unwrap_or(false) {
+        if let Ok(all) = std::fs::read(&path) {
+            let keep = &all[(all.len() - (all.len() / 2))..];
+            let _ = std::fs::write(&path, keep);
+        }
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(f, "{line}");
+    }
 }
 
 #[tauri::command]
