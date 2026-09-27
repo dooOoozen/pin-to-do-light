@@ -484,7 +484,9 @@
     var t0 = Date.now();
     turn++;
     var sent = {
-      stage: 'request', chars: text.length, model: cfg.model, base: cfg.base,
+      /* `at` is wall clock, not the duration: the eval measures the round trip itself so a
+         provider that answers in 15ms and one that takes 4s are not reported the same */
+      stage: 'request', at: Date.now(), chars: text.length, model: cfg.model, base: cfg.base,
       tasks: (state.todos || []).length, tools: TOOLS.length
     };
     record(sent);
@@ -663,7 +665,10 @@
     if (out.kind === 'drafts') out.drafts = plan(out.drafts, state, now);
     record({ stage: 'resolved', kind: out.kind,
       drafts: out.drafts.map(function (d) { return { t: d.title, at: d.dueAt, said: d.said }; }),
-      updates: out.updates.length, ms: Date.now() - t0 });
+      updates: out.updates.length, ms: Date.now() - t0,
+      /* how many round trips this answer cost: one is the model getting it right first time,
+         two is the nudge, and the number is what a provider change is measured against */
+      requests: trace.filter(function (e) { return e.turn === turn && e.stage === 'request'; }).length });
     return out;
   }
 

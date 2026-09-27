@@ -704,6 +704,87 @@ async function runGuard() {
   return rows;
 }
 
+/* ---- metrics -----------------------------------------------------------------
+   Pass/fail says whether the system is correct. It does not say what it costs, how long it
+   takes, or how often the model gets there on the first try — and those are the three numbers
+   a provider change actually moves. Every turn is read out of the agent's own trace ring, so
+   this measures the shipped path rather than a stopwatch wrapped around a call.
+
+   `--reps N` repeats the model suites: a single run of a temperature-0 provider is a sample of
+   one, and the spread between runs is itself the answer to "is this flaky?". */
+
+function pct(list, p) {
+  if (!list.length) return 0;
+  const s = list.slice().sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.floor(s.length * p))];
+}
+
+const SAFETY = ['dialect', 'no-tool-call', 'local-fallback', 'refused-tool', 'tool-repaired',
+  'unknown-id', 'unexpressible', 'empty-input', 'commit-failed', 'error'];
+
+function startMeter(Agent) { return { turn0: Agent.turnOf() }; }
+
+function stopMeter(Agent, m) {
+  const Agent_ = Agent;
+  const ev = Agent_.dump().filter((e) => e.turn > m.turn0 && e.turn <= Agent_.turnOf());
+  const turns = {};
+  ev.forEach(function (e) {
+    const t = (turns[e.turn] = turns[e.turn] || { requests: 0, tokens: 0, ms: 0, stages: [] });
+    t.stages.push(e.stage);
+    if (e.stage === 'request') t.requests++;
+    if (e.stage === 'tools') t.tokens += e.tokens || 0;
+    if (typeof e.ms === 'number') t.ms = Math.max(t.ms, e.ms);
+  });
+  const list = Object.keys(turns).map((k) => turns[k]);
+  const net = list.filter((t) => t.requests > 0);
+  const safety = {};
+  SAFETY.forEach((s) => { safety[s] = ev.filter((e) => e.stage === s).length; });
+  return {
+    turns: list.length, requests: list.reduce((a, t) => a + t.requests, 0),
+    tokens: list.reduce((a, t) => a + t.tokens, 0),
+    p50: pct(net.map((t) => t.ms), 0.5), p95: pct(net.map((t) => t.ms), 0.95),
+    firstTry: net.length ? net.filter((t) => t.requests === 1 && t.stages.indexOf('no-tool-call') < 0 &&
+      t.stages.indexOf('dialect') < 0 && t.stages.indexOf('tool-repaired') < 0).length : 0,
+    samples: net.length, safety: safety
+  };
+}
+
+/* Which commit does this number belong to? A score without a sha is a mood. */
+function gitSha() {
+  try {
+    return require('child_process').execSync('git rev-parse --short HEAD', { cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch (e) { return 'unknown'; }
+}
+
+/* The last few runs, side by side. This is the table that answers "did the change help"
+   without anybody having to remember what the number was before. */
+function trend(file, rec) {
+  const fs = require('fs');
+  let lines = [];
+  try { lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).slice(-5); } catch (e) { return; }
+  console.log('\n最近 ' + lines.length + ' 次（同一份 ' + path.basename(file) + '）');
+  console.log('  日期           模式  通过      p95     tokens  一次到位  sha');
+  lines.forEach(function (l) {
+    let r; try { r = JSON.parse(l); } catch (e) { return; }
+    const net = (r.net || []).filter((m) => m.suite !== 'A');
+    const p95 = net.length ? Math.max.apply(null, net.map((m) => m.p95 || 0)) : 0;
+    const tok = net.reduce((a, m) => a + (m.tokens || 0), 0);
+    const firstTry = net.reduce((a, m) => a + (m.firstTry || 0), 0);
+    const samples = net.reduce((a, m) => a + (m.samples || 0), 0);
+    console.log('  ' + String(r.at || '').slice(0, 10) + '  ' + String(r.mode + '    ').slice(0, 5) +
+      '  ' + String(r.pass + '/' + r.total).padEnd(9) + '  ' + String(p95 + 'ms').padEnd(7) +
+      '  ' + String(tok).padEnd(6) + '  ' + firstTry + '/' + samples + '      ' + (r.sha || '') +
+      (r === rec ? '  ← 本次' : ''));
+  });
+}
+
+function scorecard(name, m) {  if (!m || !m.turns) return;
+  const fired = SAFETY.filter((s) => m.safety[s]).map((s) => s + ' ' + m.safety[s]).join(' · ') || '无';
+  console.log('  ' + name + '：' + m.turns + ' 轮 · ' + m.requests + ' 次往返 · p50 ' + m.p50 +
+    'ms p95 ' + m.p95 + 'ms · ' + m.tokens + ' tokens · 一次到位 ' +
+    m.firstTry + '/' + m.samples + ' · 兜底：' + fired);
+}
+
 /* ---- wiring ------------------------------------------------------------------ */
 
 function installAgent() {
@@ -729,13 +810,17 @@ function installAgent() {
   require(path.join(__dirname, '../src/agent.js'));
 }
 
-function report(title, rows) {
+function report(title, rows, opts) {
+  const quiet = !!(opts && opts.quiet);
   const known = rows.filter(function (r) { return !r.ok && r.known; });
   const hard = rows.filter(function (r) { return !r.ok && !r.known; });
   const pass = rows.length - hard.length;
-  console.log('\n' + title + '  ' + pass + '/' + rows.length + ' 通过' +
+  if (title) console.log('\n' + title + '  ' + pass + '/' + rows.length + ' 通过' +
     (known.length ? '（另有 ' + known.length + ' 条已知问题）' : ''));
   rows.forEach(function (r) {
+    /* a repeat run prints only what went wrong: three pages of ✓ per rep buries the one line
+       that matters, which is the case that changed its mind between runs */
+    if (quiet && r.ok) return;
     const mark = r.ok ? '✓' : (r.known ? '✗已知' : '✗');
     console.log('  ' + mark + ' ' + r.say + '  → ' + r.detail + (r.known ? '  ⟵ ' + r.known : ''));
   });
@@ -746,43 +831,92 @@ function report(title, rows) {
 
 (async function main() {
   installAgent();
+  const Agent = global.Agent;
   const argv = process.argv.slice(2);
   const li = argv.indexOf('--live');
   const live = li >= 0 ? { base: argv[li + 1], model: argv[li + 2] } : null;
+  const ri = argv.indexOf('--reps');
+  const REPS = ri >= 0 ? Math.max(1, Math.min(20, Number(argv[ri + 1]) || 1)) : 1;
+  const ji = argv.indexOf('--json');
+  const HIST = ji >= 0 ? argv[ji + 1] : null;
 
   let total = { pass: 0, total: 0 };
+  const meters = [];
+  const suites = [];
   total = report('A · 时间解析（确定性，无网络）', runResolver());
+  suites.push({ suite: 'A', pass: total.pass, total: total.total });
   /* the honest part of a score: what it gets wrong on purpose, printed rather than asserted */
   console.log('  已知边界（不计分）');
   LIMITS.forEach(function (l) { console.log('    · ' + l.say + ' → ' + l.is); });
 
+  let up = true;
+  try {
+    await fetch(MOCK.base.replace(/\/+$/, '') + '/models', { method: 'GET', signal: AbortSignal.timeout(1500) });
+  } catch (e) { up = false; }
+
   if (live) {
     console.log('\n[live] 走真实 provider：' + live.base + ' · ' + live.model + ' —— 这会消耗额度');
+    const m = startMeter(Agent);
     const b = report('B · 工具循环（live）', await runLoop(live));
+    const mm = stopMeter(Agent, m);
+    scorecard('B', mm); meters.push(Object.assign({ suite: 'B' }, mm));
     total = { pass: total.pass + b.pass, total: total.total + b.total };
-    /* C is skipped against a real model on purpose: its assertions are about the write path,
-       and a provider that words its drafts differently would report a storage bug that does
-       not exist. It runs on the mock, where the reply is known. */
+    suites.push({ suite: 'B', pass: b.pass, total: b.total });
+    /* C and D are skipped against a real model on purpose: their assertions are about the
+       write path and the guard rails, and a provider that words its drafts differently
+       would report a storage bug that does not exist. */
     console.log('\nC/D · 落库与防守 —— 跳过：live 模式下回复不确定，断言会假');
+  } else if (!up) {
+    console.log('\nB/C/D · 跳过：mock 未启动（node tools/mock-llm.js 8787）');
   } else {
-    let up = true;
-    try {
-      await fetch(MOCK.base.replace(/\/+$/, '') + '/models', { method: 'GET', signal: AbortSignal.timeout(1500) });
-    } catch (e) { up = false; }
-    if (!up) {
-      console.log('\nB/C · 跳过：mock 未启动（node tools/mock-llm.js 8787）');
-    } else {
-      const b = report('B · 工具循环（mock provider）', await runLoop(null));
-      const c = report('C · 落库链路（真实 reducer）', await runWrite());
-      const d = report('D · 防守（对抗与异常输入）', await runGuard());
-      total = {
-        pass: total.pass + b.pass + c.pass + d.pass,
-        total: total.total + b.total + c.total + d.total
-      };
+    /* one pass of a temperature-0 provider is a sample of one. Repeating the model-facing
+       suites reports the spread between runs, which is the only honest answer to "is this
+       flaky?" and the number a provider swap actually moves. */
+    const acc = { B: { pass: 0, total: 0 }, C: { pass: 0, total: 0 }, D: { pass: 0, total: 0 } };
+    for (let k = 0; k < REPS; k++) {
+      if (REPS > 1) console.log('\n—— 第 ' + (k + 1) + '/' + REPS + ' 遍 ——');
+      for (const spec of [
+        ['B', 'B · 工具循环（mock provider）', () => runLoop(null)],
+        ['C', 'C · 落库链路（真实 reducer）', runWrite],
+        ['D', 'D · 防守（对抗与异常输入）', runGuard]
+      ]) {
+        const m = startMeter(Agent);
+        const rows = await spec[2]();
+        const mm = stopMeter(Agent, m);
+        const r = report(k === 0 ? spec[1] : '', rows, { quiet: k > 0 });
+        acc[spec[0]].pass += r.pass; acc[spec[0]].total += r.total;
+        if (REPS > 1) console.log('  ' + spec[0] + ' 第 ' + (k + 1) + ' 遍 ' + r.pass + '/' + r.total);
+        scorecard(spec[0], mm);
+        meters.push(Object.assign({ suite: spec[0], rep: k }, mm));
+        total = { pass: total.pass + r.pass, total: total.total + r.total };
+      }
+    }
+    ['B', 'C', 'D'].forEach((k) => suites.push({ suite: k, pass: acc[k].pass, total: acc[k].total }));
+    if (REPS > 1) {
+      const flaky = ['B', 'C', 'D'].filter((k) => acc[k].pass < acc[k].total);
+      console.log('\n重复 ' + REPS + ' 遍：' + (flaky.length
+        ? '不稳定出现在 ' + flaky.join('/') + '（同一输入两次结果不同，就是模型在动）'
+        : '全稳定 —— 同一套用例 ' + REPS + ' 遍结果一致'));
     }
   }
 
   console.log('\n合计 ' + total.pass + '/' + total.total);
+  if (!live) {
+    console.log('  注：以上 ms 与 tokens 来自本机 mock，只反映这一侧的开销与请求次数；' +
+      '真实延迟与用量用 --live <base> <model> 量。');
+  }
+  if (HIST) {
+    const fs = require('fs');
+    const rec = {
+      at: new Date().toISOString(), sha: gitSha(),
+      mode: live ? 'live' : (up ? 'mock' : 'mock-absent'),
+      model: live ? live.model : 'mock', reps: REPS,
+      pass: total.pass, total: total.total, suites: suites, net: meters
+    };
+    fs.appendFileSync(HIST, JSON.stringify(rec) + '\n');
+    console.log('已追加 ' + HIST);
+    trend(HIST, rec);
+  }
   /* exitCode, not exit(): a hard exit while an in-flight socket is closing trips libuv's
      assertion on Windows and prints a stack that looks like the eval crashed */
   process.exitCode = total.pass === total.total ? 0 : 1;

@@ -1,0 +1,37 @@
+name: eval
+
+# The agent's suites are deterministic and need no key: A is the date resolver on its own,
+# B/C/D run against tools/mock-llm.js. That makes them the one thing about the agent that can
+# gate every push — the pass rate, the first-try rate and the round-trip count all move the
+# moment a prompt or a provider changes, and none of those are visible in a code diff.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  agent-eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: mock provider
+        run: node tools/mock-llm.js 8787 &
+      - name: suites A–D, twice
+        # twice, because a single pass of a model-facing suite is a sample of one; the second
+        # run printing nothing means the two agreed
+        run: node tools/eval.js --reps 2
+      - name: record the run
+        if: always()
+        # the gate above decides pass/fail; this one only appends the numbers, and must not
+        # decide anything — a history step that can fail the job teaches people to ignore it
+        run: |
+          mkdir -p _eval
+          node tools/eval.js --json _eval/eval-history.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-run
+          path: _eval/
