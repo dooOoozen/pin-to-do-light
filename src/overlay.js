@@ -62,6 +62,7 @@
   let popGuardUntil = 0;
   let hoverArmed = true;
   let hoverRearmAfter = 0;
+  let hoverWasInside = false;
   let audioCtx = null;
   let lastSound = '';
 
@@ -526,9 +527,12 @@
           cancelArmPop();
           nearWas = false;
         }
-      } else if (cmd.inside) {
-        /* always evaluate the hover: a pointer that arrives and stops must open the
-           spread by itself once the deck has popped out */
+      } else {
+        /* Both ways: the arrival, because a pointer that comes and stops must open the
+           spread by itself, and the departure, because that is the only frame that can put
+           the resting pill back. `cmd.inside` means "inside this window", so gating on it
+           threw away every frame in which the pointer had just left the deck — the deck
+           opened for a look and then stayed a full stack for the rest of the session. */
         updateHover(p.x, p.y);
       }
       queueHitTest();
@@ -2326,12 +2330,19 @@
     }
     if (inside) {
       if (Date.now() < popGuardUntil) return;  /* the pop is still animating */
+      hoverWasInside = true;
       setCapsule(false);
       cancelCollapse();
       cancelTuck();
       if (tucked) popOut();                    /* a pointer that arrives and stops still opens it */
       if (mode === 'collapsed') setMode('overview');
     } else {
+      /* The departure is the only moment the pill can be re-armed for. Every other trigger —
+         boot, setMode, the untuck, a closed modal — can land while the pointer is still sitting
+         on the deck, where the next hover frame switches it back off and nothing asks again.
+         That is why the instrumented runs passed (the harness parks the cursor at 20,20 first)
+         and the desktop never showed a pill. */
+      if (hoverWasInside) { hoverWasInside = false; syncCapsule(420); }
       if (mode === 'overview') scheduleCollapse();
       maybeReTuck();
     }
