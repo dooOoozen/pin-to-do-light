@@ -701,6 +701,32 @@
 
   /* ---------------------------------------------------------------- commit */
 
+  /* What the store actually holds against what the plan said it would hold. Minute-level
+     compare on dueAt: the reducer stores whole minutes, and comparing the ISO string exactly
+     would flag a write that landed correctly. */
+  function verifyAgainst(want, state) {
+    var byId = {};
+    ((state && state.todos) || []).forEach(function (t) { byId[t.id] = t; });
+    /* the compare is on the instant (ISO to the minute, timezone-agnostic); only the message
+       is put back into local time, because "应为 2026-09-26T06:00" reads as a different bug */
+    var at = function (iso) {
+      var d = new Date(iso);
+      if (isNaN(d)) return String(iso);
+      var p = function (n) { return (n < 10 ? '0' : '') + n; };
+      return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    };
+    var bad = [];
+    (want || []).forEach(function (w) {
+      var t = w.id ? byId[w.id] : null;
+      if (!t) { bad.push((w.title || w.id || '记录') + ' 不在库里'); return; }
+      if (w.dueAt && String(t.dueAt || '').slice(0, 16) !== String(w.dueAt).slice(0, 16)) {
+        bad.push('「' + t.title + '」应为 ' + at(w.dueAt) + '，库里是 ' + (t.dueAt ? at(t.dueAt) : '空'));
+      }
+      if (w.title && t.title !== w.title) bad.push('标题应为「' + w.title + '」，库里是「' + t.title + '」');
+    });
+    return bad;
+  }
+
   /* Called only from the confirmation UI. The ops are the app's own, so the reducer's
      normalisation, the save, and the other window's sync all happen exactly as if the user
      had typed the task in. */
@@ -732,14 +758,40 @@
       skipped: skipped, edited: (edits || []).length });
     /* API.op resolves with the reducer's own {ok:false,error} rather than rejecting, so a
        write that quietly did nothing looks identical to one that worked unless somebody
-       counts. That is precisely how the flat-patch bug survived a green run. */
+       counts. That is precisely how the flat-patch bug survived a green run — and counting
+       the ops is still not enough, because an op can report ok and change nothing. So read
+       the store back and compare it against what was asked for. */
+    var want = [];
+    var failedCount = 0;
     return Promise.all(ops).then(function (rs) {
       var bad = (rs || []).filter(function (r) { return !r || r.ok === false; });
+      failedCount = bad.length;
       if (bad.length) {
         record({ stage: 'commit-failed', failed: bad.length,
           errors: bad.map(function (b) { return String(b && b.error || ''); }).slice(0, 3) });
       }
-      return { added: drafts.length, changed: ops.length - drafts.length, skipped: skipped, failed: bad.length };
+      rs.forEach(function (r, i) {
+        var d = drafts[i];
+        if (d) want.push({ id: r && r.id, title: d.title, dueAt: d.dueAt });
+      });
+      updates.forEach(function (u) {
+        if (u.title || u.dueAt) want.push({ id: u.id, title: u.title, dueAt: u.dueAt });
+      });
+      return API.getState();
+    }).then(function (state) {
+      var mismatch = verifyAgainst(want, state);
+      record(mismatch.length
+        ? { stage: 'verify-failed', checked: want.length, mismatch: mismatch.slice(0, 4) }
+        : { stage: 'verified', checked: want.length });
+      return {
+        added: drafts.length, changed: ops.length - drafts.length, skipped: skipped,
+        failed: failedCount, mismatch: mismatch
+      };
+    }, function (e) {
+      /* no state to read — the verification could not run, which is not the same as a lie */
+      record({ stage: 'verify-skipped', message: String(e && e.message || e).slice(0, 120) });
+      return { added: drafts.length, changed: ops.length - drafts.length, skipped: skipped,
+        failed: failedCount, mismatch: [] };
     });
   }
 
@@ -855,7 +907,14 @@
       case 'refused-tool': return '✕ 拒绝了未授权的工具「' + e.name + '」';
       case 'unknown-id': return '✕ 模型给了一个不存在的任务 id「' + e.id + '」，已丢弃';
       case 'bad-args': return '✕ 工具参数不是合法 JSON：' + e.message;
-      case 'commit': return '写入 ' + e.added + ' 条 · 修改 ' + e.changed + ' 条 · 其中你手改 ' + e.edited + ' 处';
+      case 'commit': return '写入 ' + e.added + ' 条 · 修改 ' + e.changed + ' 条 · 其中你手改 ' + e.edited + ' 处' +
+        (e.skipped ? ' · 无法表达的请求 ' + e.skipped + ' 条已挡下' : '');
+      case 'verified': return '✓ 读回数据核对：' + e.checked + ' 条与计划一致';
+      case 'verify-failed': return '⚠ 报告成功但数据没变（' + e.checked + ' 条核对，' + e.mismatch.length +
+        ' 条不符：' + e.mismatch.join('；') + '）';
+      case 'verify-skipped': return '写入后无法读回数据核对（' + (e.message || '') + '）';
+      case 'unexpressible': return '✕ 模型想改的字段（' + (e.asked || '未知') + '）不在可写范围内，已丢弃';
+      case 'empty-input': return '输入里没有文字，未发送请求';
       case 'probe': return 'HTTP ' + e.status + ' · ' + (e.shape || '?') + ' · ' + (e.count || 0) + ' 个模型 · ' + (e.ms || 0) + 'ms';
       case 'probe-call': return (e.toolCalling ? '工具调用可用' : '不会调用工具') + ' · ' + e.ms + 'ms · ' + (e.tokens || 0) + ' tokens';
       case 'error': return '✕ ' + (e.message || '');

@@ -249,6 +249,8 @@ function makeStore(ai) {
 function bridge(store) {
   return {
     op: function (o) { return Promise.resolve(D.applyOp(store, o)); },
+    /* commit reads the store back after writing, so the fake bridge has to answer that too */
+    getState: function () { return Promise.resolve(store); },
     aiTrace: function () { return 0; },
     bootNote: function () { return Promise.resolve(); }
   };
@@ -560,6 +562,30 @@ async function runWrite() {
       : null;
     rows.push({ say: '具体名压过同名短名（想反问）', ok: !why2, detail: why2 ||
       seen2.join('>') + ' → 直接改那条' });
+  }
+  /* C-last · the write path lies. This is not hypothetical: `todo:update` once arrived with
+     flat fields, the reducer read them out of a `patch` that defaulted to {}, every op
+     answered ok, and nothing moved — a green run that wrote nothing. commit now reads the
+     store back, so the lie has to be caught by the agent rather than by a user noticing the
+     card did not move. The fake here is the *old* bug, reproduced on purpose. */
+  {
+    const store = makeStore();
+    const added = D.applyOp(store, { type: 'todo:add', title: '面试', groupId: 'g_work',
+      dueAt: new Date(2026, 8, 25, 14, 0).toISOString(), activate: false });
+    Object.assign(global.API, bridge(store));
+    const honest = global.API.op;
+    Object.assign(global.API, { op: function (o) {
+      return o.type === 'todo:update' ? Promise.resolve({ ok: true }) : honest(o);
+    } });
+    const r = await Agent.run('临时有个会，把明天的面试推后到后天', store, { now: NOW.toISOString() });
+    const n = await Agent.commit(r, []);
+    Object.assign(global.API, { op: honest });
+    const t = D.todoById(store, added.id);
+    const why = !n.mismatch.length ? '读回核对没有发现假成功（mismatch 为空）'
+      : t.dueAt !== new Date(2026, 8, 25, 14, 0).toISOString() ? '假成功之外还真的写了东西'
+      : null;
+    rows.push({ say: '写入谎报成功 → 读回核对抓出来', ok: !why,
+      detail: why || ('报告 ' + n.changed + ' 条已改，核对不符：' + n.mismatch.join('；')) });
   }
   return rows;
 }
