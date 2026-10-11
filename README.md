@@ -10,6 +10,9 @@ This is the Tauri 2 rewrite of an Electron original, done for resident memory an
 
 ![The same dashboard as it changes materials](docs/media/materials-morph.gif)
 
+A full walkthrough lives in [docs/使用教程.md](docs/使用教程.md) (Chinese):
+every view, every shortcut, plus the recycle bin, the routine group and the 坚果云 backup.
+
 ## What it does
 
 **Card layer** — a frameless, transparent, topmost window covering the work area. Tasks sit in a dock on one screen edge; approaching it pops the deck into a spread of cards. A card can be completed, timed, edited, dragged to a new spot, or pinned so it stays on the desk after the deck retracts. The deck tucks itself away when idle.
@@ -26,7 +29,7 @@ This is the Tauri 2 rewrite of an Electron original, done for resident memory an
 
 Dates carry both solar and lunar labels (`9月20日 · 周日 · 农历八月初十`), and a task can repeat on the lunar year.
 
-**Ten materials**, each with its own day and night palette: 印刷 1971 (the terminal sheet), 餐厅 DINER (Googie enamel and chrome), 群青构成 IKB (constructivist, 2 px rules), 晨雾花园 GARDEN (a rose-to-cream ramp), 指令台 RETRO (mission console), 雾绿磨砂 FROST (frosted panes on a mint room), 图纸 BLUEPRINT (monochrome technical drawing), 紫电拼贴 COLLAGE (purple and cobalt, cut square), 黑黄战术 HI-VIS (hi-vis signage) and 铬黄丝网 CHROME (white paper, chrome-yellow slabs). Each is named for its visual language, not for a work. A material switches surface, outline, corner radii, label typeface and palette together — the deck and the desk follow, not just the panel — and the colour lab overrides any token live, saving per day/night.
+**Ten materials**, each with its own day and night palette: 印刷 1971 (the terminal sheet), 餐厅 DINER (Googie enamel and chrome), 群青构成 IKB (constructivist, 2 px rules), 晨雾花园 GARDEN (a rose-to-cream ramp), 指令台 RETRO (mission console), 雾绿磨砂 FROST (frosted panes on a mint room), 图纸 BLUEPRINT (monochrome frosted panes), 紫电拼贴 COLLAGE (purple and cobalt, cut square), 黑黄战术 HI-VIS (hi-vis signage) and 铬黄丝网 CHROME (white paper, chrome-yellow slabs). Each is named for its visual language, not for a work. A material switches surface, outline, corner radii, label typeface and palette together — the deck and the desk follow, not just the panel — and the colour lab overrides any token live, saving per day/night.
 
 | 印刷 1971 · PRINT | 餐厅 DINER | 群青构成 IKB |
 | --- | --- | --- |

@@ -10,6 +10,9 @@
 
 ![同一块仪表盘换材质](docs/media/materials-morph.gif)
 
+本仓库有一份完整的[使用教程](docs/使用教程.md)，讲每一个视图、每一处快捷键
+和回收站、作息分组、坚果云备份怎么用。
+
 ## 它能做什么
 
 **卡片层**——一个无边框、透明、置顶、铺满工作区的窗口。任务住在贴屏幕边缘的卡盒里，鼠标靠近就把卡盒弹成一片卡片；卡片可以完成、计时、编辑、拖到别处，或者钉住——钉住的卡片在卡盒收回或切换分组后仍留在桌面上。闲置时卡盒自己缩回边缘。
@@ -26,14 +29,14 @@
 
 日期同时带公历与农历（`9月20日 · 周日 · 农历八月初十`），并支持按农历年重复。
 
-**十套材质**，每套都有独立的昼/夜配色：**印刷 1971**（终端打印件）、**餐厅 DINER**（Googie 搪瓷与铬条）、**群青构成 IKB**（构成主义、2px 粗线）、**晨雾花园 GARDEN**（桃红到奶油的渐变）、**指令台 RETRO**（任务台）、**雾绿磨砂 FROST**（薄荷灰房间上的半透明磨砂面）、**图纸 BLUEPRINT**（纯黑白技术图纸）、**紫电拼贴 COLLAGE**（电紫与钴蓝，直角）、**黑黄战术 HI-VIS**（标牌漆）、**铬黄丝网 CHROME**（白纸大块黄）。材质一律按视觉语言命名，不指向任何具体作品。切换材质会同时改变表面纹理、描边、圆角、标签字体和昼/夜配色——卡盒和桌面跟着变，不只是面板；临时调色盘可以实时覆盖任意 token，并按昼/夜分别保存。
+**十套材质**，每套都有独立的昼/夜配色：**印刷 1971**（终端打印件）、**餐厅 DINER**（Googie 搪瓷与铬条）、**群青构成 IKB**（构成主义、2px 粗线）、**晨雾花园 GARDEN**（桃红到奶油的渐变）、**指令台 RETRO**（任务台）、**雾绿磨砂 FROST**（薄荷灰房间上的半透明磨砂面）、**图纸 BLUEPRINT**（黑白的磨砂玻璃面）、**紫电拼贴 COLLAGE**（电紫与钴蓝，直角）、**黑黄战术 HI-VIS**（标牌漆）、**铬黄丝网 CHROME**（白纸大块黄）。材质一律按视觉语言命名，不指向任何具体作品。切换材质会同时改变表面纹理、描边、圆角、标签字体和昼/夜配色——卡盒和桌面跟着变，不只是面板；临时调色盘可以实时覆盖任意 token，并按昼/夜分别保存。
 
 | 印刷 1971 · PRINT | 餐厅 DINER | 群青构成 IKB |
 | --- | --- | --- |
 | ![print](docs/media/material-print.png) | ![diner](docs/media/material-diner.png) | ![ikb](docs/media/material-ikb.png) |
 | **晨雾花园 GARDEN** | **雾绿磨砂 FROST** | **指令台 RETRO** |
 | ![garden](docs/media/material-garden.png) | ![frost](docs/media/material-frost.png) | ![console](docs/media/material-console.png) |
-| 晨雾花园 · 夜 | 电蓝海报 · 夜 | 指令台 · 夜 |
+| 晨雾花园 · 夜 | 雾绿磨砂 · 夜 | 指令台 · 夜 |
 | ![garden night](docs/media/material-garden-night.png) | ![frost night](docs/media/material-frost-night.png) | ![console night](docs/media/material-console-night.png) |
 
 | 拖拽调整仪表盘模块 | 台账行的悬停态 |
