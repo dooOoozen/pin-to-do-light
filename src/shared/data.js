@@ -290,6 +290,7 @@
         pomoCount: 0
       },
       placements: {},
+      trash: [],
       /* one row per stopwatch run, so the timeline can show when the
          time was actually spent rather than only the running total */
       timeEntries: []
@@ -500,6 +501,22 @@
         }
       });
     }
+    /* The recycle bin is a separate array rather than a group the tasks stay in, because
+       every view in this app reads `todos` — the deck, the counters, the time ledger, the
+       receipt, the month grid — and a trashed task left among them would be counted as
+       unfinished work by all of them. Living beside the list instead, it is invisible to
+       every one of those paths without a single new filter. */
+    out.trash = Array.isArray(s.trash) ? s.trash.filter(function (x) {
+      return x && x.todo && x.todo.id;
+    }).map(function (x) {
+      return { todo: x.todo, deletedAt: String(x.deletedAt || x.todo.updatedAt || isoNow()) };
+    }) : [];
+    /* Thirty days, measured on the read rather than by a timer: a machine switched off for a
+       month should still come back to a bin that emptied itself. */
+    var trashCut = Date.now() - 30 * 86400000;
+    out.trash = out.trash.filter(function (x) {
+      return new Date(x.deletedAt).getTime() > trashCut;
+    });
     return out;
   }
 
@@ -667,9 +684,40 @@
         for (var k = 0; k < s.todos.length; k++) if (s.todos[k].id === p.id) { i = k; break; }
       }
       if (i < 0) throw new Error('not-found');
-      s.todos.splice(i, 1);
+      var gone = s.todos.splice(i, 1)[0];
       delete s.placements[p.id];
+      /* out of the list, into the bin — the task itself is kept so it can come back with its
+         notes, repeat rule and due time intact. Its scattered spot and its logged minutes
+         are not: those are what the old permanent delete already threw away. */
+      s.trash = (s.trash || []).filter(function (x) { return !x.todo || x.todo.id !== p.id; });
+      s.trash.unshift({ todo: gone, deletedAt: isoNow() });
+      return { trashed: p.id };
+    },
+
+    'trash:restore': function (s, p) {
+      var at = -1;
+      for (var k = 0; k < (s.trash || []).length; k++) if (s.trash[k].todo.id === p.id) { at = k; break; }
+      if (at < 0) throw new Error('not-found');
+      if (s.todos.some(function (t) { return t.id === p.id; })) throw new Error('already-there');
+      var t = s.trash.splice(at, 1)[0].todo;
+      /* a group deleted while the task was in the bin: land it somewhere rather than lose it */
+      if (!s.groups.some(function (g) { return g.id === t.groupId; })) t.groupId = s.groups[0].id;
+      t.updatedAt = isoNow();
+      s.todos.push(t);
+      return { restored: t.id, groupId: t.groupId };
+    },
+
+    'trash:purge': function (s, p) {
+      var had = (s.trash || []).length;
+      s.trash = (s.trash || []).filter(function (x) { return x.todo.id !== p.id; });
+      if (s.trash.length === had) throw new Error('not-found');
       return {};
+    },
+
+    'trash:clear': function (s) {
+      var n = (s.trash || []).length;
+      s.trash = [];
+      return { purged: n };
     },
 
     'todo:move': function (s, p) {

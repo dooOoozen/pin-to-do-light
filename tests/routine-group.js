@@ -24,7 +24,8 @@
 
   function cleanup() {
     return Promise.all([todoId, spawnId].filter(Boolean).map(function (id) {
-      return API.op({ type: 'todo:delete', id: id }).catch(function () {});
+      return API.op({ type: 'todo:delete', id: id }).catch(function () {})
+        .then(function () { return API.op({ type: 'trash:purge', id: id }).catch(function () {}); });
     })).then(function () {
       return groupId ? API.op({ type: 'group:delete', id: groupId }).catch(function () {}) : null;
     }).then(function () { return API.getState(); }).then(function (st) {

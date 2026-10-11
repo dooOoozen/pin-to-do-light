@@ -228,6 +228,7 @@
       const g = D.groupById(S.state, S.groupId);
       return g ? g.name : '分组';
     }
+    if (S.view === 'trash') return '回收站';
     const v = VIEWS.find((x) => x.id === S.view);
     return v ? v.label : '全部任务';
   }
@@ -330,6 +331,16 @@
       }
       el.groups.appendChild(li);
     });
+    /* Pinned last rather than sorted in with the rest: the bin is not a place to put work,
+       and a group that could be dragged below it would turn "your deleted tasks are in a
+       fixed spot" back into "somewhere in this list". */
+    const bin = doc.createElement('li');
+    bin.className = 'trash-row' + (S.view === 'trash' ? ' on' : '');
+    bin.innerHTML = '<i class="dot trash-dot"></i><span class="gname">回收站</span>' +
+      '<span class="gcount">' + ((S.state.trash || []).length) + '</span>';
+    bin.title = '删除的任务在这里留 30 天，然后自动清掉';
+    bin.addEventListener('click', () => { S.view = 'trash'; S.groupId = null; renderAll(); });
+    el.groups.appendChild(bin);
   }
 
   function renderSideMeter() {
@@ -1233,9 +1244,66 @@
 
   /* ---------------------------------------------------------------- ledger */
 
+  /* The bin: what a deleted task looks like while it waits out its thirty days. Its own row
+     rather than buildRow(), because buildRow is built around a live task — timers, pinning,
+     the completion checkbox — none of which mean anything in here. */
+  function renderTrash() {
+    const items = (S.state.trash || []).slice();
+    const head = doc.createElement('div');
+    head.className = 'day-head';
+    head.innerHTML = '<b>回收站 · TRASH</b><span class="spacer"></span>' +
+      '<span class="tiny faint">保留 30 天</span>' +
+      (items.length ? '<button class="btn tiny danger" id="trClear">清空</button>' : '');
+    el.list.appendChild(head);
+    if (items.length) {
+      doc.getElementById('trClear').addEventListener('click', () => {
+        API.op({ type: 'trash:clear' }).then(() => toast('回收站已清空 // EMPTIED'));
+      });
+    }
+    if (!items.length) {
+      const empty = doc.createElement('div');
+      empty.className = 'empty';
+      empty.innerHTML = '<div class="big">EMPTY</div><div class="small">删除的任务先进这里，30 天后才真正消失</div>';
+      el.list.appendChild(empty);
+      return;
+    }
+    items.forEach((x) => {
+      const t = x.todo;
+      const when = new Date(x.deletedAt);
+      const left = Math.max(0, 30 - Math.floor((Date.now() - when.getTime()) / 86400000));
+      const g = D.groupById(S.state, t.groupId);
+      const row = doc.createElement('div');
+      row.className = 'tr-item';
+      row.innerHTML =
+        '<span class="tr-title"></span><span class="tr-meta"></span>' +
+        '<span class="tr-left">' + left + ' 天</span>' +
+        '<button class="btn tiny" data-tr="restore">恢复</button>' +
+        '<button class="btn tiny danger" data-tr="purge">彻底删除</button>';
+      row.querySelector('.tr-title').textContent = t.title;
+      row.querySelector('.tr-meta').textContent = (g ? g.name : '—') +
+        (t.dueAt ? ' · ' + String(t.dueAt).slice(0, 10) : '');
+      row.title = '删除于 ' + when.toLocaleString('zh-CN');
+      row.querySelector('[data-tr="restore"]').addEventListener('click', () => {
+        API.op({ type: 'trash:restore', id: t.id }).then((res) => {
+          if (res && res.ok) toast('已恢复 // RESTORED');
+          else toast('恢复失败：' + ((res && res.error) || 'error'), 'bad');
+        });
+      });
+      row.querySelector('[data-tr="purge"]').addEventListener('click', (ev) => {
+        const b = ev.currentTarget;
+        /* one deliberate second click: this is the only path that destroys data for good */
+        if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = '再点一次确定'; return; }
+        API.op({ type: 'trash:purge', id: t.id }).then(() => toast('已彻底删除 // PURGED'));
+      });
+      el.list.appendChild(row);
+    });
+  }
+
   function renderList() {
-    const list = visibleTodos();
-    el.countLabel.textContent = String(list.length).padStart(3, '0') + ' ITEMS · ' + viewLabel();
+    const trashView = S.view === 'trash';
+    const list = trashView ? [] : visibleTodos();
+    el.countLabel.textContent = String(trashView ? (S.state.trash || []).length : list.length)
+      .padStart(3, '0') + ' ITEMS · ' + viewLabel();
     const special = S.view === 'timeline' || S.view === 'calendar' ||
       S.view === 'tracking' || S.view === 'report';
     if (el.viewPanel) el.viewPanel.classList.toggle('u-hidden', !special);
@@ -1244,9 +1312,10 @@
     el.list.classList.toggle('u-hidden', special);
     /* the timeline and the month grid are for reading: the entry form and the search
        row above them only push the real content down */
-    if (el.entryForm) el.entryForm.classList.toggle('u-hidden', special);
-    if (el.toolbar) el.toolbar.classList.toggle('u-hidden', special);
+    if (el.entryForm) el.entryForm.classList.toggle('u-hidden', special || trashView);
+    if (el.toolbar) el.toolbar.classList.toggle('u-hidden', special || trashView);
     el.list.innerHTML = '';
+    if (trashView) { renderTrash(); return; }
     if (special) {
       if (S.view === 'timeline') renderTimeline(list);
       else if (S.view === 'tracking') renderTracking();

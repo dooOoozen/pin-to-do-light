@@ -286,7 +286,32 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
   background-size: 9px 6px;
 }
 .select option { background: var(--paper-hi); color: var(--ink); }
-input[type="datetime-local"] { color-scheme: light; }
+/* Native date and time fields — there are four of them (the timeline's jump box, the
+   receipt schedule in settings, the printer's time drum, and the agent's schedule field).
+   The widget itself is drawn by the OS, so the honest adaptation is threefold: tell it which
+   way up the material is, since color-scheme decides whether the picker glyph is dark on
+   light or the reverse; give it the material's own radius so it stops being a square peg in
+   a 16px panel; and match the font, or it reads as somebody else's control. */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  color-scheme: light;
+  font-family: inherit;
+  border-radius: var(--r-ctl);
+}
+:root[data-theme="ink"] input[type="date"],
+:root[data-theme="ink"] input[type="time"],
+:root[data-theme="ink"] input[type="datetime-local"] { color-scheme: dark; }
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  opacity: .55; cursor: pointer; filter: invert(0);
+}
+:root[data-theme="ink"] input[type="date"]::-webkit-calendar-picker-indicator,
+:root[data-theme="ink"] input[type="time"]::-webkit-calendar-picker-indicator,
+:root[data-theme="ink"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  opacity: .75; filter: invert(1);
+}
 input[type="range"] { accent-color: var(--brick); }
 
 .chk {

@@ -48,7 +48,10 @@
     if (homeGroup && chip(homeGroup)) chip(homeGroup).click();
     return wait(500).then(function () {
       return Promise.all(idsA.concat(idB ? [idB] : []).map(function (id) {
-        return API.op({ type: 'todo:delete', id: id }).catch(function () { /* already gone */ });
+        /* delete now files the task in the recycle bin, so a test that only deletes leaves
+           its own scaffolding sitting in the user's bin */
+        return API.op({ type: 'todo:delete', id: id }).catch(function () { /* already gone */ })
+          .then(function () { return API.op({ type: 'trash:purge', id: id }).catch(function () {}); });
       }));
     }).then(function () {
       return Promise.all([gA, gB].map(function (g) {

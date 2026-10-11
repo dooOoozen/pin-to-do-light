@@ -543,6 +543,18 @@ body.side-dragging { cursor: col-resize; }
 .modal-panel .plan-cal { max-width: 236px; margin: 0 auto 5px; }
 .modal-panel .cal-day { font-size: 9px; }
 .group-list .glock { font-size: 10px; color: var(--ink-3); }
+/* ---- the recycle bin ---- */
+.group-list .trash-row { opacity: .8; }
+.group-list .trash-row .trash-dot { background: var(--ink-3); border-radius: 50%; }
+.group-list .trash-row.on { opacity: 1; }
+.tr-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  border-bottom: 1px dashed var(--rule);
+}
+.tr-title { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tr-meta, .tr-left { flex: none; font-size: 9.5px; color: var(--ink-3); }
+.tr-left { font-variant-numeric: tabular-nums; }
+.tr-item .btn { flex: none; }
 /* the routine marker has to read at a glance: a group whose cards tick themselves off is
    a different kind of list, and the only clue should not be the badge in its editor */
 .group-list .gauto {
