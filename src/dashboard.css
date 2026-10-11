@@ -322,16 +322,15 @@ body.side-dragging { cursor: col-resize; }
 
 /* ---------------------------------------------------------------- settings */
 
-/* The settings sections are one sheet, not a set of floating cards: no gap between them,
-   and each panel draws only its own right and bottom hairline so two abutting panels share
-   one line instead of leaving a doubled one or a rounded notch. The container supplies the
-   top and left edge. */
+/* The settings sections fill by column rather than by row. A two-column grid sizes each row
+   to its tallest member, so a short section like 小票机 leaves a hole under itself as big as
+   the height difference — which is what "间隙还是很大" was. Removing the gap only made the
+   hole look like a mistake rather than a layout. Column flow has no rows to size, so the
+   spacing is one honest number, and the count still follows the width. */
 .settings-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 0; align-items: start;
-  border-top: 1px solid var(--edge); border-left: 1px solid var(--edge);
+  column-width: 300px; column-gap: 8px;
 }
-.settings-grid .panel { border-radius: 0; border-width: 0 1px 1px 0; }
+.settings-grid .panel { break-inside: avoid; margin: 0 0 8px; }
 .panel { padding: 9px 10px; }
 .panel h3 { font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; margin-bottom: 7px; padding-bottom: 5px; border-bottom: 1px solid var(--edge); }
 .set-row {
@@ -1175,6 +1174,10 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .tk-pop-h { font-size: 10px; letter-spacing: .1em; color: var(--ink-2); }
 .tk-pop-row { display: flex; gap: 5px; align-items: stretch; }
 .tk-pop-row .input { flex: 1; min-width: 0; }
+/* the group select shares its row with 确定, so it has to give way rather than push the
+   name field out of the box the way it did at three items to one row */
+.tk-pop-row .select { flex: 1 1 auto; min-width: 0; }
+.tk-pop-row .btn { flex: 0 0 auto; }
 
 /* ---- the side column: ring, figures, recent ---- */
 .tk-side { padding: 8px; display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }

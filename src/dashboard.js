@@ -1551,7 +1551,7 @@
         : days[0].slice(5) + ' ~ ' + days[6].slice(5)) + '</span>' +
       '<button class="btn tiny" data-tk="next">\u203A</button>' +
       '<button class="btn tiny" data-tk="today">今天</button>' +
-      '<label class="tk-jump" title="跳到指定日期"><input type="date" id="tkJump" value="' + S.tkDay + '" /></label>' +
+      '<label class="tk-jump" title="跳到指定日期"><input class="input" type="date" id="tkJump" value="' + S.tkDay + '" /></label>' +
       '<span class="spacer"></span>' +
       '<button class="btn tiny' + (S.tkMode === 'week' ? ' primary' : '') + '" data-tk="week">周</button>' +
       '<button class="btn tiny' + (S.tkMode === 'day' ? ' primary' : '') + '" data-tk="day">日</button>';
@@ -1833,8 +1833,8 @@
         '<div class="tk-pop-h">' + pad2t(t0.getHours()) + ':' + pad2t(t0.getMinutes()) +
         ' – ' + clockOf(to) + ' · ' + hm(to - from) + '</div>' +
         '<select class="select" data-tk="pick"></select>' +
-        '<div class="tk-pop-row">' +
         '  <input class="input" data-tk="new" placeholder="或输入新任务名" />' +
+        '<div class="tk-pop-row">' +
         '  <select class="select" data-tk="grp" title="新建的任务放进哪个分组"></select>' +
         '  <button class="btn sm primary" data-tk="go">确定</button>' +
         '</div>';
