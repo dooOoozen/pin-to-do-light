@@ -1140,6 +1140,8 @@ pub struct Summary {
     #[serde(default)]
     pub hotkey: String,
     #[serde(default)]
+    pub scatter_hotkey: String,
+    #[serde(default)]
     pub reminders: bool,
 }
 
@@ -1147,6 +1149,7 @@ pub struct Summary {
 struct HostState {
     summary: Mutex<Summary>,
     hotkey: Mutex<Option<String>>,
+    scatter: Mutex<Option<String>>,
 }
 
 fn toggle_panel(app: &AppHandle) {
@@ -1223,32 +1226,46 @@ fn to_accelerator(raw: &str) -> String {
     raw.replace("Control", "Ctrl")
 }
 
-fn apply_hotkey(app: &AppHandle, s: &Summary) {
+/// Bind one global shortcut to one tray action, replacing whatever held that slot before.
+/// The slot is per binding, not one shared "the hotkey": two keys are live at once, and
+/// re-applying settings for one must not unregister the other.
+fn bind_shortcut(
+    app: &AppHandle,
+    slot: &Mutex<Option<String>>,
+    raw: &str,
+    enabled: bool,
+    action: &str,
+    wake: bool,
+) {
     use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
     let gs = app.global_shortcut();
-    let previous = app.state::<HostState>().hotkey.lock().ok().and_then(|g| g.clone());
-    // (previous registration, if any, is released before re-binding)
-    if let Some(old) = previous {
+    if let Some(old) = slot.lock().ok().and_then(|g| g.clone()) {
         let _ = gs.unregister(old.as_str());
-    }
-    if !s.shortcuts || s.hotkey.trim().is_empty() {
-        if let Ok(mut g) = app.state::<HostState>().hotkey.lock() {
+        if let Ok(mut g) = slot.lock() {
             *g = None;
         }
+    }
+    if !enabled || raw.trim().is_empty() {
         return;
     }
-    let accel = to_accelerator(s.hotkey.trim());
+    let accel = to_accelerator(raw.trim());
     match accel.parse::<tauri_plugin_global_shortcut::Shortcut>() {
         Ok(shortcut) => {
-            let outcome = gs.on_shortcut(shortcut, |app, _sc, event| {
-                if event.state == ShortcutState::Pressed {
-                    let _ = force_show(app.clone(), 6000);
-                    tray_command(app, "quick-add");
+            let act = action.to_string();
+            let outcome = gs.on_shortcut(shortcut, move |app, _sc, event| {
+                if event.state != ShortcutState::Pressed {
+                    return;
                 }
+                // the scatter key is a toggle: waking the layer here would open the deck on
+                // the way back in as well, and the renderer decides how long to stay up
+                if wake {
+                    let _ = force_show(app.clone(), 6000);
+                }
+                tray_command(app, &act);
             });
             match outcome {
                 Ok(_) => {
-                    if let Ok(mut g) = app.state::<HostState>().hotkey.lock() {
+                    if let Ok(mut g) = slot.lock() {
                         *g = Some(accel);
                     }
                 }
@@ -1257,6 +1274,12 @@ fn apply_hotkey(app: &AppHandle, s: &Summary) {
         }
         Err(e) => eprintln!("[hotkey] cannot parse {accel}: {e}"),
     }
+}
+
+fn apply_hotkey(app: &AppHandle, s: &Summary) {
+    let host = app.state::<HostState>();
+    bind_shortcut(app, &host.hotkey, &s.hotkey, s.shortcuts, "quick-add", true);
+    bind_shortcut(app, &host.scatter, &s.scatter_hotkey, s.shortcuts, "scatter", false);
 }
 
 fn apply_autostart(app: &AppHandle, on: bool) {
