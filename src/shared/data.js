@@ -81,7 +81,7 @@
     'dockScale', 'autoScale',
     'desktopOnly', 'dockPos', 'deckScale', 'cardScale', 'uiScale', 'dockMovable', 'sideWidth', 'sideCollapsed', 'sound',
     'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'deckShape', 'theme', 'style', 'palette',
-    'memo', 'pomoDate', 'pomoCount', 'dashLayout', 'receipt'
+    'memo', 'pomoDate', 'pomoCount', 'dashLayout', 'receipt', 'webdav'
   ];
 
   /* ---------------------------------------------------------------- utils */
@@ -257,6 +257,7 @@
         pinned: false,
         activeGroupId: 'g_inbox',
         hotkey: 'Control+Alt+T',
+        webdav: { account: '', dir: 'pin-to-do-backup', auto: false, lastDate: '' },
         scatterHotkey: 'Control+Alt+S',
         dockScale: 1,
         autoScale: true,
@@ -461,6 +462,15 @@
     settings.deckShape = settings.deckShape === 'pill' ? 'pill' : 'stack';
     settings.hotkey = String(settings.hotkey == null ? 'Control+Alt+T' : settings.hotkey);
     settings.scatterHotkey = String(settings.scatterHotkey == null ? 'Control+Alt+S' : settings.scatterHotkey);
+    var wd = settings.webdav && typeof settings.webdav === 'object' ? settings.webdav : {};
+    /* the directory is rebuilt rather than patched: a stored value of null or "  " would
+       otherwise reach the WebDAV path builder as a URL of "/dav//" */
+    settings.webdav = {
+      account: String(wd.account == null ? '' : wd.account),
+      dir: String(wd.dir == null || !String(wd.dir).trim() ? 'pin-to-do-backup' : wd.dir).trim(),
+      auto: wd.auto === true,
+      lastDate: String(wd.lastDate == null ? '' : wd.lastDate)
+    };
     if (!ids[settings.activeGroupId]) {
       settings.activeGroupId = out.todos[0] ? out.todos[0].groupId : out.groups[0].id;
     }

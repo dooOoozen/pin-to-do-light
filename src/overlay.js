@@ -219,6 +219,7 @@
     setInterval(tickTimers, 1000);
     setInterval(dayTick, 20000);
     setTimeout(dayTick, 3000);
+    setTimeout(maybeAutoBackup, 5000);
 
     API.onState(onState);
     API.onCommand(onCommand);
@@ -530,6 +531,27 @@
   }
 
   function dayTick() { reminderTick(); autoDoneTick(); }
+
+  /* One upload a day, taken when the app starts rather than on a timer: the point is a copy
+     that survives the machine, and a machine left on for a week does not want seven copies
+     of the same Tuesday. */
+  function maybeAutoBackup() {
+    if (!S) return;
+    const w = S.settings.webdav || {};
+    if (!w.auto || !String(w.account || '').trim()) return;
+    const today = D.dayKey(new Date());
+    if (w.lastDate === today) return;
+    API.webdavBackup(String(w.account), String(w.dir || ''), 'pin-to-do-' + today + '.json')
+      .then((r) => {
+        if (r && r.ok) {
+          API.op({ type: 'settings:update', patch: { webdav: Object.assign({}, w, { lastDate: today }) } });
+          toast('已自动备份到坚果云 // BACKED UP');
+        } else {
+          toast('自动备份没有成功', 'warn');
+        }
+      })
+      .catch((e) => toast('自动备份：' + String(e).slice(0, 70), 'warn'));
+  }
 
   function onCommand(cmd) {
     if (!cmd || !cmd.type) return;

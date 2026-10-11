@@ -21,7 +21,10 @@ const ERROR_NOT_FOUND: u32 = 1168;
 
 /// The one credential this app owns. `pin-tauri/` is a namespace rather than a path: other
 /// apps write their own targets and nothing here reads them.
-const TARGET: &str = "pin-tauri/ai-key";
+/// Two credentials, two purposes: the model key and the cloud-drive password are never
+/// interchangeable, and a backup tool must not be able to read an API key.
+pub const AI_TARGET: &str = "pin-tauri/ai-key";
+pub const WEBDAV_TARGET: &str = "pin-tauri/webdav";
 /// Part of the credential's identity alongside the target name, so it has to be the same
 /// string on every read of every version — changing it would silently orphan old keys.
 const OWNER: &str = "pin-tauri";
@@ -70,10 +73,10 @@ fn wide(text: &str) -> Vec<u16> {
 
 /// Store (or replace) the key. An empty string clears it, so the settings field can act as
 /// both without a separate "remove" button the user has to find.
-pub fn save(secret: &str) -> Result<(), String> {
+pub fn save(target: &str, secret: &str) -> Result<(), String> {
     let trimmed = secret.trim();
     if trimmed.is_empty() {
-        return clear();
+        return clear(target);
     }
     let bytes = trimmed.as_bytes();
     if bytes.len() > 4300 {
@@ -81,7 +84,7 @@ pub fn save(secret: &str) -> Result<(), String> {
         // sentence beats failing with a code the user cannot interpret.
         return Err("密钥过长（超过 4300 字节）".to_string());
     }
-    let mut target = wide(TARGET);
+    let mut target = wide(target);
     let mut owner = wide(OWNER);
     let mut blob = bytes.to_vec();
     let cred = CredentialW {
@@ -107,8 +110,8 @@ pub fn save(secret: &str) -> Result<(), String> {
 
 /// The secret itself. Callers in this crate are limited to `ai_chat`, which uses it to build
 /// one Authorization header and drops it; nothing returns this to the webview.
-pub fn load() -> Option<String> {
-    let target = wide(TARGET);
+pub fn load(target: &str) -> Option<String> {
+    let target = wide(target);
     let mut ptr: *mut CredentialW = null_mut();
     let ok = unsafe { CredReadW(target.as_ptr(), CRED_TYPE_GENERIC, 0, &mut ptr) };
     if ok == 0 || ptr.is_null() {
@@ -128,8 +131,8 @@ pub fn load() -> Option<String> {
     out.filter(|s| !s.trim().is_empty())
 }
 
-pub fn clear() -> Result<(), String> {
-    let target = wide(TARGET);
+pub fn clear(target: &str) -> Result<(), String> {
+    let target = wide(target);
     let ok = unsafe { CredDeleteW(target.as_ptr(), CRED_TYPE_GENERIC, 0) };
     if ok == 0 {
         let e = unsafe { GetLastError() };
@@ -143,8 +146,8 @@ pub fn clear() -> Result<(), String> {
 }
 
 /// What the settings panel may show: enough to confirm which key is stored, never the key.
-pub fn hint() -> String {
-    match load() {
+pub fn hint(target: &str) -> String {
+    match load(target) {
         None => "未配置".to_string(),
         Some(secret) => {
             let chars: Vec<char> = secret.chars().collect();

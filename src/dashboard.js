@@ -3333,6 +3333,19 @@
       '钉住期间即使别的窗口在前台也保持可见</div>' +
       '  </div>' +
       '  <div class="panel hud-thin">' +
+      '    <h3>坚果云备份 · WEBDAV</h3>' +
+      '    <div class="row"><input class="input" id="wdAcct" placeholder="坚果云账号（邮箱）" autocomplete="off" /></div>' +
+      '    <div class="row" style="margin-top:6px"><input class="input" id="wdDir" placeholder="备份目录" /></div>' +
+      '    <div class="row" style="margin-top:6px"><input class="input" id="wdKey" type="password" placeholder="应用密码" autocomplete="off" />' +
+      '      <button class="btn sm" id="wdKeyUse">保存</button><button class="btn sm ghost" id="wdKeyDel">清除</button></div>' +
+      '    <div class="set-hint" style="margin-top:4px" id="wdHint">—</div>' +
+      '    <div class="row" style="margin-top:4px" id="wdAutoHost"></div>' +
+      '    <div class="row" style="margin-top:6px"><button class="btn sm primary" id="wdNow">立即备份</button>' +
+      '      <span class="set-hint" id="wdState">整份数据文件上传到 dav.jianguoyun.com</span></div>' +
+      '    <div class="set-hint" style="margin-top:4px">应用密码在坚果云「账户信息 - 安全选项 - 添加应用」里生成，' +
+      '只存进 Windows 凭据管理器，不会写进数据文件，也不会被导出带走</div>' +
+      '  </div>' +
+      '  <div class="panel hud-thin">' +
       '    <h3>数据 · 维护</h3>' +
       '    <div class="row" style="flex-wrap:wrap">' +
       '      <button class="btn sm" data-act="export">导出 JSON</button>' +
@@ -3454,6 +3467,67 @@
             renderStyleRows();
           }));
       }
+      /* ---- 坚果云备份 ----
+         Every patch here is rebuilt from the live setting rather than from a snapshot taken
+         when the modal opened: the account field, the auto switch and the backup button all
+         write to the same object, and a stale copy would quietly erase whatever the others
+         had just saved. */
+      const wdAcct = $('#wdAcct', root), wdDirBox = $('#wdDir', root), wdKey = $('#wdKey', root);
+      const wdHint = $('#wdHint', root), wdState = $('#wdState', root);
+      if (wdAcct) {
+        const wdLive = () => Object.assign({ account: '', dir: 'pin-to-do-backup', auto: false, lastDate: '' },
+          S.state.settings.webdav || {});
+        wdAcct.value = wdLive().account;
+        wdDirBox.value = wdLive().dir;
+        const saveWd = (patch) => {
+          API.op({ type: 'settings:update', patch: { webdav: Object.assign(wdLive(), patch) } });
+        };
+        wdAcct.addEventListener('change', () => saveWd({ account: wdAcct.value.trim() }));
+        wdDirBox.addEventListener('change', () => saveWd({ dir: wdDirBox.value.trim() }));
+        Promise.resolve(API.webdavHint()).then((h) => { wdHint.textContent = '应用密码：' + h; }).catch(() => {});
+        $('#wdKeyUse', root).addEventListener('click', () => {
+          if (!String(wdKey.value || '').trim()) { toast('先粘贴应用密码', 'warn'); return; }
+          Promise.resolve(API.webdavSave(wdKey.value)).then((h) => {
+            wdHint.textContent = '应用密码：' + h;
+            wdKey.value = '';
+            toast('应用密码已存入 Windows 凭据管理器');
+          }).catch((e) => toast('保存失败：' + e, 'bad'));
+        });
+        $('#wdKeyDel', root).addEventListener('click', () => {
+          Promise.resolve(API.webdavClear()).then((h) => {
+            wdHint.textContent = '应用密码：' + h;
+            toast('已清除应用密码');
+          }).catch((e) => toast('清除失败：' + e, 'bad'));
+        });
+        $('#wdAutoHost', root).appendChild(switchRow('每天自动备份一次',
+          '启动时如果今天还没有备份过，就上传一次当前数据文件', wdLive().auto, (v) => {
+            saveWd({ auto: v });
+            toast(v ? '自动备份已开启 // BACKUP ON' : '自动备份已关闭 // BACKUP OFF');
+          }));
+        const runBtn = $('#wdNow', root);
+        if (wdLive().lastDate) wdState.textContent = '上次备份 ' + wdLive().lastDate;
+        runBtn.addEventListener('click', () => {
+          const name = 'pin-to-do-' + D.dayKey(new Date()) + '.json';
+          runBtn.disabled = true;
+          wdState.textContent = '正在上传…';
+          Promise.resolve(API.webdavBackup(wdAcct.value.trim(), wdDirBox.value.trim(), name))
+            .then((r) => {
+              if (r && r.ok) {
+                wdState.textContent = '已备份 ' + r.bytes + ' 字节 → ' + r.url;
+                saveWd({ lastDate: D.dayKey(new Date()) });
+                toast('已备份到坚果云 // BACKED UP');
+              } else {
+                wdState.textContent = '备份失败';
+              }
+            })
+            .catch((e) => {
+              wdState.textContent = '备份失败：' + String(e).slice(0, 100);
+              toast('备份失败', 'bad');
+            })
+            .then(() => { runBtn.disabled = false; });
+        });
+      }
+
       const toggles = $('#panelToggles', root);
       const iface = $('#panelInterface', root);
       if (iface) {

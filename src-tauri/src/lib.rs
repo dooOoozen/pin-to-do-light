@@ -1417,7 +1417,7 @@ fn receipt_dir(app: AppHandle) -> Result<String, String> {
 fn receipts_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     let dl = win32::known_folder(&win32::FOLDERID_DOWNLOADS);
     Ok(match dl {
-        Some(p) if p.is_dir() => p.join("Pin To-Do"),
+        Some(p) if p.is_dir() => p.join("出票机"),
         _ => config_dir(app)?.join("receipts"),
     })
 }
@@ -1446,7 +1446,7 @@ fn chat_endpoint(base: &str) -> Result<String, String> {
 #[tauri::command]
 fn ai_chat(app: AppHandle, base: String, model: String, body: String) -> Result<String, String> {
     let url = chat_endpoint(&base)?;
-    let key = secrets::load().unwrap_or_default();
+    let key = secrets::load(secrets::AI_TARGET).unwrap_or_default();
     let started = std::time::Instant::now();
     let (status, text) = net::post_json(&url, &body, &key)?;
     /* the request body carries the user's task list and the header carries the key, so the
@@ -1489,7 +1489,7 @@ fn ai_models(app: AppHandle, base: String) -> Result<serde_json::Value, String> 
         return Err("还没有填写接口地址".to_string());
     }
     let url = format!("{}/models", trimmed);
-    let key = secrets::load().unwrap_or_default();
+    let key = secrets::load(secrets::AI_TARGET).unwrap_or_default();
     let started = std::time::Instant::now();
     let (status, text) = net::get_json(&url, &key)?;
     let ms = started.elapsed().as_millis() as u64;
@@ -1613,19 +1613,121 @@ fn ai_trace_clear() -> usize {
 
 #[tauri::command]
 fn ai_key_save(key: String) -> Result<String, String> {
-    secrets::save(&key)?;
-    Ok(secrets::hint())
+    secrets::save(secrets::AI_TARGET, &key)?;
+    Ok(secrets::hint(secrets::AI_TARGET))
 }
 
 #[tauri::command]
 fn ai_key_hint() -> String {
-    secrets::hint()
+    secrets::hint(secrets::AI_TARGET)
 }
 
 #[tauri::command]
 fn ai_key_clear() -> Result<String, String> {
-    secrets::clear()?;
-    Ok(secrets::hint())
+    secrets::clear(secrets::AI_TARGET)?;
+    Ok(secrets::hint(secrets::AI_TARGET))
+}
+
+/* ------------------------------------------------------------------ cloud backup
+   坚果云 speaks WebDAV over https and takes an account email plus an application password,
+   so a single PUT is the whole protocol. The password lives in Credential Manager beside the
+   AI key and never in the data file — which matters more here than anywhere else, because the
+   data file is the thing being uploaded. */
+
+/// Percent-encode one WebDAV path segment. 坚果云 folders are routinely Chinese, and a raw
+/// UTF-8 path is what makes a request line invalid rather than merely ugly.
+fn webdav_encode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.as_bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(*b as char)
+            }
+            _ => out.push_str(&format!("%{:02X}", b)),
+        }
+    }
+    out
+}
+
+/// The host is fixed, so the only thing a person controls is the path beneath it — which is
+/// also the only way to turn this into a different request. Refuse the shapes that can.
+fn webdav_guard(s: &str) -> Result<(), String> {
+    if s.contains("..") || s.contains('\r') || s.contains('\n') || s.contains('@') || s.contains("://")
+    {
+        return Err("名称不合法：不要包含 .. 、@ 、换行".to_string());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn webdav_secret_save(secret: String) -> Result<String, String> {
+    secrets::save(secrets::WEBDAV_TARGET, &secret)?;
+    Ok(secrets::hint(secrets::WEBDAV_TARGET))
+}
+
+#[tauri::command]
+fn webdav_secret_hint() -> String {
+    secrets::hint(secrets::WEBDAV_TARGET)
+}
+
+#[tauri::command]
+fn webdav_secret_clear() -> Result<String, String> {
+    secrets::clear(secrets::WEBDAV_TARGET)?;
+    Ok(secrets::hint(secrets::WEBDAV_TARGET))
+}
+
+/// Upload the data file and report where it landed, so the settings row can say so in words
+/// rather than in a tick mark.
+#[tauri::command]
+fn webdav_backup(
+    app: AppHandle,
+    account: String,
+    dir: String,
+    name: String,
+) -> Result<serde_json::Value, String> {
+    let account = account.trim().to_string();
+    if account.is_empty() {
+        return Err("先填坚果云账号（邮箱）".to_string());
+    }
+    let dir = dir.trim().trim_matches('/');
+    let name = name.trim();
+    /* checked before the secret is even looked at: a bad path is a bad path whether or not
+       anything is configured to send it with, and answering "no password stored" first
+       means the guard is never reached on a fresh install */
+    webdav_guard(dir)?;
+    webdav_guard(name)?;
+    if name.is_empty() {
+        return Err("备份文件名不能为空".to_string());
+    }
+    let secret = secrets::load(secrets::WEBDAV_TARGET).ok_or("还没有保存应用密码")?;
+    let path = data_path(&app)?;
+    let body = std::fs::read_to_string(&path).map_err(|e| format!("读不到数据文件：{e}"))?;
+    let auth = net::basic(&account, &secret);
+    let seg: Vec<String> = dir
+        .split('/')
+        .filter(|s| !s.is_empty())
+        .map(webdav_encode)
+        .collect();
+    let coll = format!("https://dav.jianguoyun.com/dav{}/", if seg.is_empty() { String::new() } else { format!("/{}", seg.join("/")) });
+    let url = format!("{}{}", coll, webdav_encode(name));
+    let (mut status, mut text) = net::put(&url, &body, &auth)?;
+    if status == 409 {
+        /* 坚果云 answers a PUT into a folder that does not exist with 409 rather than making
+           it, so the first backup has to ask for the directory and then try again */
+        let made = net::mkcol(&coll, &auth)?;
+        if ![200, 201, 405, 409].contains(&made.0) {
+            return Err(format!("无法创建备份目录「{}」：HTTP {}", dir, made.0));
+        }
+        let retry = net::put(&url, &body, &auth)?;
+        status = retry.0;
+        text = retry.1;
+    }
+    if !(200..300).contains(&status) {
+        let brief: String = text.chars().take(180).collect();
+        return Err(format!("坚果云返回 {}：{}", status, brief.trim()));
+    }
+    let _ = boot_note(app, format!("[webdav] uploaded {} bytes to {}", body.len(), url));
+    Ok(serde_json::json!({ "ok": true, "url": url, "bytes": body.len() }))
 }
 
 /// base64 by hand: the alternative was a new direct dependency on a crate that is only
@@ -1747,6 +1849,10 @@ pub fn run() {
             ai_trace_clear,
             ai_key_save,
             ai_key_hint,
+            webdav_secret_save,
+            webdav_secret_hint,
+            webdav_secret_clear,
+            webdav_backup,
             layer_frame_report,
             layer_frame_events,
             layer_focus,

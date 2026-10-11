@@ -174,7 +174,7 @@ fn is_loopback(host: &str) -> bool {
 /// able to answer "is this configured right" without spending the user's quota — the
 /// standard `/models` list is free on every provider tried so far.
 pub fn get_json(url: &str, bearer: &str) -> Result<(u16, String), String> {
-    call("GET", url, None, bearer)
+    call("GET", url, None, bearer_auth(bearer))
 }
 
 /// POST `body` as application/json and return `(status, response body)`.
@@ -184,10 +184,48 @@ pub fn get_json(url: &str, bearer: &str) -> Result<(u16, String), String> {
 /// "insufficient credits", "this deployment requires an org") is the only thing that makes
 /// the settings screen diagnosable instead of mysterious.
 pub fn post_json(url: &str, body: &str, bearer: &str) -> Result<(u16, String), String> {
-    call("POST", url, Some(body), bearer)
+    call("POST", url, Some(body), bearer_auth(bearer))
 }
 
-fn call(method: &str, url: &str, body: Option<&str>, bearer: &str) -> Result<(u16, String), String> {
+/// PUT a whole document at `url`, which is what a WebDAV upload is. `auth` is the complete
+/// header value, because 坚果云 wants `Basic …` and a bearer token would be refused.
+pub fn put(url: &str, body: &str, auth: &str) -> Result<(u16, String), String> {
+    call("PUT", url, Some(body), auth.to_string())
+}
+
+/// Create a WebDAV collection (a folder). 坚果云 answers a PUT into a folder that does not
+/// exist with 409 rather than making it, so a first backup has to ask for the directory.
+pub fn mkcol(url: &str, auth: &str) -> Result<(u16, String), String> {
+    call("MKCOL", url, None, auth.to_string())
+}
+
+fn bearer_auth(bearer: &str) -> String {
+    if bearer.is_empty() { String::new() } else { format!("Bearer {}", bearer) }
+}
+
+/// `Authorization: Basic` for `user:secret`. base64 is written out by hand for the same
+/// reason the decoder is: a dependency for eight lines is not worth the installer.
+pub fn basic(user: &str, secret: &str) -> String {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let src = format!("{}:{}", user, secret);
+    let src = src.as_bytes();
+    let mut out = String::with_capacity(src.len() / 3 * 4 + 4);
+    for chunk in src.chunks(3) {
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
+        let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
+        out.push(T[(n >> 18 & 63) as usize] as char);
+        out.push(T[(n >> 12 & 63) as usize] as char);
+        out.push(if chunk.len() > 1 { T[(n >> 6 & 63) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 2 { T[(n & 63) as usize] as char } else { '=' });
+    }
+    format!("Basic {}", out)
+}
+
+fn call(method: &str, url: &str, body: Option<&str>, auth: String) -> Result<(u16, String), String> {
     let ep = split(url)?;
     unsafe {
         let agent = wide("pin-tauri/0.1");
@@ -234,8 +272,8 @@ fn call(method: &str, url: &str, body: Option<&str>, bearer: &str) -> Result<(u1
         if body.is_some() {
             headers.push_str("Content-Type: application/json\r\n");
         }
-        if !bearer.is_empty() {
-            headers.push_str(&format!("Authorization: Bearer {}\r\n", bearer));
+        if !auth.is_empty() {
+            headers.push_str(&format!("Authorization: {}\r\n", auth));
         }
         let headers = wide(&headers);
         let added = WinHttpAddRequestHeaders(

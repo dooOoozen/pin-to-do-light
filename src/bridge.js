@@ -164,6 +164,12 @@
       frameReport: () => invoke('layer_frame_report'),
       frameEvents: () => invoke('layer_frame_events'),
       aiKeyClear: () => invoke('ai_key_clear'),
+      webdavSave: (secret) => invoke('webdav_secret_save', { secret: String(secret || '') }),
+      webdavHint: () => invoke('webdav_secret_hint'),
+      webdavClear: () => invoke('webdav_secret_clear'),
+      webdavBackup: (account, dir, name) => invoke('webdav_backup', {
+        account: String(account || ''), dir: String(dir || ''), name: String(name || '')
+      }),
       workArea: async () => invoke('work_area'),
       appInfo: async () => invoke('app_info'),
       exportData: async () => JSON.stringify(state, null, 2),
@@ -283,6 +289,10 @@
     frameReport: async () => '浏览器模式不可用',
     frameEvents: async () => '浏览器模式不可用',
     aiKeyClear: async () => '浏览器模式不可用',
+    webdavSave: async () => { throw new Error('browser-mode'); },
+    webdavHint: async () => '浏览器模式不可用',
+    webdavClear: async () => '浏览器模式不可用',
+    webdavBackup: async () => { throw new Error('browser-mode'); },
     setLoginItem: async () => ({ ok: false, error: 'browser-mode' }),
     win: { minimize() {}, toggleMax() {}, close() { window.close(); } }
   };
