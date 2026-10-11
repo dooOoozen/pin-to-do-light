@@ -314,6 +314,7 @@
       li.innerHTML =
         '<i class="dot"></i>' +
         '<span class="gname"></span>' +
+        (g.autoDone ? '<span class="gauto" title="组内任务到点自动完成，不弹通知">自动</span>' : '') +
         (g.locked ? '<span class="glock" title="固定分组，不可删除"></span>' : '<button class="icon-btn gedit" title="编辑分组">\u270E</button>') +
         '<span class="gcount">' + open + '/' + items.length + '</span>';
       const dot = li.querySelector('.dot');
@@ -3145,6 +3146,11 @@
       '    <div class="color-row" id="gColors"></div>' +
       '    <div class="color-preview" id="gPreview"></div>' +
       '  </div>' +
+      '  <div class="full"><div class="set-row"><div>' +
+      '    <div class="set-label">到点自动完成</div>' +
+      '    <div class="set-hint">作息类分组用：组内任务时间一到自己变成已完成，不弹通知也不出声；' +
+      '想撤销勾选或改时间照常操作</div>' +
+      '  </div><button class="switch" id="gAuto" type="button"><i></i></button></div></div>' +
       '</div>';
     const foot =
       (editing && !locked ? '<button class="btn danger sm" data-act="del">删除分组</button>' : '') +
@@ -3192,11 +3198,17 @@
       name.addEventListener('input', refreshPreview);
       refreshPreview();
 
+      /* the app has no native checkboxes — every on/off is a .switch, so this is too */
+      const auto = $('#gAuto', root);
+      auto.classList.toggle('on', !!(editing && group.autoDone));
+      auto.addEventListener('click', () => auto.classList.toggle('on'));
+
       const save = () => {
         const value = name.value.trim();
         if (!value) { name.focus(); toast('请输入分组名称', 'warn'); return; }
-        if (editing) API.op({ type: 'group:update', id: group.id, patch: { name: value, color: picked } });
-        else API.op({ type: 'group:add', name: value, color: picked });
+        const autoDone = auto.classList.contains('on');
+        if (editing) API.op({ type: 'group:update', id: group.id, patch: { name: value, color: picked, autoDone: autoDone } });
+        else API.op({ type: 'group:add', name: value, color: picked, autoDone: autoDone });
         closeModal();
         toast(editing ? '分组已更新' : '分组已创建');
       };

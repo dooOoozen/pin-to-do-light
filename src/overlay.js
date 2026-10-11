@@ -217,8 +217,8 @@
     renderAll();
     bindEvents();
     setInterval(tickTimers, 1000);
-    setInterval(reminderTick, 20000);
-    setTimeout(reminderTick, 3000);
+    setInterval(dayTick, 20000);
+    setTimeout(dayTick, 3000);
 
     API.onState(onState);
     API.onCommand(onCommand);
@@ -507,6 +507,29 @@
     applyVisibility();
     API.notify('PIN TO-DO // 任务到期', fired.title);
   }
+
+  /* A routine group is a log of what the day demands — eat, sleep, wash — not a list to be
+     nagged about. When its time arrives the card completes itself through the same toggle a
+     click would use, so a repeating routine rolls to its next occurrence exactly as it would
+     by hand, and nothing is announced: the record is the point. Undoing the tick or moving
+     the time stays an ordinary edit. */
+  function autoDoneTick() {
+    if (!S) return;
+    const now = Date.now();
+    let n = 0;
+    S.todos.forEach((t) => {
+      if (t.done || !t.dueAt) return;
+      const gr = D.groupById(S, t.groupId);
+      if (!gr || !gr.autoDone) return;
+      const due = new Date(t.dueAt).getTime();
+      if (isNaN(due) || due > now) return;
+      API.op({ type: 'todo:toggle', id: t.id });
+      n++;
+    });
+    if (n) trace('auto-done ' + n);
+  }
+
+  function dayTick() { reminderTick(); autoDoneTick(); }
 
   function onCommand(cmd) {
     if (!cmd || !cmd.type) return;

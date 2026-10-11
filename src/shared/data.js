@@ -320,6 +320,7 @@
         color: COLOR_KEYS.indexOf(gr.color) >= 0 ? gr.color : COLOR_KEYS[i % COLOR_KEYS.length],
         order: typeof gr.order === 'number' ? gr.order : i,
         locked: gr.locked === true,
+        autoDone: gr.autoDone === true,
         createdAt: gr.createdAt || isoNow()
       };
     }) : clone(def.groups);
@@ -814,6 +815,8 @@
         id: uid('g'),
         name: String(p.name == null || !String(p.name).trim() ? '新分组 ' + (s.groups.length + 1) : p.name).trim(),
         color: COLOR_KEYS.indexOf(p.color) >= 0 ? p.color : nextColor(s),
+        locked: false,
+        autoDone: p.autoDone === true,
         order: maxGroupOrder(s) + 1,
         createdAt: isoNow()
       };
@@ -831,6 +834,7 @@
         if (name) gr.name = name;
       }
       if ('color' in patch && COLOR_KEYS.indexOf(patch.color) >= 0) gr.color = patch.color;
+      if ('autoDone' in patch) gr.autoDone = patch.autoDone === true;
       if ('order' in patch && typeof patch.order === 'number') gr.order = patch.order;
       return {};
     },

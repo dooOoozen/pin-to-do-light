@@ -543,6 +543,13 @@ body.side-dragging { cursor: col-resize; }
 .modal-panel .plan-cal { max-width: 236px; margin: 0 auto 5px; }
 .modal-panel .cal-day { font-size: 9px; }
 .group-list .glock { font-size: 10px; color: var(--ink-3); }
+/* the routine marker has to read at a glance: a group whose cards tick themselves off is
+   a different kind of list, and the only clue should not be the badge in its editor */
+.group-list .gauto {
+  flex: none; font-size: 8px; line-height: 1.5; padding: 0 4px; color: var(--ink-3);
+  border: 1px solid var(--edge); border-radius: 999px;
+}
+.group-list li.on .gauto { color: var(--paper); }
 
 /* group colour preview in the editor */
 .color-preview { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 7px 8px; border: 1px dashed var(--rule-strong); }
