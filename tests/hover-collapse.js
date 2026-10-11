@@ -42,13 +42,32 @@
     };
   }
 
+  /* The dock slides back over a .3s transform, so a rect read once is a snapshot of a
+     moving box: park the pointer on it and it lands beside the deck — or past the window
+     edge — and the spread never happens. Wait for the box to stop, then re-read it on
+     every tick, so the pointer always follows the deck it is supposed to be hovering. */
+  function settledDock() {
+    return new Promise(function (res) {
+      var last = '', same = 0, n = 0;
+      var iv = setInterval(function () {
+        var r = nd.dockRect();
+        if (!r) { clearInterval(iv); res(null); return; }
+        var key = [r.left, r.top, r.right, r.bottom].map(function (v) { return Math.round(v); }).join(',');
+        if (key === last && ++same >= 4) { clearInterval(iv); res(r); return; }
+        if (key !== last) { last = key; same = 0; }
+        if (++n > 60) { clearInterval(iv); res(r); }
+      }, 40);
+    });
+  }
+
   /* one retract: park the pointer over the dock until the spread exists, let the pop-in
      finish, then leave it and read a frame every 25ms while the chips fly home */
   function collapseOnce(away) {
-    var r = nd.dockRect();
-    return wait(120).then(function () {
+    return settledDock().then(function () {
       return new Promise(function (res) {
         var iv = setInterval(function () {
+          var r = nd.dockRect();
+          if (!r) return;
           nd.cursorCmd((r.left + r.right) / 2, (r.top + r.bottom) / 2, true);
           var c = Array.prototype.filter.call(document.querySelectorAll('.todo-card'), function (x) {
             return !x.classList.contains('docked') && !x.classList.contains('pinned');
@@ -128,8 +147,9 @@
     var ids = st.todos.map(function (t) { return t.id; });
     seedIds = ids.filter(function (id) { return known.indexOf(id) < 0; });
     note('seeded=' + seedIds.length + ' cards=' + document.querySelectorAll('.todo-card').length);
-    var d = nd.dockRect();
-    return { x: Math.min(window.innerWidth - 8, d.right + 500), y: Math.min(window.innerHeight - 8, d.bottom + 320) };
+    return settledDock().then(function (d) {
+      return { x: Math.min(window.innerWidth - 8, d.right + 500), y: Math.min(window.innerHeight - 8, d.bottom + 320) };
+    });
   }).then(function (away) {
     return collapseOnce(away).then(function (r) {
       var fixed = verdict('fixed', r);

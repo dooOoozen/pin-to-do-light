@@ -61,6 +61,7 @@
   let tuckGuardUntil = 0;
   let popGuardUntil = 0;
   let popOpenTimer = null;
+  let popReaskTimer = null;
   let hoverArmed = true;
   let hoverRearmAfter = 0;
   let audioCtx = null;
@@ -986,6 +987,18 @@
     popGuardUntil = Date.now() + 360;   /* let the pop finish before hover-spread */
     suppressHover(380);
     setTimeout(() => { refreshHitRects(true); hitTest(); }, 340);
+    /* The cursor feed skips unchanged positions, so a pointer that arrives and comes to
+       rest delivers exactly ONE frame — the crossing — and this function consumes it.
+       Nothing then ever calls updateHover for that resting position, so the deck slid
+       back but stayed a stack. Once the travel has settled and the guard has lifted,
+       re-ask the same question through updateHover; it owns the rules about whether a
+       spread is allowed and measures them against the settled box. */
+    clearTimeout(popReaskTimer);
+    popReaskTimer = setTimeout(() => {
+      popReaskTimer = null;
+      if (tucked || mode !== 'collapsed') return;
+      updateHover(lastPointer.x, lastPointer.y);
+    }, 420);
   }
 
   function maybeReTuck() {

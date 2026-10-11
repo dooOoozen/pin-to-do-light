@@ -13,19 +13,27 @@
       .filter(function (c) { return !c.classList.contains('docked') && c.offsetWidth; });
   }
   function feed(x, y, inside) { nd.cursorFrame(x, y, inside); }
-  function centre() {
+  /* Filed, the dock is translated mostly past the window edge, so its centre is a pixel no
+     pointer can occupy — parking there measured a arrival nobody can make. Aim at the part
+     of the box that is actually on screen: that is what an approach looks like, and the
+     point stays inside the box after the deck slides back. */
+  function target() {
     var r = dock.getBoundingClientRect();
-    return [r.left + r.width / 2, r.top + r.height / 2];
+    var visL = Math.max(r.left, 0), visR = Math.min(r.right, window.innerWidth);
+    var x = visR - visL >= 8 ? (visL + visR) / 2 : r.left + r.width / 2;
+    return [x, (r.top + r.bottom) / 2];
   }
 
   setTimeout(function () {
     nd.autoTuck(true);
-    var c = centre();
+    var c = target();
     feed(20, 300, false);
     setTimeout(function () {
       note('start ' + at());
+      c = target();
       feed(c[0], c[1], false);
       setTimeout(function () {
+        c = target();
         feed(c[0], c[1], true);
         setTimeout(function () {
           note('after approach ' + at() + ' near=' + nd.hoverInfo().armed);
@@ -35,9 +43,11 @@
     }, 200);
   }, 1200);
 
+  var opened = false;
   function hoverCard() {
     var list = loose();
     if (!list.length) { note('FAIL nothing popped out'); away(); return; }
+    opened = true;
     var r = list[0].getBoundingClientRect();
     feed(r.left + r.width / 2, r.top + r.height / 2, true);
     setTimeout(function () {
@@ -60,7 +70,13 @@
       setTimeout(function () {
         feed(300, 900, true);
         setTimeout(function () {
-          note('after idle ' + at() + ' dock=' + JSON.stringify(nd.dockRect()));
+          var end = at();
+          note('after idle ' + end + ' dock=' + JSON.stringify(nd.dockRect()));
+          /* the three states are the whole contract; without a verdict here a deck that only
+             ever sat still looked like a passing run */
+          note('RESULT ' + (opened && end.indexOf('tucked=true') >= 0
+            ? 'PASS popped on arrival, collapsed on leave, filed itself away when left alone'
+            : 'FAIL popped=' + opened + ' final=' + end));
         }, 400);
       }, 5200);
     }, 900);
