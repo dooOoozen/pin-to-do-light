@@ -76,6 +76,7 @@
   var SETTING_KEYS = [
     'edge', 'overlay', 'alwaysOnTop', 'launchAtLogin', 'reminders', 'opacity',
     'animations', 'shortcuts', 'hideCompleted', 'pinned', 'activeGroupId', 'hotkey',
+    'scatterHotkey',
     'simple', 'muted', 'deckMonitor', 'ai',
     'dockScale', 'autoScale',
     'desktopOnly', 'dockPos', 'deckScale', 'cardScale', 'uiScale', 'dockMovable', 'sideWidth', 'sideCollapsed', 'sound',
@@ -228,7 +229,7 @@
         g('g_life', '生活 LIFE', 'forest', 3)
       ],
       todos: [
-        t('g_inbox', '把鼠标悬停到屏幕边缘的卡片堆上', {
+        t('g_inbox', '把鼠标悬停到屏幕边缘的卡盒上', {
           notes: '悬停＝概览展开；点击＝卡片散布到桌面各处。',
           priority: 'high', dueAt: soon
         }, -5),
@@ -256,6 +257,7 @@
         pinned: false,
         activeGroupId: 'g_inbox',
         hotkey: 'Control+Alt+T',
+        scatterHotkey: 'Control+Alt+S',
         dockScale: 1,
         autoScale: true,
         desktopOnly: false,
@@ -457,6 +459,7 @@
     settings.dockAutoTuck = settings.dockAutoTuck !== false;
     settings.deckShape = settings.deckShape === 'pill' ? 'pill' : 'stack';
     settings.hotkey = String(settings.hotkey == null ? 'Control+Alt+T' : settings.hotkey);
+    settings.scatterHotkey = String(settings.scatterHotkey == null ? 'Control+Alt+S' : settings.scatterHotkey);
     if (!ids[settings.activeGroupId]) {
       settings.activeGroupId = out.todos[0] ? out.todos[0].groupId : out.groups[0].id;
     }

@@ -3234,6 +3234,9 @@
       '    <h3>全局快捷键</h3>' +
       '    <div class="row"><input class="input" id="hotkeyInput" value="' + escapeHtml(st.hotkey) + '" /><button class="btn sm" data-act="hotkey">应用</button></div>' +
       '    <div class="set-hint" style="margin-top:6px">例如 Control+Alt+T · 按下后立即唤出桌面卡片层并新建任务</div>' +
+      '    <div class="row" style="margin-top:8px"><input class="input" id="scatterHotkeyInput" value="' + escapeHtml(st.scatterHotkey) + '" /><button class="btn sm" data-act="scatterHotkey">应用</button></div>' +
+      '    <div class="set-hint" style="margin-top:6px">例如 Control+Alt+S · 按下把当前组别散布到桌面并钉住，再按收回。' +
+      '钉住期间即使别的窗口在前台也保持可见</div>' +
       '  </div>' +
       '  <div class="panel hud-thin">' +
       '    <h3>数据 · 维护</h3>' +
@@ -3364,11 +3367,15 @@
           API.op({ type: 'settings:update', patch: { dockMovable: v } });
           toast(v ? '已解锁：可拖动卡盒 // UNLOCKED' : '已锁定卡盒位置 // LOCKED');
         }));
+        /* The two shapes are a choice, not a mode the deck drifts into, so the switch sits
+           next to the other things that decide where and how the deck lives on screen. */
+        iface.appendChild(switchRow('卡盒改用胶囊样式', '一行摆下数字和全部按钮，比方正的卡片堆小得多；卡盒菜单栏的 ◐ 也能切换',
+          st.deckShape === 'pill', (v) => API.op({ type: 'settings:update', patch: { deckShape: v ? 'pill' : 'stack' } })));
         /* Which display the deck lives on. Asked of the host rather than assumed: a machine
            with one screen gets a sentence, not a control that does nothing. */
         const monRow = doc.createElement('div');
         monRow.className = 'set-col';
-        monRow.innerHTML = '<div class="set-label">卡片堆所在屏幕</div>';
+        monRow.innerHTML = '<div class="set-label">卡盒所在屏幕</div>';
         const monHost = doc.createElement('div');
         monHost.className = 'row mon-row';
         monRow.appendChild(monHost);
@@ -3389,7 +3396,7 @@
             b.title = m.name + ' · 缩放 ' + m.scale + '×';
             b.addEventListener('click', () => {
               API.op({ type: 'settings:update', patch: { deckMonitor: m.index } });
-              toast('卡片堆移到屏幕 ' + (m.index + 1));
+              toast('卡盒移到屏幕 ' + (m.index + 1));
               Array.prototype.forEach.call(monHost.querySelectorAll('.btn'),
                 (x) => x.classList.remove('primary'));
               b.classList.add('primary');
@@ -3418,7 +3425,7 @@
           const tag = $('#rcpNow', root);
           if (tag) tag.textContent = cur.on ? '// 每天 ' + cur.at : '// OFF';
           rcpHost.innerHTML = '';
-          rcpHost.appendChild(switchRow('定时出票', '到点在桌面卡片堆旁自动打印一张并存档，不打开任务面板；点小票即撕掉', cur.on, (v) => {
+          rcpHost.appendChild(switchRow('定时出票', '到点在桌面卡盒旁自动打印一张并存档，不打开任务面板；点小票即撕掉', cur.on, (v) => {
             rsave({ on: v });
             toast(v ? '定时出票：每天 ' + cur.at : '定时出票已关闭');
           }));
@@ -3631,8 +3638,7 @@
       toggles.appendChild(switchRow('仅在桌面显示', '前台是其他窗口时隐藏卡片层', st.desktopOnly !== false, (v) => API.op({ type: 'settings:update', patch: { desktopOnly: v } })));
       toggles.appendChild(switchRow('按分辨率自动缩放', '根据显示器分辨率自动调整卡盒与卡片大小（推荐）', st.autoScale !== false, (v) => API.op({ type: 'settings:update', patch: { autoScale: v } })));
       toggles.appendChild(switchRow('隐藏已完成', '桌面卡片层不显示已完成任务', st.hideCompleted !== false, (v) => API.op({ type: 'settings:update', patch: { hideCompleted: v } })));
-      toggles.appendChild(switchRow('卡片堆自动缩进屏幕', '一段时间没有指针靠近时，卡片堆自动缩回屏幕边缘', st.dockAutoTuck !== false, (v) => API.op({ type: 'settings:update', patch: { dockAutoTuck: v } })));
-      toggles.appendChild(switchRow('卡盒改用胶囊样式', '一行摆下数字和全部按钮，比方正的卡片堆小得多；卡盒菜单栏的 ◐ 也能切换', st.deckShape === 'pill', (v) => API.op({ type: 'settings:update', patch: { deckShape: v ? 'pill' : 'stack' } })));
+      toggles.appendChild(switchRow('卡盒自动缩进屏幕', '一段时间没有指针靠近时，卡盒自动缩回屏幕边缘', st.dockAutoTuck !== false, (v) => API.op({ type: 'settings:update', patch: { dockAutoTuck: v } })));
       toggles.appendChild(switchRow('到期提醒', '任务到期时发送系统通知', st.reminders !== false, (v) => API.op({ type: 'settings:update', patch: { reminders: v } })));
       toggles.appendChild(switchRow('启用全局快捷键', '关闭后不注册系统级热键', st.shortcuts !== false, (v) => API.op({ type: 'settings:update', patch: { shortcuts: v } })));
       toggles.appendChild(switchRow('开机自动启动', '登录 Windows 后自动运行', !!st.launchAtLogin, async (v) => {
@@ -3722,10 +3728,12 @@
           toast('字体大小已应用 // FONT ' + k.toFixed(2) + '\u00D7');
           return;
         }
-        if (act === 'hotkey') {
-          const value = $('#hotkeyInput', root).value.trim();
-          API.op({ type: 'settings:update', patch: { hotkey: value } });
-          toast('快捷键已更新：' + value);
+        if (act === 'hotkey' || act === 'scatterHotkey') {
+          const value = $('#' + (act === 'hotkey' ? 'hotkeyInput' : 'scatterHotkeyInput'), root).value.trim();
+          const patch = {};
+          patch[act] = value;
+          API.op({ type: 'settings:update', patch });
+          toast('快捷键已更新：' + (value || '（留空 = 不注册）'));
           return;
         }
         if (act === 'export') { await exportData(); return; }

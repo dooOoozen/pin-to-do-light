@@ -329,6 +329,10 @@
   let foregroundFull = false;
   let foregroundWho = '';
   let forceUntil = 0;
+  /* Set by the scatter hotkey and nothing else: cards the user threw out with the keyboard
+     are meant to survive app switching, so they hold the layer up past the desktop-only
+     rule until the same key pulls them back. A timed override would just blink off. */
+  let scatterHold = false;
   let cursorFrames = 0;
   let cursorNear = 0;
   let popArms = 0;
@@ -391,12 +395,15 @@
 
   function applyVisibility() {
     if (!S) return;
+    /* the hold is only worth having while there is something held: release a card one at a
+       time and the layer must go back to obeying the desktop-only rule by itself */
+    if (scatterHold && !S.todos.some((t) => isPinned(t))) scatterHold = false;
     if (S.settings.overlay === false) { hiddenBy = 'off'; setShown(false); return; }
     const forced = Date.now() < forceUntil;
     /* a film or a game owns the whole screen. The deck is a desktop ornament and has no
        business being topmost over that, whether or not desktop-only is switched on. */
     if (foregroundFull && !forced) { hiddenBy = 'fullscreen'; setShown(false); return; }
-    if (S.settings.desktopOnly === true && !forced) {
+    if (S.settings.desktopOnly === true && !forced && !scatterHold) {
       if (foregroundKind === 'shell' || foregroundKind === 'dash') return;
       /* an app on the other monitor is not covering this desktop */
       if (foregroundKind === 'app' && foregroundOver) { hiddenBy = 'desktop'; setShown(false); return; }
@@ -415,6 +422,7 @@
       launchAtLogin: !!st.launchAtLogin,
       shortcuts: st.shortcuts !== false,
       hotkey: String(st.hotkey || ''),
+      scatterHotkey: String(st.scatterHotkey || ''),
       reminders: st.reminders !== false
     };
     const key = JSON.stringify(summary);
@@ -427,6 +435,7 @@
     const st = S.settings;
     if (action === 'panel') API.toggleDashboard();
     else if (action === 'quick-add') quickAdd();
+    else if (action === 'scatter') scatterHotkey();
     else if (action === 'overlay') API.op({ type: 'settings:update', patch: { overlay: !(st.overlay !== false) } });
     else if (action === 'desktop-only') API.op({ type: 'settings:update', patch: { desktopOnly: !(st.desktopOnly === true) } });
     else if (action === 'autostart') API.op({ type: 'settings:update', patch: { launchAtLogin: !st.launchAtLogin } });
@@ -439,6 +448,40 @@
     forceUntil = Date.now() + 6000;   /* the modal is ours: only a short grace window */
     applyVisibility();
     onCommand({ type: 'quick-add' });
+  }
+
+  /* Pin the whole active group out on the desk, or release it if it is already out.
+     Returns null when the group has nothing to show, otherwise {released, n}.
+
+     Deliberately scoped to the active group rather than to visibleTodos() as a whole: that
+     list also carries pinned cards from *other* groups, because those belong to the desk
+     rather than to whichever deck is open, and releasing this group would otherwise sweep
+     away cards the user pinned by hand somewhere else. */
+  function togglePinAll() {
+    const list = visibleTodos().filter((t) => t.groupId === activeGroupId);
+    if (!list.length) return null;
+    const allPinned = list.every((t) => isPinned(t));
+    list.forEach((t, i) => {
+      const p = placementFor(t, i, list.length);
+      API.op({ type: 'placement:set', todoId: t.id, x: p.x, y: p.y, rot: p.rot, pinned: !allPinned });
+    });
+    if (!allPinned && mode !== 'deployed') setMode('deployed');
+    return { released: allPinned, n: list.length };
+  }
+
+  /* The keyboard path has to work with the deck asleep at the edge of the screen or the
+     layer hidden behind another window, so it raises the layer itself rather than trusting
+     the pointer to find it. */
+  function scatterHotkey() {
+    if (S.settings.overlay === false) API.op({ type: 'settings:update', patch: { overlay: true } });
+    const r = togglePinAll();
+    if (!r) { toast('这个分组还没有任务 // EMPTY DECK'); return; }
+    if (r.released) { if (mode === 'deployed') setMode('collapsed'); scatterHold = false; }
+    else scatterHold = true;
+    forceUntil = Date.now() + (r.released ? 1600 : 4000);
+    applyVisibility();
+    toast(r.released ? '已收回 ' + r.n + ' 张卡片 // RELEASED'
+      : '已散布并钉住 ' + r.n + ' 张卡片 // PINNED OUT');
   }
 
   /* overdue open tasks get one reminder each: stamp it, wake the deck briefly, and
@@ -1097,7 +1140,7 @@
     if (el.toolAutoTuck) {
       const auto = S.settings.dockAutoTuck !== false;
       el.toolAutoTuck.classList.toggle('on', auto);
-      el.toolAutoTuck.title = auto ? '卡片堆会自动缩进屏幕（点击关闭）' : '卡片堆不再自动缩进（点击开启）';
+      el.toolAutoTuck.title = auto ? '卡盒会自动缩进屏幕（点击关闭）' : '卡盒不再自动缩进（点击开启）';
     }
     if (el.toolDeckShape) {
       /* the shape is a style, not a state, so the button reads as a switch with a name */
@@ -2494,20 +2537,15 @@
       } else if (act === 'settings') {
         API.openDashboard('settings');
       } else if (act === 'pinall') {
-        const list = visibleTodos();
-        if (!list.length) {
+        /* toggles: pin everything that is loose, or release everything at once */
+        const r = togglePinAll();
+        if (!r) {
           toast('这个分组还没有任务 // EMPTY DECK');
           return;
         }
-        /* toggles: pin everything that is loose, or release everything at once */
-        const allPinned = list.every((t) => isPinned(t));
-        list.forEach((t, i) => {
-          const p = placementFor(t, i, list.length);
-          API.op({ type: 'placement:set', todoId: t.id, x: p.x, y: p.y, rot: p.rot, pinned: !allPinned });
-        });
-        if (!allPinned && mode !== 'deployed') setMode('deployed');
-        toast(allPinned ? '已取消钉住 ' + list.length + ' 张卡片 // UNPINNED ALL'
-          : '已钉住 ' + list.length + ' 张卡片 // PINNED ALL');
+        if (r.released) scatterHold = false;
+        toast(r.released ? '已取消钉住 ' + r.n + ' 张卡片 // UNPINNED ALL'
+          : '已钉住 ' + r.n + ' 张卡片 // PINNED ALL');
       } else if (act === 'deckshape') {
         const next = S.settings.deckShape === 'pill' ? 'stack' : 'pill';
         API.op({ type: 'settings:update', patch: { deckShape: next } });
@@ -2515,7 +2553,7 @@
       } else if (act === 'autotuck') {
         const next = S.settings.dockAutoTuck === false;
         API.op({ type: 'settings:update', patch: { dockAutoTuck: next } });
-        toast(next ? '卡片堆会自动缩进屏幕 // AUTO TUCK ON' : '卡片堆不再自动缩进 // AUTO TUCK OFF');
+        toast(next ? '卡盒会自动缩进屏幕 // AUTO TUCK ON' : '卡盒不再自动缩进 // AUTO TUCK OFF');
       } else if (act === 'hide') {
         doc.body.classList.add('fading');
         setTimeout(() => {

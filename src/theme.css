@@ -1454,72 +1454,87 @@ input[type="range"] { accent-color: var(--brick); }
 .rcp-backdrop.rcp-auto .rcp { pointer-events: auto; }
 
 /* ==========================================================================
-   MATERIAL: 图纸 / TECHNICAL BLUEPRINT  (data-style="blueprint")
+   MATERIAL: 图纸 / GRAPHITE FROST  (data-style="blueprint")
    ==========================================================================
-   The drawing sheet, in one colour: hairline circles and a dashed axis where a header
-   would be, no paper grain at all, and no elevation — a plate
-   is held on the page by its 1px edge, not by a shadow. Every accent is a step on one grey
-   ladder, so priority is carried by weight and position and the only thing that can be red
-   is nothing. Small uppercase monospace labels, square corners, circles for the dots. */
+   The same frosted panes as 雾绿磨砂, with the colour taken out: a neutral grey room,
+   surfaces that are translucent so the room reads through them, and elevation as one wide
+   soft fall instead of a hairline drawn round the plate. Nothing is outlined in solid black
+   and nothing is set in uppercase — the quietness is the point, and the only accent is a
+   step on one grey ladder, so priority stays carried by weight and position. The blur
+   itself is not reproducible here (a transparent webview has nothing behind it to sample),
+   so the frosting is done the way the browser can: alpha on the surfaces, not
+   backdrop-filter. Corners generous, edges hairline, no construction geometry. */
 :root[data-style="blueprint"] {
-  --paper: #f6f6f4; --paper-hi: #ffffff; --paper-lo: #ecebe8; --paper-dim: #dedcd6;
-  --ink: #101010; --ink-2: #3c3c3a; --ink-3: #8b8b88;
-  --rule: color-mix(in srgb, var(--ink) 22%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 55%, transparent);
-  --grid-line: color-mix(in srgb, var(--ink) 6%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 11%, transparent);
-  /* the plate is held on the sheet by a hairline, not by elevation */
-  --pop-shadow: none; --pop-shadow-sm: none;
-  --ink-glow: color-mix(in srgb, var(--ink) 92%, transparent);
-  --hit-line: color-mix(in srgb, var(--ink) 30%, transparent);
+  --paper: #e8e8e6; --paper-hi: #f7f7f6; --paper-lo: #d9d9d6; --paper-dim: #cbcac6;
+  --ink: #1b1c1d; --ink-2: #4a4b4c; --ink-3: #87888a;
+  --rule: color-mix(in srgb, var(--ink) 11%, transparent);
+  --rule-strong: color-mix(in srgb, var(--ink) 26%, transparent);
+  --grid-line: color-mix(in srgb, var(--ink) 5%, transparent);
+  --grid-line-bold: color-mix(in srgb, var(--ink) 9%, transparent);
+  /* the plate is lifted, not outlined: a wide soft fall and a light-catching top edge */
+  --pop-shadow: 0 12px 28px rgba(20,20,22,.10), 0 2px 6px rgba(20,20,22,.06);
+  --pop-shadow-sm: 0 2px 8px rgba(20,20,22,.10);
+  --ink-glow: color-mix(in srgb, var(--ink) 88%, transparent);
+  --hit-line: color-mix(in srgb, var(--ink) 34%, transparent);
   --wm-ink: color-mix(in srgb, var(--ink) 12%, transparent);
   --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
   /* the brief is "no color", so every accent is a step on one grey ladder and the priority
      signal has to be carried by weight and position instead */
-  --brick: #2a2a28; --brick-ink: #ffffff;
-  --vermillion: #4d4d4a; --honey: #6f6f6b; --sage: #5c5c59; --teal: #45453f;
-  --forest: #333330; --forest-ink: #f4f4f1; --slate: #6a6a66; --slate-ink: #ffffff;
-  --khaki: #8f8f8a; --plum: #3d3d3a; --ochre: #575753;
-  --cream: #ffffff; --surface-hi: #ffffff; --head-hi: #ffffff; --field-focus: #ffffff;
-  --plate-day: #ffffff; --plate-today: #f0f0ed; --plate-overdue: #e6e6e2;
-  --plate-mod: #ffffff;
+  --brick: #232425; --brick-ink: #ffffff;
+  --vermillion: #585a5b; --honey: #8d8f90; --sage: #6a6c6d; --teal: #3f4142;
+  --forest: #2c2d2e; --forest-ink: #f5f5f3; --slate: #7b7d7e; --slate-ink: #ffffff;
+  --khaki: #9c9e9f; --plum: #46484a; --ochre: #6f7172;
+  --cream: #fbfbfa; --surface-hi: #fdfdfd; --head-hi: #eff0ee; --field-focus: #ffffff;
+  --plate-day: #f1f2f0; --plate-today: color-mix(in srgb, var(--ink) 7%, var(--paper-hi));
+  --plate-overdue: color-mix(in srgb, var(--ink) 13%, var(--paper-hi));
+  --plate-mod: #f8f9f7;
   --memo-rule: color-mix(in srgb, var(--ink) 18%, transparent);
-  --edge: var(--ink);
-  --r-plate: 0; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
-  --bevel: none;
+  --edge: color-mix(in srgb, var(--ink) 16%, transparent);
+  --r-plate: 16px; --r-ctl: 11px; --r-pill: 999px; --r-dot: 50%;
+  --bevel: inset 0 1px 0 rgba(255,255,255,.72);
 /* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
   --tex-grain: none;
-  --tex-size: 7px 7px; --tex-size-bg: 7px 7px; --tex-blend: normal;
-  --font-display: var(--font-mono);
+  --tex-size: 8px 8px; --tex-size-bg: 8px 8px; --tex-blend: normal;
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, "Microsoft YaHei", sans-serif;
+  --font-display: var(--font-ui);
 }
+/* the same room with the lights down: a deep neutral slate, and the panes go smoky */
 :root[data-style="blueprint"][data-theme="ink"] {
-  --paper: #18191a; --paper-hi: #212325; --paper-lo: #1e1f1f; --paper-dim: #313436;
-  --ink: #d3d3d1; --ink-2: #b7b8b4; --ink-3: #83858a;
-  --brick: #e4e4df; --brick-ink: #0d0e0f;
-  --vermillion: #b6b7b2; --honey: #93948f; --sage: #a9aaa5; --teal: #c2c3be;
-  --forest: #d4d5d0; --forest-ink: #0d0e0f; --slate: #8e9095; --slate-ink: #0d0e0f;
-  --khaki: #7c7e82; --plum: #cfd0cb; --ochre: #a5a6a1;
-  --cream: #2a2c2d; --surface-hi: #2a2c2d; --head-hi: #222323; --field-focus: #2f3234;
-  --plate-day: #2a2c2d; --plate-today: #313436; --plate-overdue: #383b3e;
-  --plate-mod: #262728;
+  --paper: #1c1d1e; --paper-hi: #2e3032; --paper-lo: #151617; --paper-dim: #3a3c3e;
+  --ink: #e2e3e2; --ink-2: #b0b2b2; --ink-3: #83858a;
+  --edge: color-mix(in srgb, #ffffff 22%, transparent);
+  --rule: color-mix(in srgb, #ffffff 12%, transparent);
+  --rule-strong: color-mix(in srgb, #ffffff 28%, transparent);
+  --grid-line: color-mix(in srgb, #ffffff 5%, transparent);
+  --grid-line-bold: color-mix(in srgb, #ffffff 9%, transparent);
+  --brick: #f0f1f0; --brick-ink: #131415;
+  --vermillion: #c9caca; --honey: #9b9d9e; --sage: #b6b7b7; --teal: #d5d6d5;
+  --forest: #e6e7e6; --forest-ink: #131415; --slate: #8f9193; --slate-ink: #131415;
+  --khaki: #7d7f81; --plum: #c2c3c3; --ochre: #a5a6a1;
+  --cream: #2a2c2d; --surface-hi: #2b2d2f; --head-hi: #242627; --field-focus: #333537;
+  --plate-day: #2a2c2d; --plate-mod: #262728;
+  --plate-today: #343638; --plate-overdue: #434547;
+  --wm-ink: color-mix(in srgb, var(--ink) 14%, transparent);
+  --memo-rule: color-mix(in srgb, var(--ink) 24%, transparent);
+  --pop-shadow: 0 14px 30px rgba(0,0,0,.42), 0 2px 6px rgba(0,0,0,.3);
+  --bevel: inset 0 1px 0 rgba(255,255,255,.10);
 /* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
   --tex-grain: none;
 }
-:root[data-style="blueprint"] .hud-head {
-  /* the compass construction: two hairline circles and a dashed axis on bare paper */
-  background-color: var(--paper-hi);
-  background-image:
-    radial-gradient(circle at 50% 50%, transparent 0 7.4px, color-mix(in srgb, var(--ink) 60%, transparent) 7.4px 8px, transparent 8px),
-    radial-gradient(circle at 50% 50%, transparent 0 13px, color-mix(in srgb, var(--ink) 28%, transparent) 13px 13.6px, transparent 13.6px),
-    repeating-linear-gradient(90deg, color-mix(in srgb, var(--ink) 42%, transparent) 0 5px, transparent 5px 12px);
-  background-repeat: no-repeat, no-repeat, repeat-x;
-  background-size: 34px 34px, 30px 30px, auto 1px;
-  background-position: 12px 50%, 14px 50%, 0 50%;
-  border-bottom: 1px solid var(--edge);
-  color: var(--ink);
-  font-family: var(--font-mono);
-  letter-spacing: .18em;
-  text-transform: uppercase;
+/* the panes: translucent so the room reads through them, which is what makes it frosted */
+:root[data-style="blueprint"] .hud,
+:root[data-style="blueprint"] .hud-thin,
+:root[data-style="blueprint"] .modal-panel,
+:root[data-style="blueprint"] .plan-pop {
+  background-color: color-mix(in srgb, var(--paper-hi) 74%, transparent);
+}
+:root[data-style="blueprint"] .deck-face,
+:root[data-style="blueprint"] .deck-sheet,
+:root[data-style="blueprint"] .todo-card {
+  /* on the desktop layer there is no ground behind the page — the window is transparent, so
+     the same alpha lets the wallpaper through the cards and a title lands on somebody's
+     poster. The frosting stays, but it stays readable. */
+  background-color: color-mix(in srgb, var(--paper-hi) 94%, transparent);
 }
 :root[data-style="blueprint"] .hud,
 :root[data-style="blueprint"] .hud-thin,
@@ -1528,21 +1543,27 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="blueprint"] .deck-face,
 :root[data-style="blueprint"] .deck-sheet,
 :root[data-style="blueprint"] .todo-card { border-width: 1px; border-color: var(--edge); }
-:root[data-style="blueprint"] .idx-mark {
-  background: transparent; color: var(--ink);
-  border: 1px solid var(--edge); border-radius: 50%;
-  font-family: var(--font-mono); font-weight: 400;
+:root[data-style="blueprint"] .hud-head {
+  background-color: var(--head-hi);
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--rule);
+  letter-spacing: .02em;
 }
+:root[data-style="blueprint"] .idx-mark {
+  background: color-mix(in srgb, var(--ink) 10%, var(--paper-hi));
+  color: var(--ink); border-color: transparent; border-radius: 9px;
+}
+:root[data-style="blueprint"] .idx-mark.plain { background: transparent; color: var(--ink-2); }
 :root[data-style="blueprint"] .btn,
 :root[data-style="blueprint"] .icon-btn {
-  background: transparent; color: var(--ink);
-  border: 1px solid var(--edge); border-radius: 0;
-  font-family: var(--font-mono); letter-spacing: .12em; text-transform: uppercase;
+  background: color-mix(in srgb, var(--paper-hi) 82%, transparent);
+  color: var(--ink-2);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-ctl);
 }
 :root[data-style="blueprint"] .btn:hover,
 :root[data-style="blueprint"] .icon-btn:hover { background: var(--ink); color: var(--paper-hi); }
-:root[data-style="blueprint"] .btn.primary { background: var(--ink); color: var(--paper-hi); }
-:root[data-style="blueprint"] .day-head { font-family: var(--font-mono); letter-spacing: .14em; }
+:root[data-style="blueprint"] .btn.primary { background: var(--ink); color: var(--paper-hi); border-color: transparent; }
 
 /* ==========================================================================
    MATERIAL: 紫电拼贴 / PURPLE COLLAGE  (data-style="memphis")
