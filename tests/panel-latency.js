@@ -11,7 +11,12 @@
    region and would not be, which is why that one gets a real cursor.
 
    Run on the second display:
-     pin-tauri.exe --monitor 2 --panel --test-script-panel tests/panel-latency.js */
+     pin-tauri.exe --monitor 2 --panel --test-script-panel tests/panel-latency.js
+
+   What this found, so the next reader does not re-litigate it: view switches sit at the
+   double-rAF floor (~16ms) and hovering a module costs ~9ms, so nothing here is janky. The one
+   outlier is opening settings at ~140ms — and opening it a *second* time in the same process
+   costs ~13ms, so it is cold work amortised over a session, not a stall in the code. */
 (function () {
   var API = window.API;
   var out = [];
@@ -38,6 +43,26 @@
       out.push({ label: label, ms: ms });
       note('LAT ' + label + ' = ' + ms.toFixed(1) + 'ms');
       return ms;
+    });
+  }
+
+  /* A millisecond number alone only says the click was slow, not why. Count the calls that
+     force the browser to recalculate style between the click and the painted frame, so a
+     drop in the time can be tied to a drop in the flushing instead of to the weather. */
+  function counted(label, fire) {
+    var gcs = window.getComputedStyle, gbr = Element.prototype.getBoundingClientRect;
+    var reads = 0, rects = 0;
+    window.getComputedStyle = function () { reads++; return gcs.apply(window, arguments); };
+    Element.prototype.getBoundingClientRect = function () { rects++; return gbr.apply(this, arguments); };
+    return timed(label, fire).then(function (ms) {
+      window.getComputedStyle = gcs;
+      Element.prototype.getBoundingClientRect = gbr;
+      note('FLUSH ' + label + ' getComputedStyle=' + reads + ' rect=' + rects);
+      return ms;
+    }, function (e) {
+      window.getComputedStyle = gcs;
+      Element.prototype.getBoundingClientRect = gbr;
+      throw e;
     });
   }
 
@@ -82,16 +107,33 @@
       return chain;
     })
     .then(function () {
-      return timed('open settings', function () {
+      return counted('open settings', function () {
         document.getElementById('btnSettings').click();
       });
     })
     .then(function () { return wait(900); })
     .then(function () {
       return timed('close settings', function () {
-        var c = document.querySelector('[data-act="cancel"], .modal-close');
+        var c = document.querySelector('[data-act="done"], [data-act="cancel"], .modal-close');
         if (c) c.click(); else document.getElementById('btnSettings').click();
       });
+    })
+    .then(function () { return wait(700); })
+    /* The same click again in the same process. This is the number that says whether the
+       ~140ms is work or *cold* work: I read a per-token variant measured after a batched one
+       as 13ms against 140ms and almost "proved" the opposite of the truth. Anything compared
+       across warm and cold is not a comparison — see tests/settings-cost.js, which varies
+       what the modal builds and takes one cold open per launch. */
+    .then(function () {
+      return counted('open settings (again, warm)', function () {
+        document.getElementById('btnSettings').click();
+      });
+    })
+    .then(function () { return wait(900); })
+    .then(function () {
+      var c = document.querySelector('[data-act="done"], [data-act="cancel"], .modal-close');
+      if (c) c.click();
+      return nextPaint();
     })
     .then(function () { return wait(700); })
     .then(function () {
