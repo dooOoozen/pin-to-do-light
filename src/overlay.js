@@ -494,6 +494,11 @@
       if (t.done || !t.dueAt || t.remindedAt || fired) return;
       const due = new Date(t.dueAt).getTime();
       if (isNaN(due) || due > now) return;
+      /* A task written with a time that had already passed — backfilling "吃了早饭" — is a
+         record, not a reminder owed to anybody. Only a due time that was still ahead when
+         the task was created can go off. */
+      const born = t.createdAt ? new Date(t.createdAt).getTime() : NaN;
+      if (!isNaN(born) && due <= born) return;
       fired = t;
     });
     if (!fired) return;

@@ -1455,7 +1455,11 @@
     /* the ring follows the day under inspection, not the calendar date: in week mode
        that is the anchor day, and in day view the one column being shown */
     side.innerHTML =
+      '<div class="tk-ring-row">' +
+      '<button class="btn tiny tk-pager" type="button" data-tk="ringprev" title="前一天">\u2039</button>' +
       tkRing(S.state, S.tkDay, now) +
+      '<button class="btn tiny tk-pager" type="button" data-tk="ringnext" title="后一天">\u203A</button>' +
+      '</div>' +
       '<div class="tk-sum" id="tkSum"></div>' +
       '<div class="tl-head muted"><span class="tl-date">最近记录</span>' +
       '<span class="tl-spacer"></span><span class="tl-count" id="tkRecN">0</span></div>' +
@@ -1477,11 +1481,24 @@
         : days[0].slice(5) + ' ~ ' + days[6].slice(5)) + '</span>' +
       '<button class="btn tiny" data-tk="next">\u203A</button>' +
       '<button class="btn tiny" data-tk="today">今天</button>' +
+      '<label class="tk-jump" title="跳到指定日期"><input type="date" id="tkJump" value="' + S.tkDay + '" /></label>' +
       '<span class="spacer"></span>' +
       '<button class="btn tiny' + (S.tkMode === 'week' ? ' primary' : '') + '" data-tk="week">周</button>' +
       '<button class="btn tiny' + (S.tkMode === 'day' ? ' primary' : '') + '" data-tk="day">日</button>';
     cols.appendChild(head);
     head.insertBefore(nav, head.firstChild);
+
+    /* A native date field rather than a hand-built popover: it already knows how to take a
+       typed date, and the ‹ › pair covers the common case of moving one step. */
+    const jump = $('#tkJump', nav);
+    if (jump) {
+      jump.addEventListener('change', () => {
+        const v = String(jump.value || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { renderAll(); return; }
+        S.tkDay = v;
+        renderAll();
+      });
+    }
 
     const body = doc.createElement('div');
     body.className = 'tk-body';
@@ -1748,9 +1765,24 @@
         '<select class="select" data-tk="pick"></select>' +
         '<div class="tk-pop-row">' +
         '  <input class="input" data-tk="new" placeholder="或输入新任务名" />' +
+        '  <select class="select" data-tk="grp" title="新建的任务放进哪个分组"></select>' +
         '  <button class="btn sm primary" data-tk="go">确定</button>' +
         '</div>';
       const sel = pop.querySelector('[data-tk="pick"]');
+      const grp = pop.querySelector('[data-tk="grp"]');
+      (S.state.groups.slice().sort((a, b) => a.order - b.order)).forEach((g) => {
+        const o = doc.createElement('option');
+        o.value = g.id;
+        o.textContent = g.name;
+        grp.appendChild(o);
+      });
+      grp.value = S.state.settings.activeGroupId;
+      /* the group only decides where a *new* task lands; picking an existing one keeps it
+         where it is, so leaving the control live next to a chosen task invites the
+         impression that it moves it */
+      const syncGrp = () => { grp.disabled = !!sel.value; };
+      sel.addEventListener('change', syncGrp);
+      syncGrp();
       /* A blank first entry, not the head of the task list: pre-selecting a task means
          a stray 确定 schedules the wrong one. */
       const ph = doc.createElement('option');
@@ -1786,7 +1818,7 @@
           closePop();
         };
         if (name) {
-          API.op({ type: 'todo:add', title: name, groupId: S.state.settings.activeGroupId, dueAt: new Date(from).toISOString() })
+          API.op({ type: 'todo:add', title: name, groupId: grp.value || S.state.settings.activeGroupId, dueAt: new Date(from).toISOString() })
             .then((res) => {
               if (!res || !res.ok || !res.id) { toast('新建失败', 'warn'); return; }
               done(res.id);
@@ -1921,6 +1953,50 @@
       if (t) openTodoModal(t);
     });
 
+    /* Right-click a block. The ✕ drawn on it only takes the time record away, and what
+       people reach for is the task itself. The native menu is suppressed app-wide, so this
+       is the only way in — and the menu standing between the click and the delete is the
+       confirmation a right-click cannot otherwise have. */
+    let ctxEl = null;
+    function closeCtx() { if (ctxEl) { ctxEl.remove(); ctxEl = null; } }
+    body.addEventListener('contextmenu', (ev) => {
+      const blk = ev.target.closest('.tk-blk');
+      if (!blk) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeCtx();
+      const todoId = blk.dataset.todo, entryId = blk.dataset.entry;
+      const t = D.todoById(S.state, todoId);
+      const cut = (s) => (s.length > 14 ? s.slice(0, 13) + '…' : s);
+      const items = [];
+      if (t) items.push(['删除任务「' + cut(t.title) + '」', 'danger', () => {
+        API.op({ type: 'todo:delete', id: todoId }).then((res) => {
+          toast(res && res.ok ? '任务已删除 // DELETED' : '删除失败', res && res.ok ? '' : 'bad');
+        });
+      }]);
+      items.push(['只删这条时间记录', '', () => {
+        API.op({ type: 'timer:delete', id: entryId }).then((res) => {
+          if (res && res.ok) toast('已删除记录');
+        });
+      }]);
+      const menu = doc.createElement('div');
+      menu.className = 'tk-ctx hud-thin';
+      items.forEach(([label, kind, fn]) => {
+        const b = doc.createElement('button');
+        b.type = 'button';
+        b.className = 'btn tiny' + (kind ? ' ' + kind : '');
+        b.textContent = label;
+        b.addEventListener('click', () => { closeCtx(); fn(); });
+        menu.appendChild(b);
+      });
+      doc.body.appendChild(menu);
+      ctxEl = menu;
+      menu.style.left = Math.max(6, Math.min(ev.clientX, innerWidth - menu.offsetWidth - 8)) + 'px';
+      menu.style.top = Math.max(6, Math.min(ev.clientY, innerHeight - menu.offsetHeight - 8)) + 'px';
+      const away = (e) => { if (!menu.contains(e.target)) { closeCtx(); doc.removeEventListener('pointerdown', away, true); } };
+      doc.addEventListener('pointerdown', away, true);
+    });
+
     wrap.addEventListener('click', (ev) => {
       const b = ev.target.closest('[data-tk]');
       if (b) {
@@ -1928,6 +2004,10 @@
         const step = S.tkMode === 'day' ? 1 : 7;
         if (a === 'prev') S.tkDay = D.dayKey(D.addDays(new Date(tkDayStart(S.tkDay)), -step));
         else if (a === 'next') S.tkDay = D.dayKey(D.addDays(new Date(tkDayStart(S.tkDay)), step));
+        /* the ring always shows exactly one day, so its own pager steps by one even when
+           the axes beside it are a whole week */
+        else if (a === 'ringprev') S.tkDay = D.dayKey(D.addDays(new Date(tkDayStart(S.tkDay)), -1));
+        else if (a === 'ringnext') S.tkDay = D.dayKey(D.addDays(new Date(tkDayStart(S.tkDay)), 1));
         else if (a === 'today') S.tkDay = D.dayKey(new Date());
         else if (a === 'week' || a === 'day') S.tkMode = a;
         else return;
@@ -2416,8 +2496,10 @@
   function updateQuickPreview() {
     const text = el.qaInput.value.trim();
     if (!text) {
-      el.qaPreview.className = 'qa-preview tiny';
-      el.qaPreview.textContent = '用一句话登记：明天五点吃火锅 -日常';
+      /* this row used to carry a permanent example sentence; an empty box now shows
+         nothing, and the input's own placeholder is where the example lives */
+      el.qaPreview.className = 'qa-preview tiny u-hidden';
+      el.qaPreview.textContent = '';
       return;
     }
     const parsed = parseQuick(text);
@@ -3457,7 +3539,12 @@
             rcpDefault = String(p && p.path ? p.path : (p || ''));
             if (!dirBox.value) dirBox.placeholder = rcpDefault;
             const hint = $('#rcpDirHint', root);
-            if (hint) hint.textContent = '留空即写到 ' + (rcpDefault || '默认文件夹');
+            if (hint) {
+              /* the wording is the one a person reads in Explorer, not a path they have to
+                 decode; the real folder is still there for anyone who needs it */
+              hint.textContent = '留空即写到 此电脑 › 下载 › 出票机（没有会自动新建）';
+              hint.title = rcpDefault || '';
+            }
           }).catch(() => {});
           $('#rcpDirUse', root).addEventListener('click', () => {
             const v = String(dirBox.value || '').trim();
