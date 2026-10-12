@@ -79,18 +79,15 @@
 
   function paint(colorKey) {
     var base = PALETTE[colorKey] || (HEX_COLOR.test(String(colorKey || '')) ? colorKey : PALETTE.brick);
+    /* The stored colour is the group's identity: the hour may change how light or how
+       saturated it reads, never which colour it is. One build nudged the hue toward the
+       material's accent and that is exactly the 改色调 this rule exists to prevent, so the
+       lean is gone and the night step is smaller than it was. */
+    if (THEME.hour !== 'ink') return base;
     var rgb = rgbOf(base);
     if (!rgb) return base;
     var h = hslOf(rgb);
-    var acc = THEME.accent && hslOf(rgbOf(THEME.accent));
-    /* The stored colour is the group's identity, so this only leans it toward the material's
-       accent. By day the old code returned the stored colour untouched, so switching material
-       changed nothing at all — the 各个主题切换时分组颜色变化得不明显 report. A tenth of the way
-       round the wheel reads as the same group in different light; a quarter of it is where two
-       groups stop being tellable apart, which is the opposite report. */
-    var hu = nudge(h.h, acc ? acc.h : null, acc ? (THEME.hour === 'ink' ? 0.2 : 0.1) : 0);
-    if (THEME.hour !== 'ink') return hslHex(hu, h.s * 0.94, h.l);
-    return hslHex(hu, h.s * 0.7, Math.min(0.72, h.l * 1.12 + 0.1));
+    return hslHex(h.h, h.s * 0.86, Math.min(0.7, h.l * 1.06 + 0.06));
   }
 
   var PRIORITIES = ['none', 'low', 'med', 'high'];

@@ -1342,11 +1342,14 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .today-figs b { font-size: clamp(10px, 8cqi, 16px); }
 .mod[data-mod="today"] .pd-stats {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto;
-  gap: 8px; padding: 0; width: 100%;
+  gap: 6px; padding: 0; width: 100%;
 }
 .mod[data-mod="today"] .pd-stats .stat {
   display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 2px;
-  text-align: left; container-type: inline-size; padding: 7px 9px 8px; overflow: hidden;
+  text-align: left; container-type: inline-size; padding: 5px 8px 6px; overflow: hidden;
+  /* no drop shadow: every other surface on the board is a flat plate with a hairline, and
+     a lifted tile next to them read as a different kind of object */
+  box-shadow: none;
 }
 .mod[data-mod="today"] .pd-stats .stat-head { display: flex; align-items: center; gap: 6px; margin-bottom: 0; min-width: 0; }
 .mod[data-mod="today"] .pd-stats .stat .idx-mark { height: auto; min-width: 0; flex: none; font-size: clamp(6.5px, 4.2cqw, 10px); }
@@ -1364,16 +1367,7 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
   .mod[data-mod="today"] .pd-stats .stat .k-full { display: none; }
   .mod[data-mod="today"] .pd-stats .stat .k-short { display: inline; }
 }
-.mod[data-mod="today"] .pd-stats .stat .share {
-  margin-left: auto; flex: none; font-size: clamp(6.5px, 4.6cqw, 9.5px);
-  color: var(--ink-3); letter-spacing: .04em; font-variant-numeric: tabular-nums;
-}
-.mod[data-mod="today"] .pd-stats .stat .v { font-size: clamp(16px, 17cqw, 46px); line-height: 1.05; }
-.mod[data-mod="today"] .pd-stats .stat .stat-bar {
-  display: block; height: 3px; margin-top: 4px; overflow: hidden;
-  background: var(--paper-dim); border-radius: var(--r-pill);
-}
-.mod[data-mod="today"] .pd-stats .stat .stat-bar b { display: block; height: 100%; background: var(--tint); }
+.mod[data-mod="today"] .pd-stats .stat .v { font-size: clamp(16px, 16cqw, 40px); line-height: 1.05; }
 .mod[data-mod="today"] .pd-stats .stat[data-stat="done"] .v { transform-origin: 0 50%; text-align: left; }
 /* Narrow plate: the ring goes above the counters, because two columns of counters need ~200px of
    width before their labels stop losing their tail. */
@@ -1391,11 +1385,10 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 @container plate (max-height: 180px) and (max-inline-size: 260px) {
   .mod-today-body > .today-body { display: none; }
 }
-/* Below ~210px of module a 2-column counter cannot fit even the short label (measured: 24px of
-   text in a 2px box), so the counters take the full width and the ring steps out — four
-   readable numbers beat one unreadable circle. */
+/* A plate under ~210px of module cannot hold the ring and the counters in either direction, so
+   the ring steps out and the counters stay two by two — with the short label and no badge a
+   87px tile fits "已逾期" comfortably, and four stacked rows would not fit the plate at all. */
 @container plate (max-inline-size: 210px) {
-  .mod[data-mod="today"] .pd-stats { grid-template-columns: minmax(0, 1fr); }
   .mod-today-body > .today-body { display: none; }
 }
 /* Short plate: the figures line goes first, then the bar and the index badge, which together are
@@ -1406,8 +1399,7 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 @container plate (max-height: 205px) {
   .mod[data-mod="today"] .pd-stats { gap: 4px; }
   .mod[data-mod="today"] .pd-stats .stat { padding: 3px 6px 4px; }
-  .mod[data-mod="today"] .pd-stats .stat .idx-mark,
-  .mod[data-mod="today"] .pd-stats .stat .stat-bar { display: none; }
+  .mod[data-mod="today"] .pd-stats .stat .idx-mark { display: none; }
   /* and the ring shrinks with it: at 143px of body a 50px circle plus two rows of counters is
      128 against 123 available, which is the last clipped stop */
   .today-ring { width: clamp(40px, min(28cqi, 24cqh), 96px); }
@@ -1510,21 +1502,24 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
   font-size: clamp(8px, 6cqw, 10px); letter-spacing: .12em; color: var(--ink-3);
 }
 .rp-cols {
-  display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; align-items: end;
+  display: grid; grid-template-columns: repeat(14, 1fr); gap: 2px; align-items: end;
   height: 168px; border-bottom: 1px solid var(--edge); padding-bottom: 2px;
   margin-bottom: 18px; /* the day numbers hang below the rule */
 }
 /* a month is thirty columns in the same width: tighter gaps and narrower bars, and the axis
    names every third day rather than colliding into a grey band */
-.rp-cols.dense { gap: 2px; }
-.rp-cols.dense .rp-col { width: 84%; }
+.rp-cols.dense { gap: 1px; }
+.rp-cols.dense .rp-col { width: 94%; }
 .rp-cols.dense .rp-col-x { font-size: 7.5px; }
 .rp-col {
-  position: relative; justify-self: stretch; width: 72%; min-width: 4px; height: 100%;
+  position: relative; justify-self: stretch; width: 88%; min-width: 4px; height: 90%;
   display: flex; flex-direction: column-reverse; justify-content: flex-start;
   cursor: default;
 }
 .rp-seg { display: block; width: 100%; border-top: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); }
+/* a day that fills the whole track touches the rule above it, which reads as the chart being
+   cut off rather than as a full bar; the tallest column now stops at 90% of the track and the
+   rest scale with it, so the proportion between days is unchanged */
 .rp-seg:last-child { border-top: 0; }
 .rp-col.today .rp-col-x { color: var(--brick); font-weight: 700; }
 .rp-col-x {

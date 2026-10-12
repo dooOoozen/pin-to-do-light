@@ -373,6 +373,13 @@ input[type="range"] { accent-color: var(--brick); }
 .modal-root { position: fixed; inset: 0; z-index: 8000; display: none; }
 .modal-root.open { display: block; }
 .modal-backdrop {
+  /* The frost lives here, on the static layer behind the dialog, not on the dialog itself:
+     a backdrop-filter on a scrolling surface is re-sampled on every painted frame, which is
+     the 设置上下滚动现在也卡 report. The panel above it is translucent, so what shows through
+     it is this blurred page, and the cost is paid once per frame the page changes rather than
+     once per frame the dialog scrolls. */
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
   /* No z-index here. .modal-root is already at 8000, which is above the receipt machine's
      90; putting a z-index on the dim layer instead lifts it over its own .modal-panel and
      the modal stops answering the pointer — which is how a fix for "设置操作不了" can
@@ -393,11 +400,6 @@ input[type="range"] { accent-color: var(--brick); }
   background-image: var(--tex-grain);
   background-size: var(--tex-size);
   background-blend-mode: var(--tex-blend);
-  /* A dialog is the one surface that has to stay readable over anything, so it frosts instead
-     of fading: what the page paints behind it is blurred and then covered. Where the window is
-     transparent there is nothing in the page to sample and the filter does nothing. */
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  backdrop-filter: blur(18px) saturate(1.3);
   border: 1px solid var(--edge);
   /* the stacked offset print shadow: two hard edges, no blur, so a lifted panel reads
      as another sheet on the same desk rather than as a glow */
@@ -852,7 +854,10 @@ input[type="range"] { accent-color: var(--brick); }
 /* Round mode also covers the report's geometry, the row's tick and the material picker: these
    declared no corners at all, so the switch had nothing to change. Only the top of a stacked
    column is rounded — the segments meet each other, not the plate. */
-.chk, .style-card, .style-sw i, .rp-lg i, .rp-row-b { border-radius: var(--r-ctl); }
+.chk, .style-card, .style-sw i, .rp-lg i, .rp-track, .rp-fill { border-radius: var(--r-ctl); }
+/* The group bar is a fill inside a track, so both ends have to follow: the track clips, the
+   fill carries the right-hand corners only when it does not reach the end of the track. */
+.rp-track { overflow: hidden; }
 .rp-col .rp-seg:last-child { border-radius: var(--r-ctl) var(--r-ctl) 0 0; }
 /* The colour input paints its own chip inside the control, with its own square border: the
    control rounded and the chip stayed a hard square, which is the 直角方形 report on

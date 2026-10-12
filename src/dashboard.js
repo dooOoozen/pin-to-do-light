@@ -209,9 +209,17 @@
     API.setZoom(k);
   }
 
+  /* The width goes on the grid itself rather than through an inherited custom property on
+     <body>: setting --side-w there invalidates the style of every element under <body>, which
+     on the dashboard (module grid, container queries, a 372-cell year) costs more than the
+     re-layout it causes. Measured with tests/side-cost.js. */
+  function setSideWidth(w) {
+    const app = doc.querySelector('.app');
+    if (app) app.style.gridTemplateColumns = w + 'px minmax(0, 1fr)';
+  }
+
   function applySideWidth() {
-    const w = Math.min(520, Math.max(220, Number(S.state.settings.sideWidth) || 286));
-    document.body.style.setProperty('--side-w', w + 'px');
+    setSideWidth(Math.min(520, Math.max(220, Number(S.state.settings.sideWidth) || 286)));
   }
 
   function applySideCollapsed() {
@@ -458,12 +466,10 @@
     applyDashLayout();
     const st = D.stats(S.state);
     const grew = S.lastDone !== null && st.done > S.lastDone;
-    /* Each counter states its share of the board as well as its count: four bare numbers in
-       four equal boxes say nothing about whether 46 open is a lot, and that is why the merged
-       module read as empty plates. The bar and the percentage are both measured against
-       全部任务, so the four tiles stay comparable with each other. */
+    /* Each counter is its label and its number, nothing else. A proportion bar and a
+       percentage were tried and read as a chart inside a plate that already has a chart beside
+       it, and the four tiles stopped matching every other surface on the board. */
     const total = st.total || 0;
-    const shareOf = (n) => (total ? Math.round((n / total) * 100) : 0);
     const tiles = [
       { en: 'OPEN', zh: '未完成', v: st.open, i: '01', key: 'open', tint: 'sage' },
       { en: 'TODAY', zh: '今日到期', v: st.today, i: '02', key: 'today', tint: 'honey' },
@@ -471,18 +477,14 @@
       { en: 'DONE', zh: '已完成', v: st.done, i: '04', key: 'done', tint: 'teal' }
     ];
     el.dashStats.innerHTML = tiles.map((t) => {
-      const p = shareOf(t.v);
-      /* both label lengths are in the DOM and the plate picks one: at 300px of module the
-         bilingual label measures 74px against a 61px box, which is the clipped text in the
-         screenshot, and the Chinese half alone is what fits without shrinking to nothing */
+      /* both label lengths are in the DOM and the tile picks one: below ~170px of counter the
+         bilingual label loses its tail even at the smallest size the type can take */
       const full = t.en + ' / ' + t.zh;
       return '<div class="stat" data-stat="' + t.key + '" style="--tint: var(--' + t.tint + ')"' +
         ' title="' + full + ' ' + t.v + ' / 共 ' + total + '">' +
         '  <div class="stat-head"><span class="idx-mark plain">' + t.i + '</span>' +
-        '    <span class="k"><i class="k-full">' + full + '</i><i class="k-short">' + t.zh + '</i></span>' +
-        '    <span class="share">' + p + '%</span></div>' +
+        '    <span class="k"><i class="k-full">' + full + '</i><i class="k-short">' + t.zh + '</i></span></div>' +
         '  <div class="v' + (t.brick ? ' brick' : '') + '" data-stat-value="' + t.key + '">' + t.v + '</div>' +
-        '  <i class="stat-bar"><b style="width: ' + p + '%"></b></i>' +
         '</div>';
     }).join('');
     S.lastDone = st.done;
@@ -1076,7 +1078,10 @@
     ensureDashMid();
     paintPomo();
 
-    /* today: what is done against what still owns the day */
+    /* today: what is done against what owns the day. The denominator is the tasks due today
+       plus what was finished today — a future date is not today's work, and the overdue ones
+       have their own counter and their own red section in the list, so counting them here too
+       made the ring disagree with the number beside it. */
     const todayKey = D.dayKey(new Date());
     let doneToday = 0, openToday = 0;
     S.state.todos.forEach((t) => {
@@ -1084,8 +1089,7 @@
         if (t.completedAt && D.dayKey(new Date(t.completedAt)) === todayKey) doneToday++;
         return;
       }
-      if (D.isOverdue(t)) openToday++;
-      else if (t.dueAt && D.dayKey(D.parseDate(t.dueAt) || new Date()) === todayKey) openToday++;
+      if (t.dueAt && D.dayKey(D.parseDate(t.dueAt) || new Date()) === todayKey) openToday++;
     });
     const sum = doneToday + openToday;
     const frac = sum ? doneToday / sum : 0;
@@ -1107,10 +1111,14 @@
         return a + (e.end ? (Number(e.ms) || 0) : Math.max(0, Date.now() - st));
       }, 0);
       /* 完成 and 待办 are the ring's own readout and 未完成/已完成 are the counters beside it,
-         so the line under the counters carries only what nothing else states. */
-      figs.innerHTML =
-        '<div><i>番茄</i><b>' + pomoCount() + '</b></div>' +
-        '<div><i>计时</i><b>' + hm(spent) + '</b></div>';
+         so the line under the counters carries only what nothing else states. The pomodoro
+         count is left out while it is zero: a standing 0 beside a real number reads as a
+         fault rather than as "none yet". */
+      const pn = pomoCount();
+      const bits = [];
+      if (pn >= 1) bits.push('<div><i>番茄</i><b>' + pn + ' 个</b></div>');
+      bits.push('<div><i>计时</i><b>' + hmUnit(spent) + '</b></div>');
+      figs.innerHTML = bits.join('');
       const tt = doc.getElementById('todayTotal');
       if (tt) tt.textContent = '共 ' + sum + ' 项';
     }
@@ -1453,6 +1461,14 @@
   function hm(ms) {
     const t = Math.max(0, Math.floor(ms / 60000));
     return pad2t(Math.floor(t / 60)) + ':' + pad2t(t % 60);
+  }
+  /* the same span with its units spelled out, because "01:45" under the label 计时 can be
+     read as a clock time as easily as as an hour and three quarters */
+  function hmUnit(ms) {
+    const t = Math.max(0, Math.floor(ms / 60000));
+    const h = Math.floor(t / 60), m = t % 60;
+    if (!h) return m + ' 分';
+    return m ? h + ' 时 ' + m + ' 分' : h + ' 时';
   }
   function clockOf(ts) {
     const d = new Date(ts);
@@ -4292,15 +4308,14 @@
     resizer.addEventListener('pointermove', (ev) => {
       if (!sideDrag) return;
       sideDrag.w = Math.min(520, Math.max(220, ev.clientX - sideDrag.left));
-      /* One write per frame. A 1000 Hz pointer delivers eight moves to a 60 Hz frame, and every
-         --side-w write re-lays out the whole grid — the sidebar and the entire main column — so
-         the drag spent most of its time doing layout work the next move had already superseded.
-         That is the stutter under the handle. */
+      /* One write per frame: a 1000 Hz pointer delivers eight moves to a 60 Hz frame, and each
+         one re-lays out the grid, so the drag was doing layout work the next move had already
+         superseded. */
       if (sideDrag.raf) return;
       sideDrag.raf = requestAnimationFrame(() => {
         sideDrag.raf = null;
         if (!sideDrag) return;
-        document.body.style.setProperty('--side-w', Math.round(sideDrag.w) + 'px');
+        setSideWidth(Math.round(sideDrag.w));
       });
     });
     const end = () => {
@@ -4309,7 +4324,7 @@
       if (sideDrag.raf) cancelAnimationFrame(sideDrag.raf);
       sideDrag = null;
       document.body.classList.remove('side-dragging');
-      document.body.style.setProperty('--side-w', Math.round(Math.min(520, Math.max(220, w))) + 'px');
+      setSideWidth(Math.round(Math.min(520, Math.max(220, w))));
       if (w) API.op({ type: 'settings:update', patch: { sideWidth: Math.round(w) } });
     };
     resizer.addEventListener('pointerup', end);
