@@ -90,6 +90,12 @@
     cursorFrame: (x, y, inside) => {
       onCommand({ type: 'cursor', x: x, y: y, inside: inside === true });
     },
+    /* the deck's own scatter/recall, so a test can walk the click path without
+       pretending to be a pointer that the window region would never have accepted */
+    deploy: () => { toggleDeploy(); return mode; },
+    /* exactly what recall() does to the hover gate, so the re-arm can be tested
+       against a known-disarmed deck instead of hoping a gesture disarmed it */
+    disarm: () => { hoverArmed = false; hoverRearmAfter = Date.now() + 600; return hoverArmed; },
     dockRect: () => {
       const r = el.dock ? el.dock.getBoundingClientRect() : null;
       return r ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
@@ -510,11 +516,11 @@
     API.notify('PIN TO-DO // 任务到期', fired.title);
   }
 
-  /* A routine group is a log of what the day demands — eat, sleep, wash — not a list to be
-     nagged about. When its time arrives the card completes itself through the same toggle a
-     click would use, so a repeating routine rolls to its next occurrence exactly as it would
-     by hand, and nothing is announced: the record is the point. Undoing the tick or moving
-     the time stays an ordinary edit. */
+  /* A routine group is a log of what the day demands — eat, sleep, wash. When its time arrives
+     the card completes itself through the same toggle a click would use, so a repeating
+     routine rolls to its next occurrence exactly as it would by hand, and undoing the tick or
+     moving the time stays an ordinary edit. The due notification still goes out: the user
+     asked for the chime back after the first brief, which had silenced it. */
   function autoDoneTick() {
     if (!S) return;
     const now = Date.now();
@@ -620,6 +626,12 @@
         } else {
           cancelArmPop();
           nearWas = false;
+          /* A recall disarms the hover so the deck does not bounce straight back under a
+             pointer that is still sitting on it — but the only re-arm lives inside
+             updateHover, and while the deck is filed away this branch is the ONLY one that
+             ever runs. Without this the deck popped forever after a scatter/recall and never
+             spread again for the rest of the session. */
+          if (!hoverArmed && Date.now() > hoverRearmAfter) hoverArmed = true;
         }
       } else {
         /* Both ways: the arrival, because a pointer that comes and stops must open the

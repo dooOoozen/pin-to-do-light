@@ -315,7 +315,7 @@
       li.innerHTML =
         '<i class="dot"></i>' +
         '<span class="gname"></span>' +
-        (g.autoDone ? '<span class="gauto" title="组内任务到点自动完成，不弹通知">自动</span>' : '') +
+        (g.autoDone ? '<span class="gauto" title="组内任务到点自动完成，仍然照常提醒">自动</span>' : '') +
         (g.locked ? '<span class="glock" title="固定分组，不可删除"></span>' : '<button class="icon-btn gedit" title="编辑分组">\u270E</button>') +
         '<span class="gcount">' + open + '/' + items.length + '</span>';
       const dot = li.querySelector('.dot');
@@ -3217,7 +3217,7 @@
       '  </div>' +
       '  <div class="full"><div class="set-row"><div>' +
       '    <div class="set-label">到点自动完成</div>' +
-      '    <div class="set-hint">作息类分组用：组内任务时间一到自己变成已完成，不弹通知也不出声；' +
+      '    <div class="set-hint">作息类分组用：组内任务时间一到自己变成已完成，到点照常提醒；' +
       '想撤销勾选或改时间照常操作</div>' +
       '  </div><button class="switch" id="gAuto" type="button"><i></i></button></div></div>' +
       '</div>';
