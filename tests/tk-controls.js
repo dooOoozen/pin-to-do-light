@@ -27,19 +27,38 @@
   }
 
   function cleanup() {
-    var mine = madeIds.concat(todoId ? [todoId] : []);
-    return Promise.all(
-      mine.map(function (id) {
-        return API.op({ type: 'todo:delete', id: id }).catch(function () {})
-          .then(function () { return API.op({ type: 'trash:purge', id: id }).catch(function () {}); });
-      })
-    ).then(function () {
+    /* anything starting with ZZ is a test row by convention, so the sweep takes them wherever
+       they ended up: a failed run leaves its task behind, and deleting the group then moves it
+       into 临时 where the next run finds it as an unexplained extra */
+    return API.getState().then(function (st) {
+      var live = st.todos.filter(function (x) { return /^ZZ /.test(x.title); });
+      return Promise.all(live.map(function (x) {
+        return API.op({ type: 'todo:delete', id: x.id }).catch(function () {});
+      }));
+    }).then(function () {
+      var mine = madeIds.concat(todoId ? [todoId] : []);
+      return Promise.all(
+        mine.map(function (id) {
+          return API.op({ type: 'todo:delete', id: id }).catch(function () {})
+            .then(function () { return API.op({ type: 'trash:purge', id: id }).catch(function () {}); });
+        })
+      );
+    }).then(function () {
       return groupId ? API.op({ type: 'group:delete', id: groupId }).catch(function () {}) : null;
+    }).then(function () { return API.getState(); }).then(function (st) {
+      /* the right-click delete step leaves its row in the recycle bin on purpose — that IS
+         the assertion — so the bin is swept here rather than leaking a ZZ row into the user's
+         board for the next test to count as its own */
+      var inBin = (st.trash || []).filter(function (x) { return /^ZZ /.test(x.todo.title); });
+      return Promise.all(inBin.map(function (x) {
+        return API.op({ type: 'trash:purge', id: x.todo.id }).catch(function () {});
+      }));
     }).then(function () { return API.getState(); }).then(function (st) {
       var g = st.groups.filter(function (x) { return x.id === groupId; }).length;
       var t = st.todos.filter(function (x) { return mine.indexOf(x.id) >= 0; }).length;
       var e = st.timeEntries.filter(function (x) { return mine.indexOf(x.todoId) >= 0; }).length;
-      var zz = st.todos.filter(function (x) { return /^ZZ /.test(x.title); }).length;
+      var zz = st.todos.concat((st.trash || []).map(function (x) { return x.todo; }))
+        .filter(function (x) { return /^ZZ /.test(x.title); }).length;
       note('cleanup groupLeft=' + g + ' todoLeft=' + t + ' entryLeft=' + e + ' zzLeft=' + zz);
       check(g === 0 && t === 0 && e === 0 && zz === 0,
         'cleanup left group=' + g + ' todo=' + t + ' entry=' + e + ' zz=' + zz);

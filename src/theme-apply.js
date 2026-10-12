@@ -59,6 +59,8 @@
      Names describe the visual language, not any particular work: `v` stays the stable
      key persisted in settings, `n` is what the settings card shows. */
   var STYLES = [
+    { v: 'blueprint', n: '图纸 BLUEPRINT', d: '黑白的磨砂面：半透明灰板、发丝描边、大圆角、柔和落影',
+      sw: ['#e8e8e6', '#f7f7f6', '#1b1c1d', '#87888a', '#cbcac6'] },
     { v: 'print', n: '印刷 1971', d: '方角、硬阴影、纸张颗粒、等宽字',
       sw: ['#ede5d3', '#8d3a27', '#6aa690', '#47597c', '#eba93a'] },
     { v: 'diner', n: '餐厅 DINER', d: '搪瓷圆角、铬条、柔和阴影、几何字',
@@ -71,8 +73,6 @@
       sw: ['#dfe8e4', '#2f9e94', '#17282e', '#f6faf8', '#5d7fd0'] },
     { v: 'console', n: '指令台 RETRO', d: '复古任务台：橙色安全色、螺钉法兰、扫描线',
       sw: ['#e9e3d5', '#d2601a', '#1f6f8b', '#23251f', '#c9a227'] },
-    { v: 'blueprint', n: '图纸 BLUEPRINT', d: '黑白的磨砂面：半透明灰板、发丝描边、大圆角、柔和落影',
-      sw: ['#e8e8e6', '#f7f7f6', '#1b1c1d', '#87888a', '#cbcac6'] },
     { v: 'memphis', n: '紫电拼贴 COLLAGE', d: '白底叠色块：电紫与钴蓝、硬偏色阴影、直角',
       sw: ['#f1eff6', '#6d28d9', '#2047d6', '#3a3350', '#171225'] },
     { v: 'hazard', n: '黑黄战术 HI-VIS', d: '高视认黄与黑：斜切碎片、条码遥测、四角瞄准框',
@@ -88,7 +88,7 @@
   function styleOf(settings) {
     var s = settings && settings.style;
     for (var i = 0; i < STYLES.length; i++) if (STYLES[i].v === s) return s;
-    return 'print';
+    return STYLES[0].v;
   }
 
   function apply(settings) {
@@ -96,6 +96,9 @@
     var theme = themeOf(settings);
     root.dataset.theme = theme;
     root.dataset.style = styleOf(settings);
+    /* the third axis: which material, which hour, and whether anything is rounded at all.
+       Default is 'on' because the setting is new — an old data file has no key to read. */
+    root.dataset.round = settings && settings.roundCorners === false ? 'off' : 'on';
     applied.forEach(function (k) { root.style.removeProperty(k); });
     applied = [];
     var bag = settings && settings.palette && settings.palette[theme];

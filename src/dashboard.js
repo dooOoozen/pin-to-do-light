@@ -36,9 +36,11 @@
     state: null, view: 'all', groupId: null, q: '', prio: 'all', sort: 'smart',
     miniGroup: null, lastDone: null, calMonth: null, calDay: null,
     tkDay: null, tkMode: 'week', tkScroll: null,
-    rpRange: 'week'
+    rpRange: 'week', rpOffset: 0
   };
   const el = {};
+  let lastPageKind = null;
+  let lastView = null;
   let rowDrag = null;
   let calCellHit = { day: null, at: 0 };
   let rowHint = null;
@@ -262,7 +264,32 @@
 
   /* ---------------------------------------------------------------- render */
 
+  /* Every view is rebuilt from scratch on each state push, and emptying a list empties its
+     scroll height with it: the browser clamps the position to the top mid-render and the
+     reader is back at the beginning after saving a memo. Nothing at page level scrolls here —
+     the places a person actually scrolls are the task list, the sidebar, and the module bodies
+     (the memo pad, the recent list, the heatmap) — so those are the offsets worth carrying.
+     Element identity survives the rebuild, which is what makes this a restore rather than a
+     guess. A view change is the exception: arriving somewhere new should start at the top. */
+  /* the app's scrollable regions, named rather than discovered: walking every element and
+     asking for its computed overflow on every state push is exactly the kind of work that
+     would make the panel feel slow, which is the thing this pass is trying to stop */
+  const SCROLLERS = '.side-scroll, .main, .dash-grid, #list, .mod > .mod-body, .heat-body, ' +
+    '.mini-list, .memo-list, .view-panel, .tk-body, .tk-recent, .ai-trace';
+
+  function scrollableOffsets() {
+    const map = new Map();
+    const nodes = document.querySelectorAll(SCROLLERS);
+    for (let i = 0; i < nodes.length; i++) {
+      const e = nodes[i];
+      if (e.scrollTop > 0) map.set(e, e.scrollTop);
+    }
+    return map;
+  }
+
   function renderAll() {
+    const same = lastView === S.view;
+    const offsets = same ? scrollableOffsets() : new Map();
     refreshGroupSelects();
     renderPage();
     renderNav();
@@ -270,6 +297,8 @@
     renderSideMeter();
     renderList();
     applySideCollapsed();
+    if (same) offsets.forEach((y, e) => { if (e.scrollTop !== y) e.scrollTop = y; });
+    lastView = S.view;
     el.viewTitle.textContent = viewLabel();
     const st = D.stats(S.state);
     el.viewSub.textContent = 'OPEN ' + st.open + ' / DONE ' + st.done + ' / TOTAL ' + st.total;
@@ -281,10 +310,16 @@
 
   function renderPage() {
     const dash = S.view === 'dash';
+    const kind = dash ? 'dash' : 'tasks';
     el.pageDash.classList.toggle('u-hidden', !dash);
     el.pageTasks.classList.toggle('u-hidden', dash);
-    /* the scroller keeps the outgoing page's offset, so a shorter page arriving under
-       a deep scroll position shows a scrollbar for a frame before it is clamped back */
+    /* Jump to the top only when a DIFFERENT page arrives: the scroller keeps the outgoing
+       page's offset, so a shorter page coming in under a deep scroll position shows a
+       scrollbar for a frame before it is clamped back.
+       It used to do this on every state push, which is what threw the dashboard back to the
+       top the moment a memo was saved — the reader was mid-page and a keystroke moved them. */
+    if (kind === lastPageKind) return;
+    lastPageKind = kind;
     const scroller = el.pageDash.closest('.main');
     if (scroller) scroller.scrollTop = 0;
     const grid = doc.getElementById('dashGrid');
@@ -2103,17 +2138,36 @@
      how the 日均 figure came out as NaN on the first run of this view */
   const dayStart = (d) => D.startOfDay(d || new Date()).getTime();
 
+  const RP_KINDS = ['day', 'week', 'month'];
+  const RP_WORDS = { day: ['今天', '昨天', '明天'], week: ['本周', '上周', '下周'], month: ['本月', '上月', '下月'] };
+
+  /* The period itself, not "since the start of it": paging has to land on a whole week or a
+     whole month, so `to` is the period's end. What has actually elapsed is `elapsedTo`, and
+     only the 日均 figure uses it — otherwise a month viewed on the 12th would divide by 31. */
   function rpRange() {
     const today = dayStart();
-    if (S.rpRange === 'day') return { from: today, to: today + DAY_MS, label: '今天 TODAY' };
-    if (S.rpRange === 'month') {
+    const kind = RP_KINDS.indexOf(S.rpRange) >= 0 ? S.rpRange : 'week';
+    const off = S.rpOffset | 0;
+    let from, to;
+    if (kind === 'day') {
+      from = today + off * DAY_MS;
+      to = from + DAY_MS;
+    } else if (kind === 'month') {
       const now = new Date();
-      return { from: dayStart(new Date(now.getFullYear(), now.getMonth(), 1)),
-               to: today + DAY_MS, label: '本月 MONTH' };
+      const a = new Date(now.getFullYear(), now.getMonth() + off, 1);
+      from = dayStart(a);
+      to = dayStart(new Date(a.getFullYear(), a.getMonth() + 1, 1));
+    } else {
+      /* Monday first, so the report's week is the same seven days the axis shows */
+      const dow = (new Date().getDay() + 6) % 7;
+      from = today - dow * DAY_MS + off * 7 * DAY_MS;
+      to = from + 7 * DAY_MS;
     }
-    /* Monday first, so the report's week is the same seven days the axis shows */
-    const dow = (new Date().getDay() + 6) % 7;
-    return { from: today - dow * DAY_MS, to: today + DAY_MS, label: '本周 WEEK' };
+    const w = RP_WORDS[kind];
+    const d = new Date(from);
+    const label = (off === 0 ? w[0] : off === -1 ? w[1] : off === 1 ? w[2]
+      : (d.getMonth() + 1) + '/' + d.getDate() + ' 起') + ' ' + kind.toUpperCase();
+    return { kind, from, to, elapsedTo: Math.min(Date.now(), to), label };
   }
 
   function rpMs(ms) {
@@ -2146,10 +2200,22 @@
       const b = doc.createElement('button');
       b.className = 'btn ghost sm' + (S.rpRange === p[0] ? ' on' : '');
       b.textContent = p[1];
-      b.addEventListener('click', () => { S.rpRange = p[0]; renderList(); });
+      /* choosing a period means the current one, or paging three weeks back and then
+         clicking 本月 would show a month three months gone with nothing to say so */
+      b.addEventListener('click', () => { S.rpRange = p[0]; S.rpOffset = 0; renderList(); });
       bar.appendChild(b);
     });
+    const unit = { day: '天', week: '周', month: '月' }[rg.kind];
+    const step = (delta) => { S.rpOffset = (S.rpOffset | 0) + delta; renderList(); };
+    const prev = rpEl('btn ghost sm', '\u2039');
+    prev.title = '上一' + unit;
+    prev.addEventListener('click', () => step(-1));
+    const next = rpEl('btn ghost sm', '\u203A');
+    next.title = '下一' + unit;
+    next.addEventListener('click', () => step(1));
+    bar.appendChild(prev);
     bar.appendChild(rpEl('rp-range-label', rg.label));
+    bar.appendChild(next);
     const print = doc.createElement('button');
     print.className = 'btn ghost sm';
     print.textContent = '打小票';
@@ -2167,7 +2233,8 @@
       return c >= rg.from && c < rg.to;
     });
     const totalMs = inRange.reduce((s, e) => s + rpLive(e), 0);
-    const days = Math.max(1, Math.round((rg.to - rg.from) / DAY_MS));
+    /* elapsed, not the whole period: a month viewed on the 12th must not divide by 31 */
+    const days = Math.max(1, Math.round((rg.elapsedTo - rg.from) / DAY_MS));
 
     /* ---- figures ---- */
     const figs = rpEl('rp-figs');
@@ -2217,7 +2284,14 @@
        is stacked rather than filled with one colour, because a day is usually spent on
        more than one thing: the segments run in the order they happened, earliest at the
        bottom, and each one wears the colour of the group it belonged to. ---- */
-    wrap.appendChild(rpEl('rp-h2', 'DAYS / 最近 14 天'));
+    /* Columns on the left, ring on the right, one row. They answer different questions — the
+       columns are always the last 14 days, the ring is the period chosen at the top — so the
+       ring wears that period's own name instead of leaving it implied. */
+    const charts = rpEl('rp-charts');
+    const chartL = rpEl('rp-chart-l');
+    chartL.appendChild(rpEl('rp-h2', 'DAYS / 最近 14 天'));
+    wrap.appendChild(charts);
+    charts.appendChild(chartL);
     const cols = rpEl('rp-cols');
     const today = dayStart();
     const perDay = [];
@@ -2262,7 +2336,7 @@
       col.appendChild(rpEl('rp-col-x', String(dt.getDate())));
       cols.appendChild(col);
     });
-    wrap.appendChild(cols);
+    chartL.appendChild(cols);
 
     const legend = rpEl('rp-legend');
     st.groups.forEach((g) => {
@@ -2275,7 +2349,33 @@
       chip.appendChild(doc.createTextNode(g.name));
       legend.appendChild(chip);
     });
-    if (legend.childNodes.length) wrap.appendChild(legend);
+    if (legend.childNodes.length) chartL.appendChild(legend);
+
+    /* ---- the chosen period, split by group ---- */
+    const ringBox = rpEl('rp-ring-box');
+    ringBox.appendChild(rpEl('rp-ring-cap', rg.label));
+    let acc = 0;
+    const stops = totalMs > 0 ? groups.map((gid) => {
+      const g = D.groupById(st, gid);
+      const c = g ? (D.PALETTE[g.color] || D.PALETTE.brick) : 'var(--ink-3)';
+      const a0 = (acc / totalMs) * 100;
+      acc += byGroup[gid];
+      return c + ' ' + a0.toFixed(2) + '% ' + ((acc / totalMs) * 100).toFixed(2) + '%';
+    }).join(', ') : 'var(--paper-dim) 0% 100%';
+    const ring = rpEl('rp-ring');
+    /* the band is masked, which cuts away anything the band element itself paints, so the
+       figures are its siblings — the same rule the timeline dial learned the hard way */
+    ring.innerHTML = '<i class="rp-ring-band" style="background-image: conic-gradient(' + stops + ')"></i>' +
+      '<b>' + rpMs(totalMs) + '</b><span>' + (groups.length ? groups.length + ' 组' : 'NO DATA') + '</span>';
+    ring.title = groups.length
+      ? groups.map((gid) => {
+        const g = D.groupById(st, gid);
+        return (g ? g.name : '（已删除）') + ' · ' + rpMs(byGroup[gid]) +
+          ' (' + Math.round((byGroup[gid] / totalMs) * 100) + '%)';
+      }).join('\n')
+      : '这个区间还没有计时记录';
+    ringBox.appendChild(ring);
+    charts.appendChild(ringBox);
 
     /* ---- the longest runs, which is the part that reads as an achievement ---- */
     const top = inRange.slice().sort((a, b) => rpLive(b) - rpLive(a)).slice(0, 5);
@@ -2361,7 +2461,23 @@
       '<span class="cal-title">' + month.getFullYear() + ' 年 ' + (month.getMonth() + 1) + ' 月</span>' +
       '<button class="btn tiny" data-cal="next">›</button>' +
       '<span class="spacer"></span>' +
-      '<button class="btn tiny" data-cal="today">今天</button>';
+      '<button class="btn tiny" data-cal="today">今天</button>' +
+      '<label class="tk-jump" title="跳到指定日期"><input class="input" type="date" id="calJump" value="' + S.calDay + '" /></label>';
+
+    /* The same native date field the timeline carries. It has to move the month as well as
+       the selection: a jump into another month that left the grid on the old one would show a
+       date that is not on screen. */
+    const jump = $('#calJump', head);
+    if (jump) {
+      jump.addEventListener('change', () => {
+        const v = String(jump.value || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { renderAll(); return; }
+        const p = v.split('-');
+        S.calDay = v;
+        S.calMonth = new Date(Number(p[0]), Number(p[1]) - 1, 1);
+        renderAll();
+      });
+    }
 
     const dow = doc.createElement('div');
     dow.className = 'cal-dow-row';
@@ -3419,11 +3535,16 @@
       '    <div class="row" style="flex-wrap:wrap">' +
       '      <button class="btn sm" data-act="export">导出 JSON</button>' +
       '      <button class="btn sm" data-act="import">导入 JSON</button>' +
+      '      <button class="btn sm" data-act="sampleLoad">载入示例数据 50 条</button>' +
+      '      <button class="btn sm" data-act="sampleClear">删除示例数据</button>' +
       '      <button class="btn sm" data-act="relayout">重排卡片</button>' +
       '      <button class="btn sm danger" data-act="clearDone">清空已完成</button>' +
       '      <button class="btn sm danger" data-act="resetSettings">恢复默认设置</button>' +
-      '      <button class="btn sm danger" data-act="reset">恢复示例数据</button>' +
+      '      <button class="btn sm danger" data-act="reset">清空并恢复出厂示例</button>' +
       '    </div>' +
+      '    <div class="set-hint" style="margin-top:6px">「载入示例数据」只往现有数据' +
+      '<b>旁边</b>加 50 条测试任务（含两个示例分组与两周的专注记录），再点「删除示例数据」会把它们' +
+      '整批带走，你原来的任务一条都不动。右边三个红按钮是另一回事：它们会覆盖或清空现有数据。</div>' +
       '    <div class="divider"></div>' +
       '    <div class="about-line" id="aboutLine">DASHBOARD 1971</div>' +
       '  </div>' +
@@ -3534,6 +3655,15 @@
             API.op({ type: 'settings:update', patch: { theme: v ? 'ink' : 'paper' } });
             toast(v ? '夜间主题 // NIGHT' : '白昼主题 // DAY');
             renderStyleRows();
+          }));
+        /* Roundness belongs to no material: turning this off squares off every surface in
+           whichever material is on, and on gives them all one arc. It lives here rather than
+           under 界面显示 because it is a look, not a behaviour — and because the deck-shape
+           row above has to stay directly over the screen row. */
+        hour.appendChild(switchRow('圆角风格', '开：所有面板、按钮、卡片走同一档圆弧；关：整套界面回到直角。与所选材质无关，两者可任意搭配',
+          S.state.settings.roundCorners !== false, (v) => {
+            API.op({ type: 'settings:update', patch: { roundCorners: v } });
+            toast(v ? '圆角风格 // ROUNDED' : '直角风格 // SQUARE');
           }));
       }
       /* ---- 坚果云备份 ----
@@ -4007,9 +4137,19 @@
           return;
         }
         if (act === 'reset') {
-          if (b.dataset.confirm === '1') { API.op({ type: 'data:reset' }); closeModal(); toast('已恢复示例数据 // FACTORY RESET'); return; }
+          if (b.dataset.confirm === '1') { API.op({ type: 'data:reset' }); closeModal(); toast('已恢复出厂示例 // FACTORY RESET'); return; }
           b.dataset.confirm = '1';
-          b.textContent = '确认恢复?';
+          b.textContent = '确认清空当前全部数据?';
+        }
+        if (act === 'sampleLoad') {
+          const r = await API.op({ type: 'sample:load' });
+          toast(r && r.ok ? '已载入 ' + r.added + ' 条示例数据 // SAMPLE ADDED' : '示例数据载入失败', r && r.ok ? '' : 'bad');
+          return;
+        }
+        if (act === 'sampleClear') {
+          const r = await API.op({ type: 'sample:clear' });
+          toast(r && r.ok ? '已删除 ' + r.removed + ' 条示例数据 // SAMPLE REMOVED' : '示例数据删除失败', r && r.ok ? '' : 'bad');
+          return;
         }
       });
 

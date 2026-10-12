@@ -792,7 +792,7 @@ input[type="range"] { accent-color: var(--brick); }
 
 /* ---- the surfaces the panel and the deck build out of ---- */
 
-:root[data-style="diner"] .modal-panel { border: 1px solid var(--edge); border-radius: 22px; }
+:root[data-style="diner"] .modal-panel { border: 1px solid var(--edge); border-radius: var(--r-plate); }
 :root[data-style="diner"] .stat,
 :root[data-style="diner"] .badge,
 :root[data-style="diner"] .day-head,
@@ -820,7 +820,7 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="diner"] .dock .icon-btn { border: 1px solid var(--edge); border-radius: var(--r-ctl); }
 :root[data-style="diner"] .gchip { border-radius: var(--r-pill); }
 :root[data-style="diner"] .chip-swatch,
-:root[data-style="diner"] .card-dot { border: 0; border-radius: 50%; }
+:root[data-style="diner"] .card-dot { border: 0; border-radius: var(--r-dot); }
 :root[data-style="diner"] .toast { box-shadow: var(--pop-shadow-sm); font-family: var(--font-ui); }
 :root[data-style="diner"] .card-title { font-family: var(--font-ui); letter-spacing: .01em; }
 
@@ -836,7 +836,8 @@ input[type="range"] { accent-color: var(--brick); }
 .hud, .hud-thin, .modal-panel, .plan-pop { border-radius: var(--r-plate); }
 .hud-head { border-radius: var(--r-plate) var(--r-plate) 0 0; }
 .btn, .icon-btn, .input, .select, .kbd, .stamp, .stat, .day-head, .mini-row,
-.memo-input, .pal-swatch, .mod-span, .cal-day, .field, .set-row { border-radius: var(--r-ctl); }
+.memo-input, .pal-swatch, .mod-span, .cal-day, .field, .set-row,
+.qa-btn, .tool, .edge-tile, .idx-mark { border-radius: var(--r-ctl); }
 .badge, .gchip, .switch, .switch i { border-radius: var(--r-pill); }
 .status-mark, .chip-swatch, .card-dot, .task-dot, .mini-dot, .deck-swatch { border-radius: var(--r-dot); }
 
@@ -968,7 +969,7 @@ input[type="range"] { accent-color: var(--brick); }
    regardless, because the ledger columns are aligned by digit width. */
 .pd-clock-time, .deck-count, .stat .v, .today-ring b, #pomoTime,
 .tk-ring-num, .cal-month, .big { font-family: var(--font-display); }
-.hud-head, .btn, .idx-mark, .deck-name, .card-title, .mini-title, .task-title,
+.hud-head, .btn, .idx-mark, .deck-name, .card-title, .mini-title, .task-title, .tr-title,
 .group-title, .nav-title, .style-card b, .set-label, h3 { font-family: var(--font-ui); }
 
 /* ==========================================================================
@@ -1125,7 +1126,7 @@ input[type="range"] { accent-color: var(--brick); }
 }
 :root[data-style="garden"] .idx-mark {
   background: var(--brick); color: var(--brick-ink); border-color: transparent;
-  border-radius: 4px;
+  border-radius: var(--r-ctl);
 }
 :root[data-style="garden"] .idx-mark.plain { background: transparent; color: var(--ink); }
 :root[data-style="garden"] .btn { border-color: color-mix(in srgb, var(--edge) 65%, transparent); }
@@ -1576,7 +1577,7 @@ input[type="range"] { accent-color: var(--brick); }
 }
 :root[data-style="blueprint"] .idx-mark {
   background: color-mix(in srgb, var(--ink) 10%, var(--paper-hi));
-  color: var(--ink); border-color: transparent; border-radius: 9px;
+  color: var(--ink); border-color: transparent; border-radius: var(--r-ctl);
 }
 :root[data-style="blueprint"] .idx-mark.plain { background: transparent; color: var(--ink-2); }
 :root[data-style="blueprint"] .btn,
@@ -1983,7 +1984,7 @@ input[type="range"] { accent-color: var(--brick); }
 }
 :root[data-style="frost"] .idx-mark {
   background: color-mix(in srgb, var(--brick) 16%, var(--paper-hi));
-  color: var(--forest); border-color: transparent; border-radius: 9px;
+  color: var(--forest); border-color: transparent; border-radius: var(--r-ctl);
 }
 :root[data-style="frost"] .idx-mark.plain { background: transparent; color: var(--ink-2); }
 :root[data-style="frost"] .btn,
@@ -1996,3 +1997,14 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="frost"] .btn.primary { background: var(--brick); color: var(--brick-ink); border-color: transparent; }
 :root[data-style="frost"] .mod-head { color: var(--ink-2); }
 :root[data-style="frost"] .day-head { border-width: 1px; }
+
+/* ---------------------------------------------------------------- the corner switch
+   Round or square is the third axis, and it belongs to no material: 图纸 with square corners
+   and 印刷 with round ones are both things a person may want. So this overrides the four
+   radius tokens themselves rather than adding a fifth set of per-class rules, and it sits at
+   the very end of the sheet because the material blocks above it are :root[data-style=…] —
+   equal specificity, so the later rule is the one that wins.
+   One scale, deliberately: the pill deck used to mix a full-pill container, an 11px control
+   and a 50% dot, which is three different answers to the same question. */
+:root[data-round="on"] { --r-plate: 16px; --r-ctl: 11px; --r-pill: 999px; --r-dot: 50%; }
+:root[data-round="off"] { --r-plate: 0px; --r-ctl: 0px; --r-pill: 0px; --r-dot: 0px; }

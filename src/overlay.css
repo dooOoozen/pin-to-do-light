@@ -722,7 +722,9 @@ body[data-mode="deployed"] .todo-card:hover { z-index: 80 !important; }
 .deck-head .head-toggle {
   width: calc(20px * var(--uis)); height: calc(15px * var(--uis)); padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--accent-ink, var(--brick-ink)); border-radius: var(--r-ctl);
+  /* a toggle is a pill in this app — .switch already is — and 11px on a 15px-tall box was
+     a third opinion about the arc inside the pill deck */
+  border: 1px solid var(--accent-ink, var(--brick-ink)); border-radius: var(--r-pill);
   background: transparent; color: var(--accent-ink, var(--brick-ink));
   font-size: calc(9px * var(--uis)); line-height: 1; cursor: pointer; opacity: .55;
   /* the deck root is pointer-events:none and each control opts back in; a class of our
@@ -821,6 +823,9 @@ body.deck-pill .dock-tools {
 body.deck-pill .tool {
   flex: 0 0 auto; width: calc(21px * var(--ds, 1)); height: calc(20px * var(--ds, 1));
   font-size: calc(11px * var(--ds, 1));
+  /* the pill box carries one arc, not three: an 11px control radius inside a full-pill
+     container is what made the row of buttons look cut with a different template */
+  border-radius: var(--r-pill);
 }
 body.deck-pill .deck-sheets .deck-sheet {
   transform: none !important; border-radius: var(--r-pill);

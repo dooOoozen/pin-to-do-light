@@ -121,6 +121,21 @@
     return ratio;
   }
 
+  /* Deleting is only half of leaving no trace: a deleted task waits in the recycle bin, and
+     two rows per run accumulate there until some other test reads them as its own. */
+  function sweepSeeds() {
+    return Promise.all(seedIds.map(function (id) {
+      return API.op({ type: 'todo:delete', id: id }).catch(function () {});
+    })).then(function () { return API.getState(); }).then(function (st) {
+      var inBin = (st.trash || []).filter(function (x) {
+        return x.todo.title === '自动测试 悬停收回甲' || x.todo.title === 'auto test retract chip';
+      });
+      return Promise.all(inBin.map(function (x) {
+        return API.op({ type: 'trash:purge', id: x.todo.id }).catch(function () {});
+      })).then(function () { return inBin.length; });
+    });
+  }
+
   var oldCss =
     'body[data-mode="overview"] .todo-card.compact{font-size:calc(13.5px * var(--cs,1) * var(--ps,1))}' +
     'body[data-mode="overview"] .todo-card.compact .card-title{font-size:calc(13.5px * var(--cs,1) * var(--ps,1))}' +
@@ -168,20 +183,18 @@
             : 'FAIL the chip text still grows by ' + Math.round((fixed - 1) * 100) + '% on retract')));
       });
     });
-  }).then(function () {
-    return Promise.all(seedIds.map(function (id) { return API.op({ type: 'todo:delete', id: id }); }));
-  }).then(function () {
+  }).then(sweepSeeds).then(function (purged) {
     gone = seedIds.slice();
     return API.op({ type: 'settings:update', patch: {
-      cardFontScale: was.cardFontScale, chipFontScale: was.chipFontScale } });
-  }).then(function () {
-    note('cleanup deleted=' + gone.length + ' settingsBack=' + was.cardFontScale + '/' + was.chipFontScale);
+      cardFontScale: was.cardFontScale, chipFontScale: was.chipFontScale } }).then(function () {
+      note('cleanup deleted=' + gone.length + ' purged=' + purged +
+        ' settingsBack=' + was.cardFontScale + '/' + was.chipFontScale);
+    });
   }).catch(function (e) {
     note('RESULT ERROR ' + (e && e.message));
-    return Promise.all(seedIds.map(function (id) { return API.op({ type: 'todo:delete', id: id }); }))
-      .then(function () {
-        return API.op({ type: 'settings:update', patch: {
-          cardFontScale: was.cardFontScale, chipFontScale: was.chipFontScale } });
-      }).then(function () { note('cleanup after error done'); });
+    return sweepSeeds().then(function () {
+      return API.op({ type: 'settings:update', patch: {
+        cardFontScale: was.cardFontScale, chipFontScale: was.chipFontScale } });
+    }).then(function () { note('cleanup after error done'); });
   });
 })();

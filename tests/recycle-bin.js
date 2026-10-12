@@ -37,7 +37,7 @@
       }));
     }).then(function () { return API.getState(); }).then(function (st) {
       var zz = st.todos.concat((st.trash || []).map(function (x) { return x.todo; }))
-        .filter(function (t) { return /^ZZ /.test(t.title); }).length;
+        .filter(function (t) { return /^ZZ 垃圾箱/.test(t.title); }).length;
       var g = st.groups.filter(function (x) { return /^ZZ /.test(x.name); }).length;
       note('cleanup zzLeft=' + zz + ' groupLeft=' + g);
       check(zz === 0 && g === 0, 'cleanup left zz=' + zz + ' group=' + g);
@@ -100,8 +100,12 @@
     })
     /* 4: the view */
     .then(function () {
+      /* count the rows this run created, not everything starting with ZZ: another test's
+         leftover in the bin is not this test's business, and conflating the two once made a
+         passing run look broken */
       var items = Array.prototype.filter.call(document.querySelectorAll('.tr-item'), function (r) {
-        return /^ZZ /.test((r.querySelector('.tr-title') || {}).textContent || '');
+        var t = ((r.querySelector('.tr-title') || {}).textContent || '');
+        return /^ZZ 垃圾箱/.test(t);
       });
       check(items.length === 1, 'the bin view shows ' + items.length + ' of my own rows, want 1');
       var first = items[0];

@@ -45,12 +45,12 @@
      and rewritten rather than rejected, because it is what every existing data file holds
      and an unresolved style would drop the whole desk back to 印刷. */
   var STYLE_WAS = { p3: 'frost', unp: 'console', poster: 'frost' };
-  var STYLE_IS = ['print', 'diner', 'ikb', 'garden', 'console', 'frost',
-    'blueprint', 'memphis', 'hazard', 'chrome'];
+  var STYLE_IS = ['blueprint', 'print', 'diner', 'ikb', 'garden', 'console', 'frost',
+    'memphis', 'hazard', 'chrome'];
   function styleKey(v) {
     var k = String(v || '');
     if (STYLE_WAS[k]) k = STYLE_WAS[k];
-    return STYLE_IS.indexOf(k) >= 0 ? k : 'print';
+    return STYLE_IS.indexOf(k) >= 0 ? k : STYLE_IS[0];
   }
 
   /* The agent's settings, rebuilt rather than filtered.
@@ -80,7 +80,7 @@
     'simple', 'muted', 'deckMonitor', 'ai',
     'dockScale', 'autoScale',
     'desktopOnly', 'dockPos', 'deckScale', 'cardScale', 'uiScale', 'dockMovable', 'sideWidth', 'sideCollapsed', 'sound',
-    'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'deckShape', 'theme', 'style', 'palette',
+    'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'deckShape', 'roundCorners', 'theme', 'style', 'palette',
     'memo', 'pomoDate', 'pomoCount', 'dashLayout', 'receipt', 'webdav'
   ];
 
@@ -277,10 +277,15 @@
            square file box with its title, meter and progress; 'pill' is one row carrying the
            number and the buttons. Nothing switches between them on its own. */
         deckShape: 'stack',
+        /* round or square corners, on top of whichever material is picked. Separate from
+           deckShape: that chooses the card box's layout, this chooses the arc every surface
+           in the app is cut with. */
+        roundCorners: true,
         theme: 'paper',
-        /* the material of the whole UI, independent of the hour: 'print' is the 1971
-           terminal sheet, 'diner' the Googie console. Anything unknown falls back. */
-        style: 'print',
+        /* the material of the whole UI, independent of the hour. 图纸 is the house default —
+           black and white, and the roundness the corner switch then dresses or strips.
+           Anything unknown falls back to the first entry of STYLE_IS. */
+        style: 'blueprint',
         palette: { paper: {}, ink: {} },
         scaleDefaults: 2,
         /* the dashboard scratch pad: a list of saved lines, not one blob of text, and
@@ -323,6 +328,7 @@
         order: typeof gr.order === 'number' ? gr.order : i,
         locked: gr.locked === true,
         autoDone: gr.autoDone === true,
+        demo: gr.demo == null ? null : String(gr.demo),
         createdAt: gr.createdAt || isoNow()
       };
     }) : clone(def.groups);
@@ -362,7 +368,10 @@
         spentMs: Math.max(0, Number(t.spentMs) || 0),
         timerStartedAt: t.timerStartedAt || null,
         pinned: !!t.pinned,
-        spawnedFrom: t.spawnedFrom || null
+        spawnedFrom: t.spawnedFrom || null,
+        /* which rows the sample board created. It has to survive the rebuild above or
+           「删除示例数据」would have nothing to match on the next read. */
+        demo: t.demo == null ? null : String(t.demo)
       };
     }) : clone(def.todos);
 
@@ -461,6 +470,8 @@
     settings.chipFontScale = Math.min(1.6, Math.max(0.8, Number(settings.chipFontScale) || 1));
     settings.dockAutoTuck = settings.dockAutoTuck !== false;
     settings.deckShape = settings.deckShape === 'pill' ? 'pill' : 'stack';
+    /* roundness is its own axis: any material can wear round or square corners */
+    settings.roundCorners = settings.roundCorners !== false;
     settings.hotkey = String(settings.hotkey == null ? 'Control+Alt+T' : settings.hotkey);
     settings.scatterHotkey = String(settings.scatterHotkey == null ? 'Control+Alt+S' : settings.scatterHotkey);
     var wd = settings.webdav && typeof settings.webdav === 'object' ? settings.webdav : {};
@@ -578,6 +589,82 @@
     target.placements = src.placements;
     return target;
   }
+
+  /* ---------------------------------------------------------------- the sample board */
+
+  var SAMPLE_TAG = 's50';
+  /* two groups of its own, so the sample also covers the routine flag and a colour the
+     user's own set may not happen to include */
+  var SAMPLE_GROUPS = [
+    { name: '示例·作息', color: 'teal', autoDone: true },
+    { name: '示例·项目', color: 'slate' }
+  ];
+
+  /* [title, priority, repeat, dueInHours, doneDaysAgo, notes, tags, group, lunar, pinned]
+     dueInHours is measured from the moment of loading, so nothing is stale on arrival;
+     negative means already overdue. doneDaysAgo also gets a timing run behind it. */
+  var SAMPLE_ROWS = [
+    /* overdue, the case the reminder and the red badge exist for */
+    ['整理季度报销单并拍照上传', 'high', 'none', -50, null, '发票在书桌第二个抽屉。\n按月份分三叠。', ['财务'], ''],
+    ['给设计稿补一版深色配色', 'med', 'none', -26, null, '', ['设计'], ''],
+    ['预约牙科洗牙', 'low', 'none', -8, null, '', [], ''],
+    ['把下载文件夹里的重复项删掉', 'none', 'none', -3, null, '先按大小排序，再按名字找重复。', [], ''],
+    ['催一下外包同事的发票', 'high', 'none', -74, null, '', ['财务'], ''],
+    /* today, including the routine group's own cards */
+    ['晨跑 5 公里', 'low', 'daily', 2, null, '配速 6:10 左右。', [], 'r'],
+    ['吃午饭', 'none', 'daily', 4, null, '', [], 'r'],
+    ['午睡 20 分钟', 'none', 'daily', 5, null, '', [], 'r'],
+    ['洗澡', 'none', 'daily', 11, null, '', [], 'r'],
+    ['写周报', 'med', 'weekly', 6, null, '本周：卡片层两处动画；下周：时间账本。', [], ''],
+    ['和产品对一版排期', 'med', 'none', 3, null, '', [], ''],
+    ['给家里打个电话', 'low', 'none', 9, null, '', [], ''],
+    ['整理今晚的面试问题', 'high', 'none', 7, null, '项目、协作、算法各三个。', ['面试'], ''],
+    /* tomorrow */
+    ['早会主持', 'med', 'none', 26, null, '', [], ''],
+    ['交房租', 'high', 'none', 30, null, '转账备注写房间号。', [], ''],
+    ['体检空腹准备', 'low', 'none', 34, null, '前一晚十点之后不进食。', [], ''],
+    ['给阳台植物换土', 'none', 'none', 28, null, '', [], ''],
+    ['读《故事》第二章', 'low', 'none', 40, null, '结构那节做笔记。', ['阅读'], ''],
+    ['修自行车后刹', 'none', 'none', 36, null, '', [], ''],
+    /* later this week */
+    ['周会材料', 'med', 'weekly', 50, null, '', [], ''],
+    ['约健身教练上课', 'low', 'none', 60, null, '', [], ''],
+    ['买猫粮和猫砂', 'none', 'none', 55, null, '', [], ''],
+    ['把书桌理一遍', 'none', 'none', 70, null, '线、纸、杯具三类。', [], ''],
+    ['写技术分享初稿', 'high', 'none', 80, null, '', ['输出'], ''],
+    ['AE 动效练习：卡片弹出', 'med', 'none', 90, null, '', ['设计'], ''],
+    ['整理上季度照片备份', 'none', 'none', 100, null, '', [], ''],
+    /* further out, including a monthly and a yearly repeat */
+    ['交季度房租', 'high', 'monthly', 400, null, '', [], ''],
+    ['牙医复诊', 'low', 'none', 500, null, '', [], ''],
+    ['准备年终述职', 'med', 'yearly', 900, null, '', [], ''],
+    ['换护照', 'none', 'none', 700, null, '需要两张白底照片。', [], ''],
+    /* lunar yearly, the case only this app handles */
+    ['奶奶生日', 'high', 'yearly', null, null, '农历四月十二。', ['家人'], '', { month: 4, day: 12 }],
+    ['中秋回家', 'med', 'yearly', null, null, '', ['家人'], '', { month: 8, day: 15 }],
+    /* no date at all — the backlog */
+    ['学一门新语言', 'none', 'none', null, null, '先确定要投入的时间。', [], ''],
+    ['整理书架', 'none', 'none', null, null, '', [], ''],
+    ['研究桌面小部件方案', 'med', 'none', null, null, '', ['灵感'], '', null, true],
+    ['补货厨房用品', 'low', 'none', null, null, '', [], ''],
+    ['写一份旅行计划', 'none', 'none', null, null, '目的地、预算、请假三天。', [], ''],
+    ['清理浏览器书签', 'none', 'none', null, null, '', [], ''],
+    /* the awkward shapes: a title that must truncate, and one with punctuation */
+    ['一条特别长的任务标题用来测试卡片在卡盒里和散布到桌面以后会不会把文字折到第二行去应该只显示一行并带省略号',
+      'high', 'none', 12, null, '', [], '', null, true],
+    ['Emoji 🎯 与 English mixed 的标题', 'none', 'none', 14, null, '', [], ''],
+    ['引号“嵌套”、斜杠/反斜杠\\与破折号——', 'none', 'none', 16, null, '', [], ''],
+    /* a fortnight of finished work, so the heatmap, the ledger and the ring all have data */
+    ['完成上周周报', 'med', 'none', null, 1, '', [], ''],
+    ['修好打印机驱动', 'low', 'none', null, 2, '', [], ''],
+    ['给同事做代码评审', 'none', 'none', null, 3, '', [], ''],
+    ['搬桌子与整理线缆', 'none', 'none', null, 4, '', [], ''],
+    ['提交报销单', 'high', 'none', null, 5, '', ['财务'], ''],
+    ['写完需求文档', 'med', 'none', null, 7, '', [], 'p'],
+    ['洗空调滤网', 'none', 'none', null, 9, '', [], ''],
+    ['整理旧项目归档', 'none', 'none', null, 11, '', [], 'p'],
+    ['升级构建脚本', 'low', 'none', null, 13, '', [], 'p']
+  ];
 
   /* ---------------------------------------------------------------- ops */
 
@@ -718,6 +805,87 @@
       var n = (s.trash || []).length;
       s.trash = [];
       return { purged: n };
+    },
+
+    /* ---------------------------------------------------------------- sample board
+       Fifty rows to try things on, added BESIDE whatever is already there. The other button
+       in this panel — 恢复示例数据 — replaces the whole file, which is how an afternoon of
+       real tasks disappears while somebody is looking for something to click; these two
+       cannot, because every row they make carries demo: SAMPLE_TAG and clearing matches only
+       that tag. Load it twice and the second load still adds fifty, delete a few by hand and
+       the cleanup will not reach past what it created.
+       The rows are chosen for coverage rather than realism: every repeat kind including the
+       lunar yearly one, dues from three days overdue to next spring, a fortnight of finished
+       work with a timing run behind each so the heatmap, the ledger and the new ring all have
+       something to draw, a title long enough to prove the one-line truncation, and a routine
+       group whose cards tick themselves off. Times are relative to the moment of loading. */
+    'sample:load': function (s, p) {
+      var now = Date.now();
+      var own = s.groups.filter(function (g) { return g.demo !== SAMPLE_TAG; }).map(function (g) { return g.id; });
+      var extra = SAMPLE_GROUPS.map(function (g) {
+        var hit = s.groups.filter(function (x) { return x.demo === SAMPLE_TAG && x.name === g.name; })[0];
+        if (hit) return hit.id;
+        var made = {
+          id: uid('g'), name: g.name, color: g.color, locked: false, autoDone: !!g.autoDone,
+          demo: SAMPLE_TAG, order: maxGroupOrder(s) + 1, createdAt: isoNow()
+        };
+        s.groups.push(made);
+        return made.id;
+      });
+      var pool = own.length ? own : extra;
+      var added = 0;
+      SAMPLE_ROWS.forEach(function (r, i) {
+        var gid = r[7] === 'r' ? extra[0] : (r[7] === 'p' ? extra[1] : pool[i % pool.length]);
+        var made = OPS['todo:add'](s, {
+          title: r[0], groupId: gid, priority: r[1], repeat: r[2],
+          dueAt: r[3] == null ? null : new Date(now + r[3] * 3600000).toISOString(),
+          notes: r[5] || '', tags: r[6] || [], activate: false
+        });
+        var t = todoById(s, made.id);
+        if (!t) return;
+        t.demo = SAMPLE_TAG;
+        if (r[8]) t.lunar = r[8];
+        if (r[9]) t.pinned = true;
+        if (r[4] != null) {
+          /* a finished run, banked the way the stopwatch banks one, so the totals on the
+             card and in the ledger agree without any special casing */
+          var end = now - r[4] * 86400000;
+          var mins = 15 + ((i * 13) % 70);
+          t.done = true;
+          t.completedAt = new Date(end).toISOString();
+          OPS['timer:add'](s, { id: t.id, start: end - (mins + 12) * 60000, end: end - 12 * 60000 });
+        }
+        added++;
+      });
+      /* and three runs that happened TODAY: a sample whose only finished work is last week
+         leaves the axis, the ring and the heatmap empty on the two views people open first */
+      s.todos.filter(function (t) { return t.demo === SAMPLE_TAG && !t.done; }).slice(0, 3)
+        .forEach(function (t, i) {
+          var end = now - i * 3600000;
+          OPS['timer:add'](s, { id: t.id, start: end - (20 + i * 15) * 60000, end: end });
+        });
+      return { added: added, tag: SAMPLE_TAG };
+    },
+
+    'sample:clear': function (s) {
+      var gone = {};
+      var removed = 0;
+      s.todos.forEach(function (t) {
+        if (t.demo !== SAMPLE_TAG) return;
+        gone[t.id] = 1;
+        removed++;
+      });
+      s.todos = s.todos.filter(function (t) { return t.demo !== SAMPLE_TAG; });
+      s.groups = s.groups.filter(function (g) { return g.demo !== SAMPLE_TAG; });
+      /* the runs go with their task, and so does anything already in the bin from it —
+         otherwise clearing the sample leaves fifty deleted rows sitting in the recycle bin */
+      s.timeEntries = (s.timeEntries || []).filter(function (e) { return !gone[e.todoId]; });
+      s.trash = (s.trash || []).filter(function (x) { return !x.todo || x.todo.demo !== SAMPLE_TAG; });
+      Object.keys(gone).forEach(function (id) { delete s.placements[id]; });
+      if (!groupById(s, s.settings.activeGroupId)) {
+        s.settings.activeGroupId = s.groups.length ? s.groups[0].id : null;
+      }
+      return { removed: removed };
     },
 
     'todo:move': function (s, p) {

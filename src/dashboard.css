@@ -264,7 +264,7 @@ body.side-dragging { cursor: col-resize; }
 .task:hover .task-due b { color: var(--paper); }
 .task:hover .task-due i { color: var(--paper-dim); }
 /* the group is a plain dot, no outline */
-.task-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--ink-3); }
+.task-dot { flex: none; width: 9px; height: 9px; background: var(--ink-3); }
 
 /* Day dividers, on a plate: without a background the date text sat directly on the
    grain and the page read as noise rather than as sections. */
@@ -504,7 +504,7 @@ body.side-dragging { cursor: col-resize; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
 }
 .mini-row.done .mini-title { text-decoration: line-through; color: var(--ink-3); }
-.mini-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+.mini-dot { flex: none; width: 8px; height: 8px; background: var(--ink-3); }
 /* one line: elapsed, the timer, then the date with its countdown beside it */
 .mini-right { display: flex; align-items: baseline; gap: 8px; flex: none; }
 .mini-spent { font-size: 9px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
@@ -543,22 +543,30 @@ body.side-dragging { cursor: col-resize; }
 .modal-panel .cal-day { font-size: 9px; }
 .group-list .glock { font-size: 10px; color: var(--ink-3); }
 /* ---- the recycle bin ---- */
+/* The dot takes the same radius token the group dots take. It used to hardcode 50%, so in a
+   square material the bin sat in the same list as the groups wearing a shape none of them
+   had — the one difference the bin should be allowed is its colour. */
 .group-list .trash-row { opacity: .8; }
-.group-list .trash-row .trash-dot { background: var(--ink-3); border-radius: 50%; }
+.group-list .trash-row .trash-dot { background: var(--ink-3); border-radius: var(--r-dot); }
 .group-list .trash-row.on { opacity: 1; }
 .tr-item {
   display: flex; align-items: center; gap: 8px; padding: 7px 12px;
   border-bottom: 1px dashed var(--rule);
 }
-.tr-title { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tr-meta, .tr-left { flex: none; font-size: 9.5px; color: var(--ink-3); }
+/* the same voice as a ledger row: this is a task on holiday, not a different kind of text */
+.tr-title {
+  flex: 1 1 auto; min-width: 0;
+  font-size: 12.5px; font-weight: 700; line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tr-meta, .tr-left { flex: none; font-size: 9px; letter-spacing: .06em; color: var(--ink-3); }
 .tr-left { font-variant-numeric: tabular-nums; }
 .tr-item .btn { flex: none; }
 /* the routine marker has to read at a glance: a group whose cards tick themselves off is
    a different kind of list, and the only clue should not be the badge in its editor */
 .group-list .gauto {
   flex: none; font-size: 8px; line-height: 1.5; padding: 0 4px; color: var(--ink-3);
-  border: 1px solid var(--edge); border-radius: 999px;
+  border: 1px solid var(--edge); border-radius: var(--r-pill);
 }
 .group-list li.on .gauto { color: var(--paper); }
 
@@ -1356,6 +1364,29 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
    slab, and a slab cannot show the stack of groups inside a day. The segments are
    flex children sized as a percentage of the chart, so the tallest day fills the frame
    and every other day reads against it. */
+/* Columns and ring side by side. The ring is fixed width so the fourteen columns keep
+   whatever room is left; on a narrow panel the row wraps and the ring falls below rather
+   than squeezing the columns into slabs again. */
+.rp-charts { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; min-width: 0; }
+.rp-chart-l { flex: 1 1 320px; min-width: 0; }
+.rp-ring-box { flex: none; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.rp-ring-cap { font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-3); }
+.rp-ring { position: relative; flex: none; width: 116px; height: 116px; cursor: default; }
+.rp-ring-band {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid var(--edge);
+  background-color: var(--paper-dim);
+  -webkit-mask: radial-gradient(circle at 50% 50%, transparent 0 62%, #000 63%);
+          mask: radial-gradient(circle at 50% 50%, transparent 0 62%, #000 63%);
+}
+.rp-ring b {
+  position: absolute; left: 0; right: 0; top: 44px; text-align: center;
+  font-size: 15px; font-variant-numeric: tabular-nums;
+}
+.rp-ring span {
+  position: absolute; left: 0; right: 0; top: 63px; text-align: center;
+  font-size: 8.5px; letter-spacing: .12em; color: var(--ink-3);
+}
 .rp-cols {
   display: grid; grid-template-columns: repeat(14, 1fr); gap: 6px; align-items: end;
   height: 104px; border-bottom: 1px solid var(--edge); padding-bottom: 2px;
