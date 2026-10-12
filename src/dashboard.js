@@ -458,18 +458,33 @@
     applyDashLayout();
     const st = D.stats(S.state);
     const grew = S.lastDone !== null && st.done > S.lastDone;
+    /* Each counter states its share of the board as well as its count: four bare numbers in
+       four equal boxes say nothing about whether 46 open is a lot, and that is why the merged
+       module read as empty plates. The bar and the percentage are both measured against
+       全部任务, so the four tiles stay comparable with each other. */
+    const total = st.total || 0;
+    const shareOf = (n) => (total ? Math.round((n / total) * 100) : 0);
     const tiles = [
-      { k: 'OPEN / 未完成', v: st.open, i: '01', key: 'open' },
-      { k: 'TODAY / 今日到期', v: st.today, i: '02', key: 'today' },
-      { k: 'OVERDUE / 已逾期', v: st.overdue, i: '03', key: 'overdue', brick: st.overdue > 0 },
-      { k: 'DONE / 已完成', v: st.done, i: '04', key: 'done' }
+      { en: 'OPEN', zh: '未完成', v: st.open, i: '01', key: 'open', tint: 'sage' },
+      { en: 'TODAY', zh: '今日到期', v: st.today, i: '02', key: 'today', tint: 'honey' },
+      { en: 'OVERDUE', zh: '已逾期', v: st.overdue, i: '03', key: 'overdue', tint: 'vermillion', brick: st.overdue > 0 },
+      { en: 'DONE', zh: '已完成', v: st.done, i: '04', key: 'done', tint: 'teal' }
     ];
-    el.dashStats.innerHTML = tiles.map((t) =>
-      '<div class="stat" data-stat="' + t.key + '">' +
-      '  <div class="stat-head"><span class="idx-mark plain">' + t.i + '</span><span class="k">' + t.k + '</span></div>' +
-      '  <div class="v' + (t.brick ? ' brick' : '') + '" data-stat-value="' + t.key + '">' + t.v + '</div>' +
-      '</div>'
-    ).join('');
+    el.dashStats.innerHTML = tiles.map((t) => {
+      const p = shareOf(t.v);
+      /* both label lengths are in the DOM and the plate picks one: at 300px of module the
+         bilingual label measures 74px against a 61px box, which is the clipped text in the
+         screenshot, and the Chinese half alone is what fits without shrinking to nothing */
+      const full = t.en + ' / ' + t.zh;
+      return '<div class="stat" data-stat="' + t.key + '" style="--tint: var(--' + t.tint + ')"' +
+        ' title="' + full + ' ' + t.v + ' / 共 ' + total + '">' +
+        '  <div class="stat-head"><span class="idx-mark plain">' + t.i + '</span>' +
+        '    <span class="k"><i class="k-full">' + full + '</i><i class="k-short">' + t.zh + '</i></span>' +
+        '    <span class="share">' + p + '%</span></div>' +
+        '  <div class="v' + (t.brick ? ' brick' : '') + '" data-stat-value="' + t.key + '">' + t.v + '</div>' +
+        '  <i class="stat-bar"><b style="width: ' + p + '%"></b></i>' +
+        '</div>';
+    }).join('');
     S.lastDone = st.done;
     const doneTile = el.dashStats.querySelector('.stat[data-stat="done"]');
     if (doneTile && grew) {
@@ -2058,16 +2073,31 @@
       const grab = yToTime(col, ev.clientY) - new Date(e.start).getTime();
       const durMs = new Date(e.end).getTime() - new Date(e.start).getTime();
       blk.classList.add('dragging');
-      const y0 = ev.clientY;
+      /* the block sits under the pointer for the whole drag, so a hit test taken through it
+         would always report the column it started on; it has to be transparent to the pointer
+         for the day columns to be reachable */
+      blk.style.pointerEvents = 'none';
+      const y0 = ev.clientY, x0 = ev.clientX;
+      let liveCol = col, dayBase = base;
       const move = (e2) => {
         /* a 1-2 px jitter on an otherwise still press is a click, not a drag */
-        if (Math.abs(e2.clientY - y0) > 3) justDragged = true;
-        const t = snap(yToTime(col, e2.clientY) - (resize ? 0 : grab));
+        if (Math.abs(e2.clientY - y0) > 3 || Math.abs(e2.clientX - x0) > 3) justDragged = true;
+        if (!resize) {
+          const hit = doc.elementFromPoint(e2.clientX, e2.clientY);
+          const over = hit && hit.closest ? hit.closest('.tk-col') : null;
+          if (over && over !== liveCol && over.dataset.day) {
+            liveCol = over;
+            dayBase = tkDayStart(over.dataset.day);
+            liveCol.appendChild(blk);
+            blk.style.width = '';
+          }
+        }
+        const t = snap(yToTime(liveCol, e2.clientY) - (resize ? 0 : grab));
         if (resize) {
           const end = Math.max(new Date(e.start).getTime() + TK_MIN, t);
           blk.style.height = Math.max(14, (end - new Date(e.start).getTime()) / 3600000 * TK_HOUR_PX - 1) + 'px';
         } else {
-          const top = Math.max(0, Math.min(TK_HOUR_PX * 24 - durMs / 3600000 * TK_HOUR_PX, (t - base) / 3600000 * TK_HOUR_PX));
+          const top = Math.max(0, Math.min(TK_HOUR_PX * 24 - durMs / 3600000 * TK_HOUR_PX, (t - dayBase) / 3600000 * TK_HOUR_PX));
           blk.style.top = top + 'px';
         }
       };
@@ -2075,8 +2105,9 @@
         doc.removeEventListener('pointermove', move);
         doc.removeEventListener('pointerup', up);
         blk.classList.remove('dragging');
+        blk.style.pointerEvents = '';
         const topMs = parseFloat(blk.style.top) / TK_HOUR_PX * 3600000;
-        const start = base + Math.round(topMs / TK_SNAP) * TK_SNAP;
+        const start = dayBase + Math.round(topMs / TK_SNAP) * TK_SNAP;
         const end = resize
           ? Math.max(start + TK_MIN, base + parseFloat(blk.style.height) / TK_HOUR_PX * 3600000 + topMs)
           : start + durMs;
@@ -4260,15 +4291,25 @@
     });
     resizer.addEventListener('pointermove', (ev) => {
       if (!sideDrag) return;
-      const w = Math.min(520, Math.max(220, ev.clientX - sideDrag.left));
-      sideDrag.w = w;
-      document.body.style.setProperty('--side-w', Math.round(w) + 'px');
+      sideDrag.w = Math.min(520, Math.max(220, ev.clientX - sideDrag.left));
+      /* One write per frame. A 1000 Hz pointer delivers eight moves to a 60 Hz frame, and every
+         --side-w write re-lays out the whole grid — the sidebar and the entire main column — so
+         the drag spent most of its time doing layout work the next move had already superseded.
+         That is the stutter under the handle. */
+      if (sideDrag.raf) return;
+      sideDrag.raf = requestAnimationFrame(() => {
+        sideDrag.raf = null;
+        if (!sideDrag) return;
+        document.body.style.setProperty('--side-w', Math.round(sideDrag.w) + 'px');
+      });
     });
     const end = () => {
       if (!sideDrag) return;
       const w = sideDrag.w;
+      if (sideDrag.raf) cancelAnimationFrame(sideDrag.raf);
       sideDrag = null;
       document.body.classList.remove('side-dragging');
+      document.body.style.setProperty('--side-w', Math.round(Math.min(520, Math.max(220, w))) + 'px');
       if (w) API.op({ type: 'settings:update', patch: { sideWidth: Math.round(w) } });
     };
     resizer.addEventListener('pointerup', end);

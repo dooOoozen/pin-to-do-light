@@ -81,7 +81,8 @@
       groupId: null, groupName: '', matched: [], warning: '',
       lunarRequested: false, hasDate: false, hasTime: false,
       month: null, day: null, year: null, dow: null, weekNext: 0,
-      relative: null, evening: false, hour: null, minute: null, hourExplicit: false
+      relative: null, evening: false, hour: null, minute: null, hourExplicit: false,
+      monthOffset: 0
     };
 
     function cut(re) {
@@ -134,6 +135,21 @@
     else if (cut(/后天/)) out.relative = 'd2';
     else if (cut(/明天|明日|明晚/)) { out.relative = 'd1'; if (/明晚/.test(String(out.matched[out.matched.length - 1]))) out.evening = true; }
     else if (cut(/今天|今日|今晚|今儿/)) { out.relative = 'd0'; if (/今晚/.test(String(out.matched[out.matched.length - 1]))) out.evening = true; }
+    /* 大前天 has to be tried before 前天, which it contains. */
+    else if (cut(/大前天/)) out.relative = 'd-3';
+    else if (cut(/前天/)) out.relative = 'd-2';
+    else if (cut(/昨天|昨日|昨晚/)) { out.relative = 'd-1'; if (/昨晚/.test(String(out.matched[out.matched.length - 1]))) out.evening = true; }
+
+    /* ---- relative month: 上个月5号 / 下个月3号 ---- */
+    /* the day is taken together with the month word instead of being left to the bare 号 rule,
+       which refuses a 号 followed by a Han character (3号晚上8点, 5号交报告). A month word with
+       no day after it is not cut at all: it yields no date, so it would only lose words from
+       the title. */
+    m = cut(new RegExp('(上|下)(?:个)?月(?:的)?\\s*' + NUM + '\\s*[号日]'));
+    if (m) {
+      out.monthOffset = m[1] === '上' ? -1 : 1;
+      out.day = cnToNum(m[2]);
+    }
 
     /* ---- absolute date: 5月10日 / 2026年5月10日 / 25号 ---- */
     m = cut(new RegExp('(?:(' + NUM_NC + ')\\s*年\\s*)?(' + NUM_NC + ')\\s*月\\s*(' + NUM_NC + ')\\s*[日号]'));
@@ -227,14 +243,26 @@
         if (startOfDay(date) < startOfDay(now)) date.setFullYear(now.getFullYear() + 1);
       }
       out.hasDate = true;
+    } else if (out.monthOffset && out.day) {
+      /* clamped to the target month's length: 上个月31号 from March is Feb 28, not the
+         Mar 3 that Date() produces for a day number past the end of February. */
+      var last = new Date(now.getFullYear(), now.getMonth() + out.monthOffset + 1, 0).getDate();
+      date = new Date(now.getFullYear(), now.getMonth() + out.monthOffset, Math.min(out.day, last));
+      out.hasDate = true;
     } else if (out.dow !== null && !isNaN(out.dow)) {
       var delta = (out.dow - now.getDay() + 7) % 7;
       date = addDays(now, delta + out.weekNext * 7);
       out.hasDate = true;
       out.weekdayOnly = true;
     } else if (out.relative) {
-      date = addDays(now, parseInt(out.relative.replace('d', ''), 10));
-      out.hasDate = true;
+      var rel = parseInt(out.relative.replace('d', ''), 10);
+      /* a day behind us only becomes a due date when the phrase also states a time: 昨天 alone
+         stays dateless (the past is not a due date, asserted in tools/eval.js), 昨天3点 is an
+         instant that has already passed and can still be logged against. */
+      if (rel >= 0 || out.hasTime || out.evening) {
+        date = addDays(now, rel);
+        out.hasDate = true;
+      }
     }
 
     /* repeats that carry their own day */

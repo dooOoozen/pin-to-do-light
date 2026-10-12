@@ -232,7 +232,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
   border: 1px solid var(--edge);
   padding: 8px 12px;
   cursor: pointer;
-  transition: background .12s steps(2), color .12s steps(2);
+  transition: background .16s ease-out, color .16s ease-out;
 }
 .btn:hover { background: var(--ink); color: var(--paper); }
 .btn:active { transform: translate(1px, 1px); }
@@ -255,7 +255,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
   border: 1px solid var(--edge);
   font-size: 12px; line-height: 1;
   cursor: pointer;
-  transition: background .12s steps(2), color .12s steps(2);
+  transition: background .16s ease-out, color .16s ease-out;
 }
 .icon-btn:hover { background: var(--ink); color: var(--paper); }
 .icon-btn.danger:hover { background: var(--brick); color: var(--brick-ink); }
@@ -325,7 +325,7 @@ input[type="range"] { accent-color: var(--brick); }
   background: var(--paper-hi);
   border: 1px solid var(--edge);
   cursor: pointer;
-  transition: background .1s steps(2), color .1s steps(2);
+  transition: background .14s ease-out, color .14s ease-out;
 }
 .chk::after { content: "\00D7"; font-weight: 700; }
 .chk:hover { background: var(--paper-dim); }
@@ -340,7 +340,7 @@ input[type="range"] { accent-color: var(--brick); }
   position: absolute; top: 1px; left: 1px;
   width: 12px; height: 12px;
   border: 1px solid var(--edge); background: transparent;
-  transition: left .12s steps(3), background .12s steps(2);
+  transition: left .18s cubic-bezier(.2,.8,.2,1), background .14s ease-out;
 }
 .switch.on { background: var(--paper-lo); }
 .switch.on i { left: 19px; background: var(--ink); }
@@ -396,8 +396,8 @@ input[type="range"] { accent-color: var(--brick); }
   /* A dialog is the one surface that has to stay readable over anything, so it frosts instead
      of fading: what the page paints behind it is blurred and then covered. Where the window is
      transparent there is nothing in the page to sample and the filter does nothing. */
-  -webkit-backdrop-filter: blur(14px) saturate(1.06);
-  backdrop-filter: blur(14px) saturate(1.06);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
   border: 1px solid var(--edge);
   /* the stacked offset print shadow: two hard edges, no blur, so a lifted panel reads
      as another sheet on the same desk rather than as a glow */
@@ -496,7 +496,7 @@ input[type="range"] { accent-color: var(--brick); }
   color: var(--ink); background: var(--paper-hi);
   border: 1px solid var(--edge);
   cursor: pointer;
-  transition: background .12s steps(2), color .12s steps(2);
+  transition: background .16s ease-out, color .16s ease-out;
 }
 .plan-quick button:hover { background: var(--vermillion); color: var(--cream); border-color: var(--vermillion); }
 .plan-row { display: flex; gap: 5px; margin-bottom: 5px; }
@@ -512,7 +512,7 @@ input[type="range"] { accent-color: var(--brick); }
   background: var(--paper-hi);
   border: 1px solid var(--edge);
   cursor: pointer;
-  transition: background .12s steps(2), color .12s steps(2);
+  transition: background .16s ease-out, color .16s ease-out;
 }
 .plan-field:hover { background: var(--paper-dim); }
 .plan-field.on { color: var(--ink); font-weight: 700; background: var(--paper); }
@@ -541,7 +541,7 @@ input[type="range"] { accent-color: var(--brick); }
   font-family: var(--font-mono); font-size: 9.5px;
   background: var(--paper-hi); border: 1px solid var(--rule-strong); color: var(--ink);
   cursor: pointer;
-  transition: background .1s steps(2), color .1s steps(2);
+  transition: background .14s ease-out, color .14s ease-out;
 }
 .cal-day:hover { background: var(--paper-dim); }
 .cal-day.today { border-color: var(--vermillion); color: var(--vermillion); }
@@ -622,7 +622,7 @@ input[type="range"] { accent-color: var(--brick); }
   font-size: calc(9.5px * var(--uis, 1)); letter-spacing: .16em; text-transform: uppercase;
   background: var(--paper-hi); border: 1px solid var(--edge); color: var(--ink);
   cursor: pointer;
-  transition: background .1s steps(2), color .1s steps(2);
+  transition: background .14s ease-out, color .14s ease-out;
 }
 .prio-row .pbtn:hover { background: var(--paper-dim); }
 .prio-row .pbtn.on { background: var(--ink); color: var(--paper); font-weight: 700; }
@@ -849,6 +849,16 @@ input[type="range"] { accent-color: var(--brick); }
 .badge, .gchip, .switch, .switch i { border-radius: var(--r-pill); }
 .status-mark, .chip-swatch, .card-dot, .task-dot, .mini-dot, .deck-swatch,
 .group-list .dot { border-radius: var(--r-dot); }
+/* Round mode also covers the report's geometry, the row's tick and the material picker: these
+   declared no corners at all, so the switch had nothing to change. Only the top of a stacked
+   column is rounded — the segments meet each other, not the plate. */
+.chk, .style-card, .style-sw i, .rp-lg i, .rp-row-b { border-radius: var(--r-ctl); }
+.rp-col .rp-seg:last-child { border-radius: var(--r-ctl) var(--r-ctl) 0 0; }
+/* The colour input paints its own chip inside the control, with its own square border: the
+   control rounded and the chip stayed a hard square, which is the 直角方形 report on
+   自己选一个颜色. */
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"]::-webkit-color-swatch { border: 0; border-radius: inherit; }
 /* A control that has to read as a disc: --r-ctl is a corner radius, and 11px of it on a 24px
    box is a squircle — the "椭圆不是正圆" report on the 新建分组 button. */
 .icon-btn.circle { border-radius: var(--r-dot); }
@@ -1997,9 +2007,9 @@ input[type="range"] { accent-color: var(--brick); }
   background-color: color-mix(in srgb, var(--paper-hi) 74%, transparent);
 }
 :root[data-style="frost"] .modal-panel {
-  /* the dialog is where text gets read, not where the glass effect gets admired: over a page
-     that is itself translucent the same 74% let the desk through the settings form */
-  background-color: color-mix(in srgb, var(--paper-hi) 93%, transparent);
+  /* the dialog is where text gets read, so it is more opaque than a pane — but it stays a
+     pane: at 93% the frosting was invisible and the panel read as a solid sheet */
+  background-color: color-mix(in srgb, var(--paper-hi) 78%, transparent);
 }
 :root[data-style="frost"] .deck-face,
 :root[data-style="frost"] .deck-sheet,

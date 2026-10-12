@@ -90,6 +90,7 @@ const RESOLVER = [
   { say: '后天', d: 26, m: 9 },
   { say: '大后天', d: 27, m: 9 },
   { say: '昨天', none: true, note: 'the past is not a due date' },
+  { say: '前天', none: true, note: '…unless the phrase also says when' },
   /* time of day, on top of a date */
   { say: '下周二晚上8点', d: 29, m: 9, h: 20 },
   { say: '下周三下午三点半', d: 30, m: 9, h: 15, min: 30 },
@@ -97,6 +98,13 @@ const RESOLVER = [
   { say: '今晚', d: 24, h: 20 },
   { say: '明晚', d: 25, h: 20 },
   { say: '后天中午', d: 26, h: 12, note: 'a bare time of day still says when' },
+  { say: '昨天3点', d: 23, m: 9, h: 15, note: 'a bare 1..6 hour reads as afternoon, as it does for 今天3点' },
+  { say: '昨天15点20分', d: 23, m: 9, h: 15, min: 20 },
+  { say: '昨天晚上9点', d: 23, m: 9, h: 21 },
+  { say: '昨晚', d: 23, m: 9, h: 20 },
+  { say: '昨日9点', d: 23, m: 9, h: 9 },
+  { say: '前天9时', d: 22, m: 9, h: 9 },
+  { say: '大前天8点', d: 21, m: 9, h: 8 },
   { say: '周五下午', d: 25, h: 14 },
   { say: '周三早上', d: 30, h: 9 },
   { say: '周六晚上七点半', d: 26, h: 19, min: 30 },
@@ -109,13 +117,19 @@ const RESOLVER = [
   { say: '每周一早上9点', repeat: 'weekly', d: 28, h: 9 },
   { say: '每周五', repeat: 'weekly', d: 25 },
   { say: '每月15号', repeat: 'monthly', m: 10, d: 15 },
+  /* 上个月/下个月 arithmetic. Day-length clamping (上个月31号 in a 30-day month) and the
+     year rollover need reference days other than NOW, so tools/nlp-probe.js asserts those. */
+  { say: '上个月5号', m: 8, d: 5, h: 9 },
+  { say: '上月5日14时', m: 8, d: 5, h: 14 },
+  { say: '下个月3号', m: 10, d: 3, h: 9 },
+  { say: '下个月3号晚上8点', m: 10, d: 3, h: 20 },
+  { say: '下个月', none: true, note: 'a month with no day inside it is not a day' },
   { say: '下周二 -工作', d: 29, m: 9, group: 'g_work' },
   /* the lunar path only fires for a repeating anniversary — a bare 农历八月十五 is a date
      with no year rule, and the parser says so by returning nothing */
   { say: '每年农历八月十五', lunarOk: true, note: 'resolved through the lunar table' },
   /* forms the parser does not claim. Asserted as "no date" so the boundary is explicit and
      cannot start silently inventing one; tools/nlp-probe.js is how this list was found. */
-  { say: '下个月3号', none: true, note: 'no month arithmetic yet' },
   { say: '12/25', none: true, note: 'numeric slash dates are not a supported surface form' },
   { say: '下周', none: true, note: 'a week with no weekday inside it is not a day' },
   { say: '月底前', none: true, note: 'no month-end rule yet' },
