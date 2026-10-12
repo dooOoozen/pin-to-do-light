@@ -71,6 +71,15 @@
   Promise.resolve().then(function () { return wait(2400); })
     .then(function () { return API.op({ type: 'sample:load' }); })
     .then(function () { return wait(600); })
+    /* an empty bin is a legitimate state and has no row to measure, so put one of the
+       sample's own tasks in it — the clear at the end takes it out again */
+    .then(function () { return API.getState(); })
+    .then(function (st) {
+      var one = st.todos.filter(function (t) { return t.demo === 's50' && !t.done; })[0];
+      if (!one) { fails.push('the sample board did not load'); return null; }
+      return API.op({ type: 'todo:delete', id: one.id });
+    })
+    .then(function () { return wait(400); })
     .then(function () {
       var chain = Promise.resolve();
       TASK_VIEWS.forEach(function (v) {

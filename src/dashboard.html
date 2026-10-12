@@ -95,14 +95,6 @@
             </div>
           </section>
 
-          <section class="mod hud" id="modStats" data-mod="stats">
-            <div class="hud-head mod-head">
-              <span class="idx-mark plain">统</span><span class="mtitle"><i class="t-en">STATS / </i><i class="t-zh">统计</i></span>
-              <span class="spacer"></span><button class="mod-span" type="button" title="调整占宽">▭</button>
-            </div>
-            <div class="mod-body"><div class="pd-stats" id="dashStats"></div></div>
-          </section>
-
           <section class="mod hud" id="modPomo" data-mod="pomo">
             <div class="hud-head mod-head">
               <span class="idx-mark plain">番</span><span class="mtitle"><i class="t-en">POMODORO / </i><i class="t-zh">番茄钟</i></span>
@@ -112,13 +104,16 @@
             <div class="mod-body mod-pomo-body"></div>
           </section>
 
+          <!-- 今日概览 and the old 统计 module are one thing: both answer "how is today
+               going", and side by side they disagreed about the counts. The stats tiles
+               live here so the ring, the figures and the six numbers cannot drift. -->
           <section class="mod hud" id="modToday" data-mod="today">
             <div class="hud-head mod-head">
-              <span class="idx-mark plain">今</span><span class="mtitle"><i class="t-en">TODAY / </i><i class="t-zh">今日概览</i></span>
+              <span class="idx-mark plain">今</span><span class="mtitle"><i class="t-en">TODAY / </i><i class="t-zh">今日概览 · 统计</i></span>
               <span class="spacer"></span><span class="mono faint" id="todayTotal"></span>
               <button class="mod-span" type="button" title="调整占宽">▭</button>
             </div>
-            <div class="mod-body mod-today-body"></div>
+            <div class="mod-body mod-today-body"><div class="pd-stats" id="dashStats"></div></div>
           </section>
 
           <section class="mod hud" id="modMemo" data-mod="memo">

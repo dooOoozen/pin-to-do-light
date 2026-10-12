@@ -191,6 +191,11 @@
      tokens, so the night palette is a swap rather than a restyle pass */
   function applyTheme() {
     if (window.NeonTheme) window.NeonTheme.apply(S.state && S.state.settings);
+    /* Group colours are adapted, not replaced: paint() needs the hour and the material's own
+       accent so the hue can lean a few degrees without becoming a different colour. */
+    if (window.NeonTheme && D.setTheme) {
+      D.setTheme(window.NeonTheme.themeOf(S.state.settings), window.NeonTheme.current('--brick'));
+    }
     const ink = S.state && S.state.settings.theme === 'ink';
     if (el.btnTheme) {
       el.btnTheme.textContent = ink ? '昼' : '夜';
@@ -354,7 +359,7 @@
         (g.locked ? '<span class="glock" title="固定分组，不可删除"></span>' : '<button class="icon-btn gedit" title="编辑分组">\u270E</button>') +
         '<span class="gcount">' + open + '/' + items.length + '</span>';
       const dot = li.querySelector('.dot');
-      dot.style.background = D.PALETTE[g.color] || D.PALETTE.brick;
+      dot.style.background = D.paint(g.color);
       li.querySelector('.gname').textContent = g.name;
       li.addEventListener('click', () => { S.view = 'group'; S.groupId = g.id; renderAll(); });
       const edit = li.querySelector('.gedit');
@@ -373,7 +378,7 @@
     bin.className = 'trash-row' + (S.view === 'trash' ? ' on' : '');
     bin.innerHTML = '<i class="dot trash-dot"></i><span class="gname">回收站</span>' +
       '<span class="gcount">' + ((S.state.trash || []).length) + '</span>';
-    bin.title = '删除的任务在这里留 30 天，然后自动清掉';
+    bin.title = '删除的任务将在 30 天后自动消失';
     bin.addEventListener('click', () => { S.view = 'trash'; S.groupId = null; renderAll(); });
     el.groups.appendChild(bin);
   }
@@ -534,8 +539,8 @@
   /* ---- the dashboard grid the user assembles themselves ---- */
 
   const MOD_DEFAULT = [
-    { id: 'clock', span: 2 }, { id: 'stats', span: 4 },
-    { id: 'pomo', span: 2 }, { id: 'today', span: 2 }, { id: 'memo', span: 2 },
+    { id: 'clock', span: 2 }, { id: 'today', span: 4 },
+    { id: 'pomo', span: 2 }, { id: 'memo', span: 2 },
     { id: 'heat', span: 3 }, { id: 'mini', span: 3 }
   ];
   /* How many of the six columns a module may claim, and how many rows it may take. These
@@ -603,7 +608,9 @@
       const el = grid.querySelector('[data-mod="' + id + '"]');
       if (!el) return;
       el.style.gridColumn = 'span ' + L.span[id];
-      el.style.gridRow = 'span ' + (L.row[id] || 1);
+      /* 今日概览 · 统计 carries the ring row above the counters, which is more than one 168 px
+         track at the larger interface scales. A size the user set themselves still wins. */
+      el.style.gridRow = 'span ' + (L.row[id] || (id === 'today' ? 2 : 1));
       grid.appendChild(el);
       if (!el.querySelector('.mod-fold')) {
         const head = el.querySelector('.mod-head');
@@ -864,9 +871,12 @@
         '      <input type="range" id="pomoLen" min="5" max="90" step="5" value="25" title="番茄时长" /></label>' +
         '  </div>';
     }
-    if (today && !today.childElementCount) {
-      today.innerHTML = '<div class="today-body"><div class="today-ring" id="todayRing"></div>' +
-        '<div class="today-figs" id="todayFigs"></div></div>';
+    /* the stats tiles already live in this body (they came over when 统计 folded into
+       今日概览), so the ring goes above them rather than replacing them */
+    if (today && !doc.getElementById('todayRing')) {
+      today.insertAdjacentHTML('afterbegin',
+        '<div class="today-body"><div class="today-ring" id="todayRing"></div>' +
+        '<div class="today-figs" id="todayFigs"></div></div>');
     }
     if (memo && !memo.childElementCount) {
       memo.innerHTML = '<div class="memo-list" id="memoList"></div>' +
@@ -1144,7 +1154,7 @@
     }
     list.forEach((t) => {
       const row = doc.createElement('div');
-      row.className = 'mini-row' + (t.done ? ' done' : '');
+      row.className = 'mini-row' + (t.done ? ' done' : '') + (t.timerStartedAt ? ' running' : '');
       row.dataset.id = t.id;
       const chk = doc.createElement('button');
       chk.className = 'chk';
@@ -1158,7 +1168,7 @@
       const g = D.groupById(S.state, t.groupId);
       const dot = doc.createElement('i');
       dot.className = 'mini-dot';
-      dot.style.background = D.PALETTE[(g && g.color) || 'brick'];
+      dot.style.background = D.paint(g && g.color);
       dot.title = g ? g.name : '';
       const title = doc.createElement('div');
       title.className = 'mini-title';
@@ -1287,18 +1297,28 @@
     const head = doc.createElement('div');
     head.className = 'day-head';
     head.innerHTML = '<b>回收站 · TRASH</b><span class="spacer"></span>' +
-      '<span class="tiny faint">保留 30 天</span>' +
+      '<span class="tiny faint">删除的任务将在 30 天后自动消失</span>' +
       (items.length ? '<button class="btn tiny danger" id="trClear">清空</button>' : '');
     el.list.appendChild(head);
     if (items.length) {
-      doc.getElementById('trClear').addEventListener('click', () => {
+      const clear = doc.getElementById('trClear');
+      /* emptying the bin is the one action here that cannot be undone, so it asks twice —
+         the same second-deliberate-click rule the per-row 彻底删除 uses */
+      clear.addEventListener('click', (ev) => {
+        const b = ev.currentTarget;
+        if (b.dataset.confirm !== '1') {
+          b.dataset.confirm = '1';
+          b.textContent = '再点一次确认清空';
+          setTimeout(() => { if (b.isConnected) { b.dataset.confirm = ''; b.textContent = '清空'; } }, 4000);
+          return;
+        }
         API.op({ type: 'trash:clear' }).then(() => toast('回收站已清空 // EMPTIED'));
       });
     }
     if (!items.length) {
       const empty = doc.createElement('div');
       empty.className = 'empty';
-      empty.innerHTML = '<div class="big">EMPTY</div><div class="small">删除的任务先进这里，30 天后才真正消失</div>';
+      empty.innerHTML = '<div class="big">EMPTY</div><div class="small">删除的任务将在 30 天后自动消失</div>';
       el.list.appendChild(empty);
       return;
     }
@@ -1451,7 +1471,7 @@
     runs.forEach((r) => {
       const t = D.todoById(state, r.entry.todoId);
       const g = t ? (D.groupById(state, t.groupId) || state.groups[0]) : null;
-      const col = g ? (D.PALETTE[g.color] || D.PALETTE.brick) : 'var(--ink-3)';
+      const col = g ? (D.paint(g.color)) : 'var(--ink-3)';
       const i0 = Math.max(0, Math.floor((r.from - base) / 86400000 * N));
       const i1 = Math.min(N, Math.ceil((r.to - base) / 86400000 * N));
       for (let i = i0; i < i1; i++) owner[i] = col;
@@ -1667,6 +1687,15 @@
       grid.appendChild(col);
     });
 
+    /* An empty axis and a broken one look the same, so name the state and what fills it:
+       the axis is made of timed runs, not of tasks. */
+    if (!days.some((dk) => D.entriesOn(S.state, dk, now).length)) {
+      const hint = doc.createElement('div');
+      hint.className = 'tk-empty';
+      hint.innerHTML = '<b>当前没有任务</b><span>时间轴记录的是计时的专注：在任务上点 ▶ 开始，这里就会出现色块</span>';
+      grid.appendChild(hint);
+    }
+
     /* column captions sit above the scroll area so they stay visible */
     const cap = doc.createElement('div');
     cap.className = 'tk-caps';
@@ -1729,10 +1758,14 @@
   const mixOf = (a, b, k) => a.map((c, i) => Math.round(c * (1 - k) + b[i] * k));
   const hexOf = (rgb) => '#' + rgb.map((c) => ('0' + c.toString(16)).slice(-2)).join('');
 
-  function blockInk(hex, night) {
+  /* The fill arrives already adapted for the hour by D.paint, so this only answers the
+     question the group palette cannot: is this particular colour light enough to need dark
+     text on it, and what edge tone reads as its border. Darkening it again here is what made
+     a group look like a different colour at night. */
+  function blockInk(hex) {
     const rgb = hexRGB(hex);
     if (!rgb) return { fill: hex, ink: 'var(--ink)', edge: 'var(--edge)' };
-    const fill = night ? mixOf(rgb, [10, 9, 7], 0.34) : rgb;
+    const fill = rgb;
     const pale = lumOf(fill) > 145;
     return {
       fill: hexOf(fill),
@@ -1755,8 +1788,8 @@
     b.style.height = Math.max(14, hpx) + 'px';
     /* the whole block wears its group's colour, so a week of columns reads as one
        glanceable picture of where the hours went */
-    const raw = g ? (D.PALETTE[g.color] || D.PALETTE.brick) : 'var(--paper-dim)';
-    const pair = blockInk(raw, document.documentElement.dataset.theme === 'ink');
+    const raw = g ? (D.paint(g.color)) : 'var(--paper-dim)';
+    const pair = blockInk(raw);
     b.style.background = pair.fill;
     b.style.color = pair.ink;
     b.style.borderColor = pair.edge;
@@ -2213,9 +2246,13 @@
     const next = rpEl('btn ghost sm', '\u203A');
     next.title = '下一' + unit;
     next.addEventListener('click', () => step(1));
-    bar.appendChild(prev);
+    /* one control, not two ends of the bar: the pair reads as a single stepper and the
+       period it is stepping through sits beside it */
+    const pager = rpEl('rp-pager');
+    pager.appendChild(prev);
+    pager.appendChild(next);
+    bar.appendChild(pager);
     bar.appendChild(rpEl('rp-range-label', rg.label));
-    bar.appendChild(next);
     const print = doc.createElement('button');
     print.className = 'btn ghost sm';
     print.textContent = '打小票';
@@ -2271,7 +2308,7 @@
       const track = rpEl('rp-track');
       const fill = rpEl('rp-fill');
       fill.style.width = Math.max(2, (byGroup[gid] / gmax) * 100) + '%';
-      fill.style.background = g ? (D.PALETTE[g.color] || D.PALETTE.brick) : 'var(--ink-3)';
+      fill.style.background = g ? (D.paint(g.color)) : 'var(--ink-3)';
       track.appendChild(fill);
       row.appendChild(track);
       row.appendChild(rpEl('rp-row-v', rpMs(byGroup[gid])));
@@ -2279,27 +2316,30 @@
     });
     wrap.appendChild(gbox);
 
-    /* ---- the last 14 days, regardless of the switch above: it is the shape of the
-       habit that people come back to look at, not the number for one week. Each column
-       is stacked rather than filled with one colour, because a day is usually spent on
-       more than one thing: the segments run in the order they happened, earliest at the
-       bottom, and each one wears the colour of the group it belonged to. ---- */
-    /* Columns on the left, ring on the right, one row. They answer different questions — the
-       columns are always the last 14 days, the ring is the period chosen at the top — so the
-       ring wears that period's own name instead of leaving it implied. */
+    /* ---- the period's own shape ---- */
+    /* The columns used to show the last fourteen days whatever the switch above said, so the
+       chart under a 本周 heading was not a picture of this week. The period now drives the
+       buckets: 24 hours today, 7 days this week, 30 days this month. Each column stacks in the
+       order the runs happened, earliest at the bottom, wearing its group's colour. */
+    const span = rg.kind === 'day' ? { n: 24, ms: 3600000 }
+      : rg.kind === 'month' ? { n: 30, ms: DAY_MS } : { n: 7, ms: DAY_MS };
     const charts = rpEl('rp-charts');
     const chartL = rpEl('rp-chart-l');
-    chartL.appendChild(rpEl('rp-h2', 'DAYS / 最近 14 天'));
+    chartL.appendChild(rpEl('rp-h2', rg.kind === 'day' ? 'HOURS / 今天 24 小时'
+      : rg.kind === 'month' ? 'DAYS / 本月 30 天' : 'DAYS / 本周 7 天'));
     wrap.appendChild(charts);
     charts.appendChild(chartL);
     const cols = rpEl('rp-cols');
-    const today = dayStart();
+    cols.style.gridTemplateColumns = 'repeat(' + span.n + ', minmax(0, 1fr))';
+    if (span.n > 14) cols.classList.add('dense');
+    const nowMs = Date.now();
     const perDay = [];
-    for (let i = 13; i >= 0; i--) {
-      const from = today - i * DAY_MS;
+    for (let i = 0; i < span.n; i++) {
+      const from = rg.from + i * span.ms;
+      const to = from + span.ms;
       const list = (st.timeEntries || []).filter((e) => {
-        const t = new Date(e.start).getTime();
-        return t >= from && t < from + DAY_MS;
+        const at = new Date(e.start).getTime();
+        return at >= from && at < to;
       }).sort((a, b) => new Date(a.start) - new Date(b.start));
       const runs = [];
       list.forEach((e) => {
@@ -2312,28 +2352,34 @@
       const ms = runs.reduce((s, r) => s + r.ms, 0);
       const done = st.todos.reduce((s, t) => {
         const c = t.completedAt ? new Date(t.completedAt).getTime() : 0;
-        return (c >= from && c < from + DAY_MS) ? s + 1 : s;
+        return (c >= from && c < to) ? s + 1 : s;
       }, 0);
-      perDay.push({ from, ms, done, runs });
+      perDay.push({ from, to, ms, done, runs });
     }
     const dmax = Math.max(1, ...perDay.map((d) => d.ms));
-    perDay.forEach((d) => {
+    perDay.forEach((d, i) => {
       const col = rpEl('rp-col');
-      if (d.from === today) col.classList.add('today');
+      if (nowMs >= d.from && nowMs < d.to) col.classList.add('today');
       /* the column is flex-direction: column-reverse, so appending in the order the
          runs happened puts the earliest at the bottom and the day reads upwards */
       d.runs.forEach((r) => {
         const seg = rpEl('rp-seg');
         const g = D.groupById(st, r.gid);
         seg.style.height = Math.max(1.5, (r.ms / dmax) * 100) + '%';
-        seg.style.background = g ? (D.PALETTE[g.color] || D.PALETTE.brick) : 'var(--ink-3)';
+        seg.style.background = g ? (D.paint(g.color)) : 'var(--ink-3)';
         seg.title = (g ? g.name : '（已删除）') + ' · ' + rpMs(r.ms);
         col.appendChild(seg);
       });
       const dt = new Date(d.from);
-      col.title = (dt.getMonth() + 1) + '/' + dt.getDate() + ' · ' + rpMs(d.ms) +
-        ' · 完成 ' + d.done;
-      col.appendChild(rpEl('rp-col-x', String(dt.getDate())));
+      const cap = rg.kind === 'day'
+        ? pad2t(dt.getHours()) + ':00 – ' + pad2t((dt.getHours() + 1) % 24) + ':00'
+        : (dt.getMonth() + 1) + '/' + dt.getDate();
+      col.title = cap + ' · ' + rpMs(d.ms) + ' · 完成 ' + d.done;
+      /* thirty columns cannot each carry a label, so the axis names every third one and the
+         hover title covers the rest */
+      const show = rg.kind === 'day' ? (dt.getHours() % 3 === 0) : (span.n <= 7 || i % 3 === 0);
+      col.appendChild(rpEl('rp-col-x', show
+        ? (rg.kind === 'day' ? String(dt.getHours()) : String(dt.getDate())) : ''));
       cols.appendChild(col);
     });
     chartL.appendChild(cols);
@@ -2344,7 +2390,7 @@
       if (!used) return;
       const chip = rpEl('rp-lg');
       const sw = doc.createElement('i');
-      sw.style.background = D.PALETTE[g.color] || D.PALETTE.brick;
+      sw.style.background = D.paint(g.color);
       chip.appendChild(sw);
       chip.appendChild(doc.createTextNode(g.name));
       legend.appendChild(chip);
@@ -2357,7 +2403,7 @@
     let acc = 0;
     const stops = totalMs > 0 ? groups.map((gid) => {
       const g = D.groupById(st, gid);
-      const c = g ? (D.PALETTE[g.color] || D.PALETTE.brick) : 'var(--ink-3)';
+      const c = g ? (D.paint(g.color)) : 'var(--ink-3)';
       const a0 = (acc / totalMs) * 100;
       acc += byGroup[gid];
       return c + ' ' + a0.toFixed(2) + '% ' + ((acc / totalMs) * 100).toFixed(2) + '%';
@@ -2437,6 +2483,13 @@
       });
     });
     el.viewPanel.innerHTML = '';
+    if (!buckets.length) {
+      const empty = doc.createElement('div');
+      empty.className = 'empty';
+      empty.innerHTML = '<div class="big">当前没有任务</div><div class="small">时间线按日期排开未完成的任务 — 在左侧登记，或在时间轴上拖一段时间新建一条</div>';
+      el.viewPanel.appendChild(empty);
+      return;
+    }
     el.viewPanel.appendChild(wrap);
   }
 
@@ -2502,7 +2555,7 @@
         chip.className = 'cal-chip' + (t.done ? ' done' : '');
         chip.dataset.open = t.id;
         chip.title = t.title;
-        chip.innerHTML = '<i style="background:' + (D.PALETTE[g.color] || D.PALETTE.brick) + '"></i>';
+        chip.innerHTML = '<i style="background:' + (D.paint(g.color)) + '"></i>';
         chip.appendChild(doc.createTextNode(t.title));
         cell.appendChild(chip);
       });
@@ -2544,9 +2597,9 @@
 
   function buildRow(t, index) {
     const g = D.groupById(S.state, t.groupId) || S.state.groups[0];
-    const accent = D.PALETTE[g.color] || D.PALETTE.brick;
+    const accent = D.paint(g.color);
     const row = doc.createElement('article');
-    row.className = 'task' + (t.done ? ' done' : '');
+    row.className = 'task' + (t.done ? ' done' : '') + (t.timerStartedAt ? ' running' : '');
     row.dataset.id = t.id;
 
     const chk = doc.createElement('button');
@@ -3329,6 +3382,8 @@
       '  <div class="full"><label class="label">分组颜色 GROUP COLOR</label>' +
       '    <div class="set-hint" style="margin:-2px 0 6px">用于卡片左侧色条、分组标签与卡盒指示灯（点击立即生效）</div>' +
       '    <div class="color-row" id="gColors"></div>' +
+      '    <div class="color-custom"><span class="set-hint">或自己选一个颜色</span>' +
+      '      <input class="cbtn custom" type="color" id="gCustom" title="自定义分组颜色" /></div>' +
       '    <div class="color-preview" id="gPreview"></div>' +
       '  </div>' +
       '  <div class="full"><div class="set-row"><div>' +
@@ -3354,26 +3409,44 @@
       function refreshPreview() {
         const label = (name.value.trim() || '新分组');
         preview.innerHTML =
-          '<div class="cp-card" style="border-left-color:' + D.PALETTE[picked] + '"></div>' +
-          '<span class="badge group" style="border-left:4px solid ' + D.PALETTE[picked] + '">' + escapeHtml(label) + '</span>' +
-          '<i class="dot" style="background:' + D.PALETTE[picked] + '"></i>';
+          '<div class="cp-card" style="border-left-color:' + D.baseColor(picked) + '"></div>' +
+          '<span class="badge group" style="border-left:4px solid ' + D.baseColor(picked) + '">' + escapeHtml(label) + '</span>' +
+          '<i class="dot" style="background:' + D.baseColor(picked) + '"></i>';
       }
 
       D.COLOR_KEYS.forEach((key) => {
         const b = doc.createElement('button');
         b.type = 'button';
         b.className = 'cbtn' + (key === picked ? ' on' : '');
-        b.style.background = D.PALETTE[key];
+        b.style.background = D.baseColor(key);
         b.dataset.color = key;
         b.title = key;
         colorsBox.appendChild(b);
       });
+
+      /* The stored colour may be a hex the user chose, which no swatch matches — the picker
+         is what shows it back to them, and taking a new value from it is a single change. */
+      const custom = $('#gCustom', root);
+      function markPicked() {
+        $$('.cbtn', colorsBox).forEach((x) => x.classList.toggle('on', x.dataset.color === picked));
+        if (custom) custom.value = D.baseColor(picked);
+        refreshPreview();
+      }
+      if (custom) {
+        custom.value = D.baseColor(picked);
+        custom.addEventListener('input', () => { picked = custom.value.toLowerCase(); refreshPreview(); });
+        custom.addEventListener('change', () => {
+          picked = custom.value.toLowerCase();
+          markPicked();
+          if (editing) API.op({ type: 'group:update', id: group.id, patch: { color: picked } });
+        });
+      }
       colorsBox.addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-color]');
         if (!b) return;
         picked = b.dataset.color;
-        $$('.cbtn', colorsBox).forEach((x) => x.classList.toggle('on', x === b));
-        refreshPreview();
+        /* one path for both controls, so picking a swatch also moves the custom picker back */
+        markPicked();
         if (editing) {
           /* apply immediately so the change is visible everywhere right away */
           API.op({ type: 'group:update', id: group.id, patch: { color: picked } });

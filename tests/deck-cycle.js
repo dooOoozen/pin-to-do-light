@@ -94,7 +94,13 @@
     setTimeout(function () { waitForCard(tries - 1); }, 120);
   }
 
-  setTimeout(function () { ensureCard().then(function () { waitForCard(25); }); }, 1200);
+  setTimeout(function () {
+    /* Silence the host's pointer feed for the run: the user's pointer on another display
+       arrives here as real frames, and their positions are what the retry loop below was
+       working around. Test frames are marked synthetic and pass the switch. */
+    nd.cursorFeed(false);
+    ensureCard().then(function () { waitForCard(25); });
+  }, 1200);
 
   function hoverCard() {
     var list = loose();

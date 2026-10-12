@@ -63,6 +63,7 @@
   let popOpenTimer = null;
   let popReaskTimer = null;
   let hoverArmed = true;
+  let hoverLeft = true;
   let hoverRearmAfter = 0;
   let audioCtx = null;
   let lastSound = '';
@@ -86,16 +87,19 @@
       queueHitTest();
     },
     /* the whole command branch, so the tucked-approach rule can be probed at a
-       measured distance instead of being read off the constants */
+       measured distance instead of being read off the constants. Test frames are marked
+       synthetic so a test can switch the real feed off (see cursorFeed) and keep working:
+       the user's pointer on another display otherwise overwrites lastPointer between two
+       injected frames, and the result describes that pointer instead of the deck. */
     cursorFrame: (x, y, inside) => {
-      onCommand({ type: 'cursor', x: x, y: y, inside: inside === true });
+      onCommand({ type: 'cursor', x: x, y: y, inside: inside === true, synthetic: true });
     },
     /* the deck's own scatter/recall, so a test can walk the click path without
        pretending to be a pointer that the window region would never have accepted */
     deploy: () => { toggleDeploy(); return mode; },
     /* exactly what recall() does to the hover gate, so the re-arm can be tested
        against a known-disarmed deck instead of hoping a gesture disarmed it */
-    disarm: () => { hoverArmed = false; hoverRearmAfter = Date.now() + 600; return hoverArmed; },
+    disarm: () => { hoverArmed = false; hoverLeft = false; hoverRearmAfter = Date.now() + 600; return hoverArmed; },
     dockRect: () => {
       const r = el.dock ? el.dock.getBoundingClientRect() : null;
       return r ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
@@ -131,7 +135,7 @@
     }),
     tuck: (v) => setTucked(!!v),
     hoverInfo: () => ({
-      mode: mode, tucked: tucked, armed: hoverArmed,
+      mode: mode, tucked: tucked, armed: hoverArmed, left: hoverLeft,
       rearmIn: Math.round(hoverRearmAfter - Date.now()),
       popGuardIn: Math.round(popGuardUntil - Date.now()),
       tuckGuardIn: Math.round(tuckGuardUntil - Date.now()),
@@ -224,7 +228,10 @@
     renderAll();
     bindEvents();
     setInterval(tickTimers, 1000);
-    setInterval(dayTick, 20000);
+    /* A due time is written to the minute, so a 20 s poll made every reminder land up to
+       twenty seconds late — measured at 17 s. Both passes are a scan over the open tasks
+       with an early return, which costs nothing to run once a second. */
+    setInterval(dayTick, 1000);
     setTimeout(dayTick, 3000);
     setTimeout(maybeAutoBackup, 5000);
 
@@ -601,8 +608,14 @@
     } else if (cmd.type === 'tray') {
       onTrayAction(cmd.action);
     } else if (cmd.type === 'cursor') {
-      if (!cursorFeed) return;       /* the scripted self test feeds the cursor itself */
-      if (testPointerMode) return;   /* …or drives the pointer with synthetic moves */
+      /* Test frames are marked synthetic, so a test can silence the host feed and keep
+         driving the deck. The user's pointer on another display is mapped into this
+         window's coordinates as a negative x, and its frames arrive between the injected
+         ones and overwrite lastPointer and nearWas. */
+      if (!cmd.synthetic) {
+        if (!cursorFeed) return;     /* the scripted self test feeds the cursor itself */
+        if (testPointerMode) return; /* …or drives the pointer with synthetic moves */
+      }
       const p = { x: cmd.x, y: cmd.y };
       lastPointer = p;
       cursorFrames++;
@@ -626,11 +639,11 @@
         } else {
           cancelArmPop();
           nearWas = false;
-          /* A recall disarms the hover so the deck does not bounce straight back under a
-             pointer that is still sitting on it — but the only re-arm lives inside
-             updateHover, and while the deck is filed away this branch is the ONLY one that
-             ever runs. Without this the deck popped forever after a scatter/recall and never
-             spread again for the rest of the session. */
+          /* A recall disarms the hover so the deck does not bounce straight back under the
+             pointer that pressed it. This is the only branch that runs while the deck is
+             filed, so it is where the pointer is recorded as having left (hoverLeft) and
+             where the hover is re-armed once the grace has passed. */
+          hoverLeft = true;
           if (!hoverArmed && Date.now() > hoverRearmAfter) hoverArmed = true;
         }
       } else {
@@ -907,6 +920,7 @@
        leaves the deck and the grace period has passed */
     recentlyDone.clear();
     hoverArmed = false;
+    hoverLeft = false;
     hoverRearmAfter = Date.now() + 600;
     setMode('collapsed');
     toast('卡片已收回 // RECALLED');
@@ -1115,6 +1129,10 @@
     /* the card layer takes the same palette as the panel, user overrides included */
     if (window.NeonTheme) window.NeonTheme.apply(st);
     else doc.documentElement.dataset.theme = st.theme === 'ink' ? 'ink' : 'paper';
+    /* and the same rule for group colours: adapted to the hour, never replaced by it */
+    if (window.NeonTheme && D.setTheme) {
+      D.setTheme(window.NeonTheme.themeOf(st), window.NeonTheme.current('--brick'));
+    }
     doc.body.style.opacity = String(Math.min(1, Math.max(0.3, Number(st.opacity) || 1)));
     doc.body.style.setProperty('--uis', String(Math.min(2, Math.max(0.8, Number(st.uiScale) || 1.3))));
     doc.body.style.setProperty('--fontk', String(Math.min(1.6, Math.max(0.8, Number(st.cardFontScale) || 1))));
@@ -1163,7 +1181,7 @@
 
   function renderDeck() {
     const g = activeGroup();
-    const accent = D.PALETTE[g.color] || D.PALETTE.brick;
+    const accent = D.paint(g.color);
     const items = groupItems(g.id);
     const done = items.filter((t) => t.done).length;
     const open = items.length - done;
@@ -1235,7 +1253,7 @@
     el.chips.innerHTML = '';
     sortedGroups().forEach((g) => {
       const open = S.todos.filter((t) => t.groupId === g.id && !t.done).length;
-      const accent = D.PALETTE[g.color] || D.PALETTE.brick;
+      const accent = D.paint(g.color);
       const btn = doc.createElement('button');
       btn.className = 'gchip interactive' + (g.id === activeGroupId ? ' active' : '');
       btn.dataset.group = g.id;
@@ -1303,6 +1321,9 @@
     return { slots: slots, bounds: bounds, scale: scale };
   }
 
+  /* The strip between the deck and the screen edge belongs to the deck. Filed away, the dock
+     is translated partly past that edge, so the box a pointer can occupy is the part still on
+     screen; the hover test measures against the live rect. */
   function holdRects() {
     const rects = [inflate(deckRect(), 6)];
     if (mode === 'overview' && spread) {
@@ -1442,7 +1463,7 @@
 
   function updateCard(card, t, i, n, all, slot) {
     const g = D.groupById(S, t.groupId) || S.groups[0];
-    const accent = D.PALETTE[g.color] || D.PALETTE.brick;
+    const accent = D.paint(g.color);
     const idx = all.findIndex((x) => x.id === t.id);
     const idxText = String((idx < 0 ? i : idx) + 1).padStart(2, '0');
     const repText = D.repeatText(t);
@@ -2429,8 +2450,14 @@
     const inside = rects.some((r) => pointIn({ x: x, y: y }, r));
     const near = rects.some((r) => pointIn({ x: x, y: y }, inflate(r, HOVER_NEAR)));
     if (!hoverArmed) {
-      /* recalled: stay filed until the pointer is clearly away and the grace passed */
-      if (Date.now() < hoverRearmAfter || near) return;
+      /* Recalled: stay folded until the pointer has been recorded as leaving and the grace
+         has passed. Requiring it to be away *now* was the deadlock: the wake band is 14 px
+         wide, the arrival that pops the deck is inside it, and a pointer that left and came
+         straight back was never more than 120 px from the deck when these frames ran, so
+         nothing re-armed — the pill slid out and the cards stayed folded for the rest of the
+         visit. The latch set in the cursor feed says the same thing without that timing. */
+      if (!near) hoverLeft = true;
+      if (Date.now() < hoverRearmAfter || !hoverLeft) return;
       hoverArmed = true;
     }
     if (inside) {
@@ -3415,7 +3442,7 @@
         const b = doc.createElement('button');
         b.type = 'button';
         b.className = 'cbtn' + (key === picked ? ' on' : '');
-        b.style.background = D.PALETTE[key];
+        b.style.background = D.baseColor(key);
         b.dataset.color = key;
         b.title = key;
         colors.appendChild(b);

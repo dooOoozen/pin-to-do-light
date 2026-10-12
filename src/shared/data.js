@@ -11,21 +11,82 @@
 
   var VERSION = 1;
 
+  /* Morandi set: low-chroma, grey-grounded hues that sit together without competing. The
+     keys are stable because they are what stored groups carry. */
   var PALETTE = {
-    brick: '#8d3a27',
-    forest: '#2e4a33',
-    slate: '#47597c',
-    khaki: '#8a6a1f',
-    teal: '#255c58',
-    plum: '#6b3550',
-    ochre: '#a8621f',
-    ink: '#14120d',
-    sage: '#6aa690',
-    vermillion: '#df4c28',
-    honey: '#eba93a',
-    cream: '#f9efde'
+    brick: '#a8756b',
+    forest: '#6e8271',
+    slate: '#6c7b8f',
+    khaki: '#a99973',
+    teal: '#5f8a83',
+    plum: '#8b7a8c',
+    ochre: '#c09a6f',
+    ink: '#4a4a4c',
+    sage: '#9fb4a3',
+    vermillion: '#c1766a',
+    honey: '#d8b98a',
+    cream: '#ede6da'
   };
   var COLOR_KEYS = ['sage', 'vermillion', 'honey', 'cream', 'brick', 'forest', 'slate', 'khaki', 'teal', 'plum', 'ochre', 'ink'];
+  var HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+  /* A group's colour belongs to the group, not to the theme: switching material or hour must
+     not repaint 工作 from one hue into another, or the reader loses the association they built.
+     The hour does move the light around it, so at night the same hue is carried over with its
+     saturation eased and its lightness lifted toward the dark ground, and the hue is pulled a
+     few degrees toward the theme's own accent. Day returns the stored colour unchanged.
+     The value may also be a hex the user picked themselves. */
+  var THEME = { hour: 'paper', accent: null };
+
+  function setTheme(hour, accent) {
+    THEME.hour = hour === 'ink' ? 'ink' : 'paper';
+    THEME.accent = HEX_COLOR.test(String(accent || '')) ? String(accent).toLowerCase() : null;
+  }
+
+  function rgbOf(hex) {
+    var s = String(hex || '').replace('#', '');
+    if (s.length === 3) s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
+    var n = parseInt(s, 16);
+    return isFinite(n) && s.length === 6 ? [(n >> 16) & 255, (n >> 8) & 255, n & 255] : null;
+  }
+
+  function hslOf(rgb) {
+    var r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255;
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    var h = d === 0 ? 0 : mx === r ? ((g - b) / d + (g < b ? 6 : 0))
+      : mx === g ? ((b - r) / d + 2) : ((r - g) / d + 4);
+    return { h: h * 60, s: d === 0 ? 0 : d / (1 - Math.abs(mx + mn - 1)), l: (mx + mn) / 2 };
+  }
+
+  function hslHex(h, s, l) {
+    h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));
+    var c = (1 - Math.abs(2 * l - 1)) * s;
+    var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    var m = l - c / 2;
+    var v = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x]
+      : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return '#' + v.map(function (n) {
+      return ('0' + Math.round((n + m) * 255).toString(16)).slice(-2);
+    }).join('');
+  }
+
+  /* shortest way round the wheel, and only ever a fraction of the distance */
+  function nudge(hue, toward, amount) {
+    if (toward == null) return hue;
+    var d = ((toward - hue + 540) % 360) - 180;
+    return hue + d * amount;
+  }
+
+  function paint(colorKey) {
+    var base = PALETTE[colorKey] || (HEX_COLOR.test(String(colorKey || '')) ? colorKey : PALETTE.brick);
+    if (THEME.hour !== 'ink') return base;
+    var rgb = rgbOf(base);
+    if (!rgb) return base;
+    var h = hslOf(rgb);
+    var acc = THEME.accent && hslOf(rgbOf(THEME.accent));
+    return hslHex(nudge(h.h, acc ? acc.h : null, 0.12), h.s * 0.7,
+      Math.min(0.72, h.l * 1.12 + 0.1));
+  }
 
   var PRIORITIES = ['none', 'low', 'med', 'high'];
   var PRIORITY_LABEL = { none: '普通', low: '低', med: '中', high: '高' };
@@ -159,9 +220,26 @@
     return isNaN(d.getTime()) ? null : d.toISOString();
   }
   function priorityRank(p) { return p === 'high' ? 0 : p === 'med' ? 1 : p === 'low' ? 2 : 3; }
+  /* A group's colour is either one of the named keys or a hex the user picked themselves;
+     anything else falls back rather than being stored, because a bad value here would paint
+     every view that reads it. */
+  function colorKey(v, fallback) {
+    var s = String(v == null ? '' : v).trim().toLowerCase();
+    if (COLOR_KEYS.indexOf(s) >= 0) return s;
+    if (HEX_COLOR.test(s)) return s;
+    return fallback;
+  }
+
+  /* The stored colour with no hour applied to it — what a picker should show, so a custom
+     hex reads back as the colour the user chose rather than as the night version of it. */
+  function baseColor(key) {
+    var s = String(key == null ? '' : key);
+    return PALETTE[s] || (HEX_COLOR.test(s) ? s : PALETTE.brick);
+  }
+
   function colorOf(state, groupId) {
     var g = groupById(state, groupId);
-    return (g && PALETTE[g.color]) || PALETTE.brick;
+    return paint(g ? g.color : null);
   }
   function weekdayName(v) {
     var d = parseDate(v);
@@ -324,7 +402,7 @@
       return {
         id: String(gr.id || uid('g')),
         name: String(gr.name == null ? ('分组 ' + (i + 1)) : gr.name),
-        color: COLOR_KEYS.indexOf(gr.color) >= 0 ? gr.color : COLOR_KEYS[i % COLOR_KEYS.length],
+        color: colorKey(gr.color, COLOR_KEYS[i % COLOR_KEYS.length]),
         order: typeof gr.order === 'number' ? gr.order : i,
         locked: gr.locked === true,
         autoDone: gr.autoDone === true,
@@ -1040,7 +1118,7 @@
       var gr = {
         id: uid('g'),
         name: String(p.name == null || !String(p.name).trim() ? '新分组 ' + (s.groups.length + 1) : p.name).trim(),
-        color: COLOR_KEYS.indexOf(p.color) >= 0 ? p.color : nextColor(s),
+        color: colorKey(p.color, nextColor(s)),
         locked: false,
         autoDone: p.autoDone === true,
         order: maxGroupOrder(s) + 1,
@@ -1059,7 +1137,10 @@
         var name = String(patch.name == null ? '' : patch.name).trim();
         if (name) gr.name = name;
       }
-      if ('color' in patch && COLOR_KEYS.indexOf(patch.color) >= 0) gr.color = patch.color;
+      if ('color' in patch) {
+        var ck = colorKey(patch.color, gr.color);
+        if (ck) gr.color = ck;
+      }
       if ('autoDone' in patch) gr.autoDone = patch.autoDone === true;
       if ('order' in patch && typeof patch.order === 'number') gr.order = patch.order;
       return {};
@@ -1185,12 +1266,15 @@
          could fix it while two sources existed. */
       (function () {
         var dl = s.settings.dashLayout;
-        var ids = ['clock', 'stats', 'pomo', 'today', 'memo', 'heat', 'mini'];
+        var ids = ['clock', 'today', 'pomo', 'memo', 'heat', 'mini'];
         var ok = { order: [], span: {}, row: {}, collapsed: [] };
         if (dl && Array.isArray(dl.order)) {
           ok.order = dl.order.filter(function (id) { return ids.indexOf(id) >= 0; });
         }
-        if (ok.order.length !== ids.length) ok.order = ids.slice();
+        /* 统计 folded into 今日概览, so a stored layout that still lists it loses that one
+           entry and keeps the rest of the arrangement — dropping the whole order because one
+           id went away would reset a board the user spent time assembling. */
+        ids.forEach(function (id) { if (ok.order.indexOf(id) < 0) ok.order.push(id); });
         /* a folded module still shows its head, which is the handle that unfolds it, so an
            unknown id is dropped here rather than kept alive */
         if (dl && Array.isArray(dl.collapsed)) {
@@ -1206,6 +1290,18 @@
             var v = Number(bag[id]);
             if (allowed.indexOf(v) >= 0) ok[key][id] = v;
           });
+          /* 统计 folded into 今日概览. Two plates became one, so the merged module keeps the
+             height both of them had: at a single 168px row there is no room for the ring next
+             to the counters, and it drops out of the board — a merge that quietly deletes half
+             of what it merged is worse than the duplication it removed. The id is gone from the
+             stored layout after the first pass, so this carries once and then stays put. */
+          if (key === 'row') {
+            var sum = (ok.row.today || 1) + (Number(bag.stats) || 0);
+            ok.row.today = allowed.indexOf(sum) >= 0 ? sum : allowed[allowed.length - 1];
+          } else {
+            var was = Number(bag.stats);
+            if (ok.span.today === undefined && allowed.indexOf(was) >= 0) ok.span.today = was;
+          }
         });
         s.settings.dashLayout = ok;
       })();
@@ -1569,6 +1665,11 @@
     fromLocalInput: fromLocalInput,
     priorityRank: priorityRank,
     colorOf: colorOf,
+    paint: paint,
+    setTheme: setTheme,
+    colorKey: colorKey,
+    baseColor: baseColor,
+    COLOR_KEYS: COLOR_KEYS,
     defaultState: defaultState,
     normalize: normalize,
     applyOp: applyOp,

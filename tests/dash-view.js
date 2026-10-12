@@ -1,4 +1,4 @@
-/* Why does #modStats measure 0x0 from a panel script? Print what the panel actually thinks
+/* Why does #modToday measure 0x0 from a panel script? Print what the panel actually thinks
    it is showing: the nav buttons and which one is active, the grid box, the module box, and
    every ancestor between them that has taken itself out of the layout. */
 (function () {
@@ -15,9 +15,9 @@
     note('nav buttons: ' + Array.prototype.map.call(document.querySelectorAll('#navFilters button'),
       function (b) { return (b.textContent || '').trim().replace(/\s+/g, '') + (b.classList.contains('on') ? '*' : ''); }).join(' '));
     var g = document.getElementById('dashGrid');
-    var m = document.getElementById('modStats');
+    var m = document.getElementById('modToday');
     note('grid ' + (g ? box(g) : 'missing'));
-    note('stats ' + (m ? box(m) : 'missing'));
+    note('today ' + (m ? box(m) : 'missing'));
     var chain = [], n = m;
     while (n && n !== document.body) { chain.push(n.tagName + '.' + (n.className || '').split(' ')[0] + ' ' + box(n)); n = n.parentElement; }
     chain.forEach(function (line, i) { note('  ancestor ' + i + ' ' + line); });
@@ -27,11 +27,11 @@
     if (dash) dash.click();
     return wait(1500);
   }).then(function () {
-    var g = document.getElementById('dashGrid'), m = document.getElementById('modStats');
+    var g = document.getElementById('dashGrid'), m = document.getElementById('modToday');
     note('after click grid ' + (g ? box(g) : '-') + ' stats ' + (m ? box(m) : '-'));
-    note('tiles=' + document.querySelectorAll('#modStats .pd-stats .stat').length +
+    note('tiles=' + document.querySelectorAll('#modToday .pd-stats .stat').length +
       ' first=' + (function () {
-        var t = document.querySelector('#modStats .pd-stats .stat');
+        var t = document.querySelector('#modToday .pd-stats .stat');
         return t ? box(t) : '-';
       })());
   }).catch(function (e) { note('ERROR ' + (e && e.message)); });

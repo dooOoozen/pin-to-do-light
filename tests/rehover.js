@@ -1,19 +1,23 @@
 /* The gesture the user reports: hover the deck and it spreads — click to scatter, click to
    recall, the deck files itself into the edge, then come back and stop on it. The second
    visit never spreads again.
-   It is not a timing bug. recall() disarms the hover so the deck does not bounce straight
-   back under a pointer that is still sitting on it, and the only re-arm lives inside
-   updateHover — which is never called while the deck is filed away, because the tucked
-   branch of the cursor feed handles those frames and only checks the wake band. So once a
-   recall is followed by a tuck, nothing can ever re-arm it: the deck pops forever and never
-   spreads again.
+   recall() disarms the hover so the deck does not bounce straight back under the pointer that
+   pressed it. The re-arm condition was "the pointer is away from the deck right now AND the
+   600 ms grace has passed". Those two cannot both become true on a return: the frames that
+   carry a pointer back onto the deck are by definition near it, and while the deck is filed
+   the only test running is the 14 px wake band, whose away branch is the sole place the hover
+   used to be re-armed. A departure shorter than the grace therefore left the hover disarmed
+   for the rest of the visit — the pill slid out, the cards stayed folded.
+   The fix records the departure as a latch (hoverLeft) instead of inferring it from the
+   position at the moment the grace expires.
 
-   Four phases, each starting from a deck that is provably collapsed AND filed:
+   Five phases, each starting from a deck that is provably collapsed:
      A arrival from cold                — must spread
-     B arrival after a real recall      — must spread (the reported bug)
-     C disarmed while on the deck, then clearly left, then back — must spread (proves the
-       departure is what carries B; delete the re-arm and this is the phase that fails)
+     B arrival after a real recall      — must spread
+     C disarmed while on the deck, then clearly left, then back — must spread
      D left, then disarmed, then back   — must NOT spread (the recall guard still guards)
+     E recall, off and straight back    — must spread (the reported bug; delete the latch and
+       this is the phase that fails)
 
    Frames go through nd.cursorFrame, the real command branch; cursorCmd skips the tucked path
    entirely and would have passed this. Scatter/recall use nd.deploy, the deck's own handler.
@@ -27,13 +31,19 @@
   var API = window.API, nd = window.__nd;
   function note(s) { try { API.bootNote('[R] ' + s); } catch (e) { /* no bridge */ } }
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  function info() { var h = nd.hoverInfo(); return 'mode=' + h.mode + ' tucked=' + h.tucked + ' armed=' + h.armed; }
+  function info() {
+    var h = nd.hoverInfo();
+    return 'mode=' + h.mode + ' tucked=' + h.tucked + ' armed=' + h.armed + ' left=' + h.left;
+  }
   /* while filed, most of the dock hangs past the window edge; the visible sliver is the only
-     part a pointer can occupy, and it stays inside the box after the pop */
+     part a pointer can occupy. Park near the SCREEN edge rather than at its middle: that is
+     where a hand actually lands on a filed deck, and it is the position the settled box used
+     to exclude — the midpoint passed by 2 px and proved nothing. */
   function arrival() {
     var r = nd.dockRect();
     var visL = Math.max(r.left, 0), visR = Math.min(r.right, window.innerWidth);
-    return { x: visR - visL >= 8 ? (visL + visR) / 2 : r.left + r.width / 2, y: (r.top + r.bottom) / 2 };
+    var x = visR - visL >= 8 ? visL + (visR - visL) * 0.2 : r.left + r.width / 2;
+    return { x: x, y: (r.top + r.bottom) / 2 };
   }
 
   /* park the pointer far away until the deck has retracted and filed itself */
@@ -72,7 +82,41 @@
     });
   }
 
+  /* E: press 收回, move off, come straight back. The departure lands inside the 600 ms grace,
+     so the position test alone cannot carry it: only the recorded departure can. The pointer
+     keeps moving by a pixel, as a hand does, so the layer keeps getting frames to decide on. */
+  function phaseE() {
+    nd.tuck(false);
+    nd.disarm();
+    nd.cursorFrame(60, 900, false);
+    return wait(160).then(function () {
+      var p = arrival();
+      var t0 = Date.now(), n = 0;
+      note('E out-and-back arriving | ' + info() + ' graceIn=' + nd.hoverInfo().rearmIn);
+      return new Promise(function (res2) {
+        var iv = setInterval(function () {
+          nd.cursorFrame(p.x + (n % 2), p.y, true);
+          n++;
+          if (nd.mode() === 'overview') {
+            clearInterval(iv);
+            note('E spread in ' + (Date.now() - t0) + 'ms → ok | ' + info());
+            res2(true);
+          } else if (Date.now() - t0 > 2400) {
+            clearInterval(iv);
+            note('E still in ' + (Date.now() - t0) + 'ms → WRONG | ' + info());
+            res2(false);
+          }
+        }, 110);
+      });
+    });
+  }
+
   var res = {}, seed = null;
+  /* Switch off the host's pointer feed for the whole run. The user's own mouse on another
+     display is mapped into this window's coordinates as a negative x, and its frames arrive
+     between the injected ones and overwrite lastPointer and nearWas. Test frames are marked
+     synthetic and bypass the switch, so this only silences the real pointer. */
+  nd.cursorFeed(false);
   Promise.resolve().then(function () { return wait(2400); })
     .then(function () { return API.getState(); })
     .then(function (st) {
@@ -109,12 +153,13 @@
     /* the departure re-armed it; disarm again now that the pointer is away, so the arrival
        that follows has not clearly left — the guard must hold */
     .then(function () { nd.disarm(); return arrive('D disarmed, never left', false, true); })
+    .then(function (ok) { res.D = ok; return phaseE(); })
     .then(function (ok) {
-      res.D = ok;
-      var bad = ['A', 'B', 'C', 'D'].filter(function (k) { return !res[k]; });
+      res.E = ok;
+      var bad = ['A', 'B', 'C', 'D', 'E'].filter(function (k) { return !res[k]; });
       note('RESULT ' + (bad.length === 0
-        ? 'PASS spreads cold, after a recall (' + res.recallArmed + ' armed at recall), and after any ' +
-          'departure re-arms it; still refuses a pointer that never left'
+        ? 'PASS spreads cold, after a recall (' + res.recallArmed + ' armed at recall), after any ' +
+          'departure re-arms it, spreads a quick out-and-back, and still refuses a pointer that never left'
         : 'FAIL ' + bad.map(function (k) { return k + '=' + res[k]; }).join(' ')));
     })
     .then(function () {

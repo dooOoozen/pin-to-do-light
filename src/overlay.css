@@ -802,7 +802,11 @@ body.deck-pill .deck-face {
   align-items: stretch;
   gap: calc(2px * var(--ds, 1));
   padding: calc(5px * var(--ds, 1)) calc(9px * var(--ds, 1)) calc(6px * var(--ds, 1));
-  border-radius: var(--r-pill);
+  /* A full stadium on a 92px-tall box means a 46px corner arc, and at the top row that arc
+     has not yet come back inside x=9 — where the 简 capsule starts — so the capsule's corner
+     was being cut off by its own container. The box therefore takes the same plate radius
+     every other surface uses, and the arcs inside it can be smaller without colliding. */
+  border-radius: var(--r-plate);
 }
 body.deck-pill .deck-top {
   display: flex; flex-direction: row; align-items: center;
@@ -823,12 +827,12 @@ body.deck-pill .dock-tools {
 body.deck-pill .tool {
   flex: 0 0 auto; width: calc(21px * var(--ds, 1)); height: calc(20px * var(--ds, 1));
   font-size: calc(11px * var(--ds, 1));
-  /* the pill box carries one arc, not three: an 11px control radius inside a full-pill
-     container is what made the row of buttons look cut with a different template */
-  border-radius: var(--r-pill);
+  /* the same control radius the rest of the app's buttons carry, so the row is not cut to a
+     third template from the box it lives in */
+  border-radius: var(--r-ctl);
 }
 body.deck-pill .deck-sheets .deck-sheet {
-  transform: none !important; border-radius: var(--r-pill);
+  transform: none !important; border-radius: var(--r-plate);
 }
 .deck, .deck-face, .deck-count {
   transition: width .18s cubic-bezier(.2, .9, .2, 1), min-height .18s ease,

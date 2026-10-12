@@ -837,9 +837,10 @@ input[type="range"] { accent-color: var(--brick); }
 .hud-head { border-radius: var(--r-plate) var(--r-plate) 0 0; }
 .btn, .icon-btn, .input, .select, .kbd, .stamp, .stat, .day-head, .mini-row,
 .memo-input, .pal-swatch, .mod-span, .cal-day, .field, .set-row,
-.qa-btn, .tool, .edge-tile, .idx-mark { border-radius: var(--r-ctl); }
+.qa-btn, .tool, .edge-tile, .idx-mark, .cbtn { border-radius: var(--r-ctl); }
 .badge, .gchip, .switch, .switch i { border-radius: var(--r-pill); }
-.status-mark, .chip-swatch, .card-dot, .task-dot, .mini-dot, .deck-swatch { border-radius: var(--r-dot); }
+.status-mark, .chip-swatch, .card-dot, .task-dot, .mini-dot, .deck-swatch,
+.group-list .dot { border-radius: var(--r-dot); }
 
 /* ==========================================================================
    MATERIAL: 群青构成 / CONSTRUCTIVIST  (data-style="ikb")

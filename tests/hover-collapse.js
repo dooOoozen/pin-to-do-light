@@ -22,6 +22,11 @@
 
   var seedIds = [], known = [], was = {}, gone = [];
 
+  /* The user's pointer on another display reaches this window as real cursor frames and
+     moves the hover state between the test's own samples. Silence the host feed; test frames
+     are injected directly and keep working. */
+  nd.cursorFeed(false);
+
   function scaleOf(el) {
     var m = /matrix3d\(([^)]+)\)/.exec(getComputedStyle(el).transform) ||
             /matrix\(([^)]+)\)/.exec(getComputedStyle(el).transform);

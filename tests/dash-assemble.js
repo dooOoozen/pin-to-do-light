@@ -44,12 +44,17 @@
       if (Math.abs((sr.left + sr.right) / 2 - (vr.left + vr.right) / 2) > 3) off++;
     });
     var blk = R(q('.pd-stats'));
-    var sb = R(q('#modStats > .mod-body'));
+    /* 今日概览 and 统计 are one module now, so the plate holds the ring row as well as the
+       tiles. What still has to hold is that the pair sits centred in the body. */
+    var sb = R(q('#modToday > .mod-body'));
+    var rr = R(q('#modToday .today-body'));
+    var gTop = Math.min(rr.top, blk.top), gBottom = Math.max(rr.bottom, blk.bottom);
     note('statTiles=' + qa('.pd-stats .stat').length + ' offCentre=' + off +
       ' vFont=' + Math.round(parseFloat(getComputedStyle(q('.pd-stats .stat .v')).fontSize)) +
-      ' statsH=' + Math.round(blk.height) + ' bodyH=' + Math.round(sb.height) +
-      ' gapTop=' + Math.round(blk.top - sb.top) + ' gapBottom=' + Math.round(sb.bottom - blk.bottom) +
-      ' vCentred=' + (Math.abs((blk.top - sb.top) - (sb.bottom - blk.bottom)) < 4));
+      ' statsH=' + Math.round(blk.height) + ' ringRowH=' + Math.round(rr.height) +
+      ' bodyH=' + Math.round(sb.height) +
+      ' gapTop=' + Math.round(gTop - sb.top) + ' gapBottom=' + Math.round(sb.bottom - gBottom) +
+      ' vCentred=' + (Math.abs((gTop - sb.top) - (sb.bottom - gBottom)) < 4));
     var ring = R(q('.today-ring'));
     var b = R(q('#modToday .mod-body'));
     note('ring=' + Math.round(ring.width) + 'x' + Math.round(ring.height) +

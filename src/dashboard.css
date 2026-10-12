@@ -230,6 +230,27 @@ body.side-dragging { cursor: col-resize; }
 }
 .task.done { opacity: .6; }
 .task.done .task-title { text-decoration: line-through; color: var(--ink-2); }
+/* A task being timed has to be distinguishable from across the room, not only on close
+   inspection: the whole row carries the accent, and a second layer breathes over it so the
+   state reads in peripheral vision. The base tint stays so the row is still marked when
+   animations are off. */
+.task.running {
+  background: color-mix(in srgb, var(--brick) 12%, var(--paper-hi));
+  box-shadow: inset 3px 0 0 var(--brick);
+}
+.task.running .task-title { color: var(--brick); }
+.task.running::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: color-mix(in srgb, var(--brick) 9%, transparent);
+  animation: row-breathe 2.4s ease-in-out infinite;
+}
+@keyframes row-breathe { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+/* the dashboard's own short list carries the same mark, so a timed task looks like a timed
+   task wherever it is read */
+.mini-row.running {
+  background: color-mix(in srgb, var(--brick) 12%, var(--paper-hi));
+  box-shadow: inset 3px 0 0 var(--brick);
+}
 .task.dragging { opacity: .35; }
 .task.drop-target { outline: 1px dashed var(--brick); outline-offset: -2px; }
 
@@ -458,20 +479,22 @@ body.side-dragging { cursor: col-resize; }
 
 .pd-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 8px; }
 .pd-stats:has(~ *) { height: 100%; }
-.mod[data-mod="stats"] .pd-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; }
+.mod[data-mod="today"] .pd-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; }
 /* How many tiles fit in a row is a question about the module, not about the window: the panel
    is resizable, each module has its own span, and a `@media (max-width: 900px)` rule gave the
    same box four-in-a-row at one scale and two-by-two at another while the window said the same
-   thing both times. The container is `#modStats > .mod-body`, which already carries
+   thing both times. The container is `.mod-today-body`, which already carries
    `container-type: inline-size`. */
-/* The thresholds are the tile's own floor: "01 OPEN / 未完成" needs about 108px, so four
-   columns only earn their place above ~470 of module width, and two above ~250. Measured at
-   every interface scale by tests/dash-stats.js, which fails a stop whose tiles go narrower. */
+/* The thresholds are the label's own floor: "01 OPEN / 未完成" needs about 108px on one line,
+   so four columns only earn their place above ~470 of module width, and two above ~230. Below
+   that a single column wastes the height the counters need, so two narrow tiles beat one
+   wide stack. Measured at every interface scale and both row counts by tests/dash-stats.js,
+   which fails a stop whose number or label is cut. */
 @container (max-inline-size: 470px) {
-  .mod[data-mod="stats"] .pd-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mod[data-mod="today"] .pd-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container (max-inline-size: 250px) {
-  .mod[data-mod="stats"] .pd-stats { grid-template-columns: minmax(0, 1fr); }
+  .mod[data-mod="today"] .pd-stats { grid-template-columns: minmax(0, 1fr); }
 }
 .pd-stats .stat { display: flex; flex-direction: column; justify-content: center; }
 .pd-stats .stat .v { font-size: 32px; }
@@ -543,11 +566,10 @@ body.side-dragging { cursor: col-resize; }
 .modal-panel .cal-day { font-size: 9px; }
 .group-list .glock { font-size: 10px; color: var(--ink-3); }
 /* ---- the recycle bin ---- */
-/* The dot takes the same radius token the group dots take. It used to hardcode 50%, so in a
-   square material the bin sat in the same list as the groups wearing a shape none of them
-   had — the one difference the bin should be allowed is its colour. */
+/* The bin's dot takes the same shape rule every group dot takes (theme.css, --r-dot); the
+   only thing that sets this row apart is its colour and its dimmed label. */
 .group-list .trash-row { opacity: .8; }
-.group-list .trash-row .trash-dot { background: var(--ink-3); border-radius: var(--r-dot); }
+.group-list .trash-row .trash-dot { background: var(--ink-3); }
 .group-list .trash-row.on { opacity: 1; }
 .tr-item {
   display: flex; align-items: center; gap: 8px; padding: 7px 12px;
@@ -571,6 +593,17 @@ body.side-dragging { cursor: col-resize; }
 .group-list li.on .gauto { color: var(--paper); }
 
 /* group colour preview in the editor */
+/* The group colour picker. overlay.css carries a copy of these rules for the card layer, but
+   the panel never loads that sheet, so the swatches had no size of their own here. */
+.color-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.color-row .cbtn {
+  width: 24px; height: 24px; padding: 0;
+  border: 1px solid var(--edge); cursor: pointer;
+}
+.color-row .cbtn:hover { outline: 1px solid var(--edge); outline-offset: 2px; }
+.color-row .cbtn.on { outline: 2px solid var(--edge); outline-offset: 1px; }
+.color-custom { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+.color-row .cbtn.custom, .color-custom .cbtn.custom { width: 36px; height: 24px; background: transparent; }
 .color-preview { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 7px 8px; border: 1px dashed var(--rule-strong); }
 .color-preview .cp-card { width: 42px; height: 28px; border: 1px solid var(--edge); background: var(--paper); border-left-width: 5px; border-left-style: solid; }
 
@@ -666,8 +699,8 @@ body.side-dragging { cursor: col-resize; }
 .pomo-len input[type="range"]::-moz-range-track { height: 3px; background: var(--rule-strong); }
 .pomo-len input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 0; background: var(--vermillion); border: 1px solid var(--edge); }
 
-.mod-today-body { display: flex; min-height: 0; }
-.today-body { display: flex; align-items: center; gap: 10px; padding: 10px; flex: 1; min-width: 0; min-height: 0; }
+.mod-today-body { display: flex; flex-direction: column; min-height: 0; }
+.today-body { display: flex; align-items: center; gap: 10px; padding: 10px 10px 4px; flex: 0 0 auto; min-width: 0; }
 /* the mask that turns the conic fill into a band also cuts away anything the element
    itself paints, so the number lives on the ring, not in it */
 .today-ring { position: relative; flex: none; width: 76px; height: 76px; }
@@ -1230,6 +1263,14 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .tk-sum b { color: var(--ink); font-variant-numeric: tabular-nums; }
 /* takes the height the side column has left after the ring and the totals, so a
    maximised panel lists more records instead of ending in blank space */
+/* the axis with nothing on it still has to say so — an empty grid and a failed one look alike */
+.tk-empty {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  text-align: center; padding: 0 16px;
+}
+.tk-empty b { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--ink-2); }
+.tk-empty span { font-size: 9.5px; line-height: 1.6; color: var(--ink-3); }
 .tk-recent { flex: 1 1 auto; min-height: 80px; overflow: auto; }
 /* Two lines per record. On one line the name had ~22px left in a 200px side column —
    one character of the task, which is not a list worth reading. */
@@ -1272,36 +1313,84 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .heat-year .heat-cell { width: 100%; height: 100%; min-width: 0; }
 .heat-legend { width: 100%; max-width: 820px; margin: 0; }
 
-/* the four counters sit in the middle of their plate rather than hanging off it —
-   both axes: the body has the height, so it has to be the one that centres.
-   `justify-items` stays at its stretch default on purpose: centring the *items* makes each
-   tile only as wide as its own label, which is the 格子有大有小 report (89/89/99/89 across
-   one row). The tile centres its content instead, so all four share the track equally. */
-#modStats > .mod-body { display: flex; flex-direction: column; justify-content: center; container-type: inline-size; }
-.pd-stats { align-content: center; width: 100%; }
-.pd-stats .stat { align-items: center; text-align: center; }
-.pd-stats .stat .v { font-size: clamp(22px, 11cqw, 42px); }
-.pd-stats .stat[data-stat="done"] .v { transform-origin: 50% 50%; text-align: center; }
-
-/* the ring scales with its module and centres its own readout, so the percentage is
-   no longer parked at a pixel offset that only fitted a 76px circle */
-.mod-today-body { display: flex; align-items: center; justify-content: center; container-type: inline-size; }
+/* ---- 今日概览 · 统计, one plate ----
+   The two modules repeated the same day, so the counters moved under the ring. Sharing one
+   plate means sharing its height, and the height is the axis that runs out first: at 1 row the
+   body is 143 px at the largest interface scale, and the ring row plus four counters want
+   about 290. So the plate is sized on both axes (container-type: size — its height comes from
+   the grid track, never from its content), the ring row keeps only what it needs, the counters
+   take the rest, and the type inside a counter is measured against the counter. Nothing here
+   can hang past the plate; tests/dash-stats.js walks four interface scales and both module
+   widths and fails any stop where a tile leaves the body. */
+.mod-today-body {
+  display: flex; flex-direction: column; align-items: stretch; justify-content: center;
+  container-type: size; min-height: 0;
+}
+.mod-today-body > .today-body { flex: 0 1 auto; min-height: 0; }
+.mod-today-body > .pd-stats { flex: 1 1 auto; min-height: 0; }
 .today-body {
-  display: flex; align-items: center; justify-content: center; gap: clamp(10px, 5cqw, 28px);
-  padding: 10px; width: 100%; min-width: 0;
+  display: flex; align-items: center; justify-content: center; gap: clamp(8px, 4cqw, 28px);
+  padding: clamp(2px, 2cqh, 10px); width: 100%; min-width: 0;
 }
 .today-ring {
-  display: flex;
-  width: clamp(64px, 38cqw, 118px); height: clamp(64px, 38cqw, 118px);
-  flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  width: clamp(40px, 26cqh, 118px); height: clamp(40px, 26cqh, 118px);
 }
-.today-ring b { position: static; font-size: clamp(13px, 8cqw, 22px); }
-.today-ring span { position: static; font-size: clamp(8px, 4cqw, 11px); }
+.today-ring b { position: static; font-size: clamp(10px, 9cqh, 22px); }
+.today-ring span { position: static; font-size: clamp(7px, 5cqh, 11px); }
 .today-figs {
   display: grid; grid-template-columns: repeat(2, minmax(0, auto));
-  gap: 8px 18px; justify-content: center; flex: 0 1 auto;
+  gap: 6px 16px; justify-content: center; flex: 0 1 auto; min-width: 0;
 }
 .today-figs > div { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.pd-stats { align-content: stretch; width: 100%; }
+.mod[data-mod="today"] .pd-stats { grid-auto-rows: minmax(0, 1fr); }
+/* `justify-items` stays at its stretch default on purpose: centring the *items* makes each
+   tile only as wide as its own label, which is the 格子有大有小 report (89/89/99/89 across one
+   row). The tile centres its content instead, so all four share the track equally. */
+.pd-stats .stat {
+  align-items: center; text-align: center; overflow: hidden; container-type: size;
+}
+.pd-stats .stat .v { font-size: clamp(11px, min(11cqw, 32cqh), 42px); }
+/* The index badge is 17px tall and the label rides beside it, so on a short tile the head — not
+   the number — is what pushes past the box. Both shrink with the tile. */
+.pd-stats .stat-head { margin-bottom: clamp(0px, 3cqh, 4px); }
+.pd-stats .stat .idx-mark { height: clamp(11px, 17cqh, 17px); min-width: 0; font-size: clamp(7px, 11cqh, 10px); }
+/* "01 OVERDUE / 已逾期" is thirteen glyphs at .22em tracking, so the label needs the tile's
+   width, not its height: sized from the tile it fits on one line down to a ~110px counter, and
+   nowrap keeps a plate too narrow for it from dropping the number a row. */
+.pd-stats .stat .k { font-size: clamp(6.5px, min(11cqh, 5.8cqw), 9px); white-space: nowrap; }
+.pd-stats .stat[data-stat="done"] .v { transform-origin: 50% 50%; text-align: center; }
+/* One row tall is not enough plate to stack a ring over four counters, so below 200px of height
+   the two halves go side by side instead — the ring keeps its place at the head of the module
+   and the counters take the rest of the width. The figures are what give way: they repeat the
+   same two numbers the ledger shows. Measured by tests/dash-stats.js at four scales by both
+   spans and both row counts, which fails a stop whose number is cut or whose tile leaves the
+   plate. */
+@container (max-height: 260px) { .today-figs { display: none; } }
+/* The plate itself switches on its height, so the query has to run against an ancestor: an
+   element cannot read its own container features. `.mod` is the plate's own box and its height
+   comes from the grid track, which is why container-type: size is safe on it. 200px of module
+   is a body of ~175, and at that height ring-over-counters does not fit while ring-beside-
+   counters does. */
+.mod[data-mod="today"] { container-type: size; }
+@container (max-height: 200px) {
+  .mod-today-body { flex-direction: row; align-items: stretch; gap: 8px; padding: 6px 8px; }
+  .today-body { flex: 0 0 auto; align-self: center; padding: 0; width: auto; }
+  .today-ring { width: clamp(38px, 24cqh, 92px); height: clamp(38px, 24cqh, 92px); }
+  .mod-today-body > .pd-stats { flex: 1 1 0; min-width: 0; }
+  .pd-stats { gap: 4px; padding: 4px; }
+  .pd-stats .stat { padding: 3px 6px 4px; }
+}
+/* Below 150px of body even side by side the ring costs the counters their last row, so at that
+   size the numbers win and the ring stops being drawn. This query reads the body, the one above
+   reads the module — the body cannot query itself, which is the only reason they differ. */
+@container (max-height: 150px) {
+  .today-body { display: none; }
+  /* four stacked counters have 28px each here, and the badge alone is 17 of them. The label is
+     what says which number is which, so the badge goes and the label stays. */
+  .pd-stats .stat .idx-mark { display: none; }
+}
 
 /* ---- the style picker in settings: material cards with their own palette on them ---- */
 .style-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 7px; }
@@ -1364,12 +1453,12 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
    slab, and a slab cannot show the stack of groups inside a day. The segments are
    flex children sized as a percentage of the chart, so the tallest day fills the frame
    and every other day reads against it. */
-/* Columns and ring side by side. The ring is fixed width so the fourteen columns keep
-   whatever room is left; on a narrow panel the row wraps and the ring falls below rather
-   than squeezing the columns into slabs again. */
+/* Columns and ring side by side, at 1.5 : 1. The ring keeps a floor of its own so a narrow
+   panel wraps it below the chart rather than crushing it. */
 .rp-charts { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; min-width: 0; }
-.rp-chart-l { flex: 1 1 320px; min-width: 0; }
-.rp-ring-box { flex: none; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.rp-chart-l { flex: 1.5 1 240px; min-width: 0; }
+.rp-ring-box { flex: 1 1 120px; min-width: 120px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.rp-pager { display: inline-flex; gap: 2px; margin-left: 8px; }
 .rp-ring-cap { font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-3); }
 .rp-ring { position: relative; flex: none; width: 116px; height: 116px; cursor: default; }
 .rp-ring-band {
@@ -1392,6 +1481,11 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
   height: 104px; border-bottom: 1px solid var(--edge); padding-bottom: 2px;
   margin-bottom: 18px; /* the day numbers hang below the rule */
 }
+/* a month is thirty columns in the same width: tighter gaps and narrower bars, and the axis
+   names every third day rather than colliding into a grey band */
+.rp-cols.dense { gap: 3px; }
+.rp-cols.dense .rp-col { width: 8px; }
+.rp-cols.dense .rp-col-x { font-size: 7.5px; }
 .rp-col {
   position: relative; justify-self: center; width: 15px; height: 100%;
   display: flex; flex-direction: column-reverse; justify-content: flex-start;
