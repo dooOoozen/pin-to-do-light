@@ -61,6 +61,11 @@
         return (n.textContent || '').indexOf('圆角风格') >= 0;
       });
       check(found, 'no 圆角风格 row in the settings modal');
+      /* 图纸 is the house material now, so it leads the list rather than sitting seventh */
+      var cards = document.querySelectorAll('#styleRows .style-card');
+      var first = cards.length ? (cards[0].textContent || '').trim().slice(0, 6) : '(none)';
+      check(cards.length > 0, 'no material cards rendered');
+      check(first.indexOf('图纸') === 0, 'the first material card is ' + JSON.stringify(first) + ', want 图纸');
       var c = document.querySelector('[data-act="done"]');
       if (c) c.click();
       return wait(500);
