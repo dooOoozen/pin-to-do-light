@@ -566,8 +566,15 @@
     }
     out.settings = settings;
 
+    /* A run belongs to the task that was timed: both delete paths below drop its runs, so an
+       entry pointing at a task that no longer exists is unreachable — the timeline, the ledger
+       and the ring can only label it 「（已删除）」 and every total it feeds is a number the user
+       has already thrown away. Older files are repaired on the way in rather than shown with
+       those holes. */
+    var liveTodos = {};
+    (out.todos || []).forEach(function (t) { liveTodos[t.id] = 1; });
     out.timeEntries = Array.isArray(s.timeEntries) ? s.timeEntries.filter(function (e) {
-      return e && e.todoId && e.start && isFinite(new Date(e.start).getTime());
+      return e && e.todoId && liveTodos[e.todoId] && e.start && isFinite(new Date(e.start).getTime());
     }).slice(-4000).map(function (e) {
       var st = new Date(e.start).getTime();
       var en = e.end ? new Date(e.end).getTime() : null;
@@ -985,11 +992,16 @@
     },
 
     'todo:clearCompleted': function (s) {
+      /* the same contract as todo:delete: the task and the minutes it logged go together, or
+         clearing the finished rows leaves the reports full of records with no owner */
+      var gone = {};
+      s.todos.forEach(function (t) { if (t.done) gone[t.id] = 1; });
       s.todos = s.todos.filter(function (t) {
         if (t.done) { delete s.placements[t.id]; return false; }
         return true;
       });
-      return {};
+      s.timeEntries = (s.timeEntries || []).filter(function (e) { return !gone[e.todoId]; });
+      return { removed: Object.keys(gone).length };
     },
 
     /* one timer at a time: starting B banks A's elapsed time and pauses it;

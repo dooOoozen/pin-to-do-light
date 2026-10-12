@@ -871,12 +871,20 @@
         '      <input type="range" id="pomoLen" min="5" max="90" step="5" value="25" title="番茄时长" /></label>' +
         '  </div>';
     }
-    /* the stats tiles already live in this body (they came over when 统计 folded into
-       今日概览), so the ring goes above them rather than replacing them */
+    /* 统计 folded into 今日概览, so this plate carries three things: the ring, the four
+       counters, and one line of figures the counters do not already state. The ring sits beside
+       the counters rather than above them — stacked, the two blocks never both fitted a
+       one-row plate, and side by side the ring is big enough to read at a glance. */
     if (today && !doc.getElementById('todayRing')) {
-      today.insertAdjacentHTML('afterbegin',
-        '<div class="today-body"><div class="today-ring" id="todayRing"></div>' +
-        '<div class="today-figs" id="todayFigs"></div></div>');
+      var statsBox = today.querySelector('.pd-stats');
+      var ringRow = '<div class="today-body"><div class="today-ring" id="todayRing"></div></div>';
+      var figRow = '<div class="today-figs" id="todayFigs"></div>';
+      if (statsBox) {
+        statsBox.insertAdjacentHTML('beforebegin', ringRow);
+        statsBox.insertAdjacentHTML('afterend', figRow);
+      } else {
+        today.insertAdjacentHTML('afterbegin', ringRow + figRow);
+      }
     }
     if (memo && !memo.childElementCount) {
       memo.innerHTML = '<div class="memo-list" id="memoList"></div>' +
@@ -1083,9 +1091,9 @@
         if (D.dayKey(new Date(st)) !== todayKey) return a;
         return a + (e.end ? (Number(e.ms) || 0) : Math.max(0, Date.now() - st));
       }, 0);
+      /* 完成 and 待办 are the ring's own readout and 未完成/已完成 are the counters beside it,
+         so the line under the counters carries only what nothing else states. */
       figs.innerHTML =
-        '<div><i>完成</i><b>' + doneToday + '</b></div>' +
-        '<div><i>待办</i><b>' + openToday + '</b></div>' +
         '<div><i>番茄</i><b>' + pomoCount() + '</b></div>' +
         '<div><i>计时</i><b>' + hm(spent) + '</b></div>';
       const tt = doc.getElementById('todayTotal');

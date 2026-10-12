@@ -17,6 +17,9 @@ body.overlay.overlay-hidden { display: none; }
 .layer { position: fixed; inset: 0; }
 .layer-cards { pointer-events: none; z-index: 40; }
 .layer-dock { pointer-events: none; z-index: 60; }
+/* 不透明度 is a property of the desk, not of the window. Set on <body> it also washed out the
+   dialog and the toasts, which are the two things that have to stay readable. */
+.layer-cards, .layer-dock { opacity: var(--desk-op, 1); }
 .dock { pointer-events: auto; }
 
 /* ---------------------------------------------------------------- dock placement (JS sets top/left) */

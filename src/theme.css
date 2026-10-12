@@ -247,7 +247,10 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; }
 
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px;
+  /* a flex child with no shrink and no self-stretch: in the group rail the row is a flex line,
+     and a 24×24 button allowed to stretch is a 24×27 ellipse */
+  flex: none; align-self: center;
+  width: 24px; height: 24px; padding: 0;
   color: var(--ink); background: var(--paper);
   border: 1px solid var(--edge);
   font-size: 12px; line-height: 1;
@@ -390,6 +393,11 @@ input[type="range"] { accent-color: var(--brick); }
   background-image: var(--tex-grain);
   background-size: var(--tex-size);
   background-blend-mode: var(--tex-blend);
+  /* A dialog is the one surface that has to stay readable over anything, so it frosts instead
+     of fading: what the page paints behind it is blurred and then covered. Where the window is
+     transparent there is nothing in the page to sample and the filter does nothing. */
+  -webkit-backdrop-filter: blur(14px) saturate(1.06);
+  backdrop-filter: blur(14px) saturate(1.06);
   border: 1px solid var(--edge);
   /* the stacked offset print shadow: two hard edges, no blur, so a lifted panel reads
      as another sheet on the same desk rather than as a glow */
@@ -841,6 +849,17 @@ input[type="range"] { accent-color: var(--brick); }
 .badge, .gchip, .switch, .switch i { border-radius: var(--r-pill); }
 .status-mark, .chip-swatch, .card-dot, .task-dot, .mini-dot, .deck-swatch,
 .group-list .dot { border-radius: var(--r-dot); }
+/* A control that has to read as a disc: --r-ctl is a corner radius, and 11px of it on a 24px
+   box is a squircle — the "椭圆不是正圆" report on the 新建分组 button. */
+.icon-btn.circle { border-radius: var(--r-dot); }
+/* The ＋ character carries its own side bearing and baseline, so it never sits in the middle of
+   a disc. Two bars do, and they follow the button's colour on hover. */
+.icon-btn.plus { position: relative; }
+.icon-btn.plus::before, .icon-btn.plus::after {
+  content: ""; position: absolute; left: 50%; top: 50%; background: currentColor;
+  width: 11px; height: 1.6px; transform: translate(-50%, -50%);
+}
+.icon-btn.plus::after { transform: translate(-50%, -50%) rotate(90deg); }
 
 /* ==========================================================================
    MATERIAL: 群青构成 / CONSTRUCTIVIST  (data-style="ikb")
@@ -1865,6 +1884,15 @@ input[type="range"] { accent-color: var(--brick); }
 :root[data-style="chrome"] .btn.primary { background: var(--ink); color: var(--paper-hi); border-color: var(--edge); }
 :root[data-style="chrome"] .mod-head { color: var(--ink); font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 :root[data-style="chrome"] .day-head { border-width: 2px; }
+/* This material's plate is a solid screen of ink, not a tint: --plate-today is the same yellow
+   as --brick and --plate-overdue the same red as --vermillion, so the header text was painted in
+   the colour of the field behind it and "今天 · 10月12日" / "已逾期 OVERDUE" disappeared. On a solid
+   screen the type is the paper it prints on — --ink, black by day and bone at night, which is
+   also the only colour that clears both dark night plates. */
+:root[data-style="chrome"] .day-head.today b,
+:root[data-style="chrome"] .day-head.overdue b,
+:root[data-style="chrome"] .day-head.today .day-count,
+:root[data-style="chrome"] .day-head.overdue .day-count { color: var(--ink); }
 :root[data-style="chrome"] .day-head.overdue { color: #fff; }
 /* Two rules paint a chip in the ink colour and write the yellow on top of it. By day that is
    black on yellow; by night the ink is a light grey and yellow on it measured 1.2:1, so the
@@ -1964,10 +1992,14 @@ input[type="range"] { accent-color: var(--brick); }
 }
 /* the panes: translucent so the room reads through them, which is what makes it frosted */
 :root[data-style="frost"] .hud,
-:root[data-style="frost"] .modal-panel,
 :root[data-style="frost"] .plan-pop {
   /* inside the panel this is a pane over the material's own ground, so 72% reads as glass */
   background-color: color-mix(in srgb, var(--paper-hi) 74%, transparent);
+}
+:root[data-style="frost"] .modal-panel {
+  /* the dialog is where text gets read, not where the glass effect gets admired: over a page
+     that is itself translucent the same 74% let the desk through the settings form */
+  background-color: color-mix(in srgb, var(--paper-hi) 93%, transparent);
 }
 :root[data-style="frost"] .deck-face,
 :root[data-style="frost"] .deck-sheet,

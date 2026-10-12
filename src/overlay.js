@@ -1133,7 +1133,10 @@
     if (window.NeonTheme && D.setTheme) {
       D.setTheme(window.NeonTheme.themeOf(st), window.NeonTheme.current('--brick'));
     }
-    doc.body.style.opacity = String(Math.min(1, Math.max(0.3, Number(st.opacity) || 1)));
+    /* The desk fades; a dialog does not. With the opacity on <body>, the 不透明度 setting also
+       washed out the quick-add modal and the toasts, and they ended up unreadable against
+       whatever was behind the layer — a dialog has to be the most solid thing on the desk. */
+    doc.body.style.setProperty('--desk-op', String(Math.min(1, Math.max(0.3, Number(st.opacity) || 1))));
     doc.body.style.setProperty('--uis', String(Math.min(2, Math.max(0.8, Number(st.uiScale) || 1.3))));
     doc.body.style.setProperty('--fontk', String(Math.min(1.6, Math.max(0.8, Number(st.cardFontScale) || 1))));
     doc.body.style.setProperty('--chipk', String(Math.min(1.6, Math.max(0.8, Number(st.chipFontScale) || 1))));
