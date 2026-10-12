@@ -93,6 +93,37 @@
       check(flat.length === 0, 'round mode leaves square surfaces: ' + flat.join(' '));
       return null;
     })
+    /* The audit above only ever looked at whichever material happened to be on screen, which is
+       how 黑黄战术 passed while hardcoding border-radius: 0 on .btn, .icon-btn and .idx-mark —
+       a :root[data-style] rule outranks the token list, so the switch had no effect there.
+       Every material now gets the same round-mode check. */
+    .then(function () {
+      var styles = (window.NeonTheme && window.NeonTheme.STYLES) || [];
+      /* counted, so a sweep that silently ran over an empty list cannot read as a pass */
+      notes.push('styles=' + styles.length);
+      check(styles.length > 3, 'the material sweep saw ' + styles.length + ' styles');
+      var wasStyle = null;
+      function one(i) {
+        if (i >= styles.length) return Promise.resolve(wasStyle);
+        return API.op({ type: 'settings:update', patch: { style: styles[i].v } })
+          .then(function () { return wait(420); })
+          .then(function () {
+            var r = readRadii();
+            var flat = Object.keys(r).filter(function (k) { return !(r[k] > 0); });
+            if (flat.length) {
+              fails.push(styles[i].v + ' stays square in round mode: ' + flat.join(' '));
+              notes.push(styles[i].v + ' flat=' + flat.join(','));
+            }
+            return one(i + 1);
+          });
+      }
+      return API.getState().then(function (st) {
+        wasStyle = st.settings.style;
+        return setRound(true);
+      }).then(function () { return one(0); }).then(function (back) {
+        return API.op({ type: 'settings:update', patch: { style: back } });
+      });
+    })
     .then(function () { return setRound(was); })
     .then(function () {
       return API.getState();

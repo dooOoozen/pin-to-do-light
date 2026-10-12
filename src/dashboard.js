@@ -194,7 +194,10 @@
     /* Group colours are adapted, not replaced: paint() needs the hour and the material's own
        accent so the hue can lean a few degrees without becoming a different colour. */
     if (window.NeonTheme && D.setTheme) {
-      D.setTheme(window.NeonTheme.themeOf(S.state.settings), window.NeonTheme.current('--brick'));
+      D.setTheme(window.NeonTheme.themeOf(S.state.settings), window.NeonTheme.current('--brick'),
+        S.state.settings.groupPalette);
+      /* which running-row animation the sheet should draw, chosen in 设置 */
+      doc.documentElement.dataset.motion = S.state.settings.runMotion || 'pulse';
     }
     const ink = S.state && S.state.settings.theme === 'ink';
     if (el.btnTheme) {
@@ -2417,8 +2420,10 @@
       if (nowMs >= d.from && nowMs < d.to) col.classList.add('today');
       /* the column is flex-direction: column-reverse, so appending in the order the
          runs happened puts the earliest at the bottom and the day reads upwards */
-      d.runs.forEach((r) => {
-        const seg = rpEl('rp-seg');
+      /* the last run is the segment that ends up on top, because the column is
+         column-reverse, and only that one should open its upper corners */
+      d.runs.forEach((r, ri) => {
+        const seg = rpEl('rp-seg' + (ri === d.runs.length - 1 ? ' rp-seg-top' : ''));
         const g = D.groupById(st, r.gid);
         seg.style.height = Math.max(1.5, (r.ms / dmax) * 100) + '%';
         seg.style.background = g ? (D.paint(g.color)) : 'var(--ink-3)';
@@ -3793,6 +3798,41 @@
             API.op({ type: 'settings:update', patch: { roundCorners: v } });
             toast(v ? '圆角风格 // ROUNDED' : '直角风格 // SQUARE');
           }));
+        /* Both of these are choices to be made by looking, so each option draws its own result:
+           the palette chips show the twelve colours as the app would render them right now
+           (same hour, same material), and each motion chip carries a live running row. */
+        const palRow = doc.createElement('div');
+        palRow.className = 'set-row pick-row';
+        palRow.innerHTML = '<div class="pick-label">分组配色 <span class="tiny faint">GROUP PALETTE</span></div>' +
+          '<div class="pick-list">' + D.PALETTE_NAMES.map((n) => {
+            const c = D.previewPalette(n);
+            return '<button class="pal-pick' + (st.groupPalette === n ? ' on' : '') + '" type="button" data-pal="' + n + '">' +
+              '<span class="pal-strip">' + D.COLOR_KEYS.map((k) => '<i style="background:' + c[k] + '"></i>').join('') + '</span>' +
+              '<b>' + D.PALETTES[n].label + '</b></button>';
+          }).join('') + '</div>' +
+          '<div class="set-hint">色相是分组自己的身份，切换主题时只动明度与饱和度；一套配色里的十二个色块共用同一条明度/饱和度带，所以看起来是一族而不是十二个颜色在打架。</div>';
+        hour.appendChild(palRow);
+        const MOT = [['pulse', '① 底色呼吸'], ['bar', '② 左标尺'], ['dots', '③ 三点'], ['edge', '④ 描边'], ['stripe', '⑤ 斜纹']];
+        const motRow = doc.createElement('div');
+        motRow.className = 'set-row pick-row';
+        motRow.innerHTML = '<div class="pick-label">计时动效 <span class="tiny faint">RUNNING ROW</span></div>' +
+          '<div class="pick-list mot-list">' + MOT.map((m) =>
+            '<button class="mot-pick' + (st.runMotion === m[0] ? ' on' : '') + '" type="button" data-mot="' + m[0] + '">' +
+            '<span class="mini-row running mot-demo"><b class="task-title">计时示例</b><i class="mot-time">01:45</i></span>' +
+            '<b>' + m[1] + '</b></button>').join('') + '</div>';
+        hour.appendChild(motRow);
+        hour.addEventListener('click', (ev) => {
+          const p = ev.target.closest('[data-pal]'), m = ev.target.closest('[data-mot]');
+          if (p) {
+            API.op({ type: 'settings:update', patch: { groupPalette: p.dataset.pal } });
+            toast('分组配色：' + D.PALETTES[p.dataset.pal].label);
+            renderStyleRows();
+          } else if (m) {
+            API.op({ type: 'settings:update', patch: { runMotion: m.dataset.mot } });
+            toast('计时动效已切换');
+            renderStyleRows();
+          }
+        });
       }
       /* ---- 坚果云备份 ----
          Every patch here is rebuilt from the live setting rather than from a snapshot taken
