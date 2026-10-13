@@ -59,14 +59,8 @@ body.edge-top .deck, body.edge-bottom .deck { width: calc(292px * var(--ds, 1));
    what the column direction is for: DOM order is deck then chips, so the top edge reverses it. */
 body.edge-top .dock, body.edge-bottom .dock { flex-direction: column; }
 body.edge-top .dock { flex-direction: column-reverse; }
-/* and on the top edge the face reverses with it: the tool column ends up nearest the screen
-   edge, the DECK band and the count at the bottom where the cards come out */
-body.edge-top .deck-face { flex-direction: column-reverse; }
-/* Docked left, the deck's inner side is its right side — the same side the cards and the chips
-   appear on — so the number and the band mirror the right-edge layout instead of hanging on the
-   screen edge. */
-body.edge-left .deck-count { text-align: right; }
-body.edge-left .deck-head { flex-direction: row-reverse; }
+/* What goes where inside the face is at the end of this sheet: the pill rules below are the same
+   specificity as an edge rule, and whoever is written later wins. */
 
 .deck-sheets { position: absolute; inset: 0; pointer-events: none; }
 .deck-sheet {
@@ -855,3 +849,22 @@ body.deck-pill .deck-sheets .deck-sheet {
   transition: width .18s cubic-bezier(.2, .9, .2, 1), min-height .18s ease,
     padding .18s ease, font-size .18s ease;
 }
+
+/* ---------------------------------------------------------------- what sits where, by docked edge
+   These live at the very end of the sheet on purpose. `body.deck-pill .deck-face { flex-flow:
+   column nowrap }` and `body.deck-pill .deck-top { flex-direction: row }` are the same
+   specificity as an edge rule and sit above this block, so an edge rule written next to the deck
+   styles lost to the pill without any error — 停靠上边 reversed nothing at all, which is the
+   second "没改好" report. */
+
+/* 上边: the tool column is what should touch the screen edge, so the face reverses and the DECK
+   band with the number land underneath it. */
+body.edge-top .deck-face { flex-direction: column-reverse; }
+
+/* 左边: the deck's inner side is its right side — that is where the cards and the chips come
+   out — so the number and the band mirror the right-edge layout instead of hanging on the screen
+   edge. In the pill the band and the number share one row, and reversing what is inside the band
+   is not enough: the row itself has to move to the right. */
+body.edge-left .deck-count { text-align: right; }
+body.edge-left .deck-head { flex-direction: row-reverse; }
+body.edge-left .deck-top { justify-content: flex-end; }
