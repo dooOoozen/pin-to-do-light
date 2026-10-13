@@ -45,6 +45,7 @@
   let calCellHit = { day: null, at: 0 };
   let rowHint = null;
   let tkFit = null;         /* the tracking view's resize handler, one at a time */
+  let tkFutureAt = 0;       /* earliest dragged-future record start; 0 when there is none */
   let rowDragSuppressClick = 0;
   let clockTimer = null;
   let doneTimer = null;
@@ -451,6 +452,12 @@
         const txt = hms(now - new Date(n.dataset.liveMs).getTime());
         if (n.textContent !== txt) n.textContent = txt;
       });
+    }
+    /* A planned record joins 最近记录 the moment its own start arrives; nothing else about the
+       list changes on its own, so this is the only case the clock has to rebuild for. */
+    if (tkFutureAt && now >= tkFutureAt) {
+      tkFutureAt = 0;
+      renderTrackingFigures(now);
     }
     const nodes = $$('[data-spent]');
     if (!nodes.length) return;
@@ -1919,9 +1926,20 @@
     const recN = doc.getElementById('tkRecN');
     if (rec) {
       const all = S.state.timeEntries || [];
-      const list = all.slice().reverse().slice(0, 20);
+      /* A block dragged to a future hour is a plan, not a record — it has not been done yet, so it
+         stays out of 最近记录 until its own start arrives. The timeline keeps showing it, and it is
+         still reachable from there to move or delete. */
+      const past = all.filter((e) => new Date(e.start).getTime() <= ref);
+      /* When the earliest planned record becomes past is the one moment this list has to be
+         rebuilt without the user touching anything; the 1 s tick watches this and calls back in. */
+      tkFutureAt = 0;
+      all.forEach((e) => {
+        const st = new Date(e.start).getTime();
+        if (st > ref && (!tkFutureAt || st < tkFutureAt)) tkFutureAt = st;
+      });
+      const list = past.slice().reverse().slice(0, 20);
       /* the header counts the records there are, not the 20 rows shown below it */
-      if (recN) recN.textContent = String(all.length);
+      if (recN) recN.textContent = String(past.length);
       rec.innerHTML = '';
       list.forEach((e) => {
         const t = D.todoById(S.state, e.todoId);
