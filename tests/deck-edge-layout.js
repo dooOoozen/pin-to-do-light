@@ -20,15 +20,20 @@
     if (!face) { fails.push(edge + ' NO-FACE'); return Promise.resolve(); }
     var f = face.getBoundingClientRect();
     var head = r('.deck-head'), count = r('.deck-count'), tools = r('.dock-tools');
+    var toolsEl = doc.querySelector('.dock-tools');
     var chips = r('.group-chips'), deck = r('.deck');
-    if (!head || !count || !tools) { fails.push(edge + ' MISSING-PART'); return Promise.resolve(); }
+    if (!head || !count || !tools || !toolsEl) { fails.push(edge + ' MISSING-PART'); return Promise.resolve(); }
+    var ts = getComputedStyle(toolsEl);
     var bandL = Math.min(head.left, count.left) - f.left;
     var bandR = Math.max(head.right, count.right) - f.left;
     var bandMid = (bandL + bandR) / 2, faceMid = f.width / 2;
     var line = edge +
       ' face=' + Math.round(f.width) + 'x' + Math.round(f.height) +
       ' band=' + Math.round(bandL) + '-' + Math.round(bandR) + '/' + Math.round(faceMid) +
+      ' count.x' + Math.round(count.left - f.left) + ' head.x' + Math.round(head.left - f.left) +
       ' head.y' + Math.round(head.top - f.top) + ' tools.y' + Math.round(tools.top - f.top) +
+      ' div=' + (ts.borderTopStyle === 'dashed' ? 'above'
+        : ts.borderBottomStyle === 'dashed' ? 'below' : 'none') +
       ' chips=' + (chips && deck ? (Math.abs(chips.top - deck.bottom) < 14 ? 'below'
         : Math.abs(deck.top - chips.bottom) < 14 ? 'above' : 'beside') : '?') +
       ' dir=' + getComputedStyle(face).flexDirection +
@@ -38,14 +43,25 @@
       /* the band and the number share one group; on the left edge its middle has to sit on the
          right half of the face, which is the side the cards and chips come out of */
       if (bandMid <= faceMid) fails.push('left BAND-NOT-RIGHT-ALIGNED mid=' + Math.round(bandMid) + '/' + Math.round(faceMid));
+      /* and inside that group the number leads: its left edge must be left of the band's */
+      if (count.left > head.left) fails.push('left NUMBER-NOT-LEFT-OF-BAND ' + Math.round(count.left - f.left) + '>' + Math.round(head.left - f.left));
     }
     if (edge === 'right') {
       if (bandMid >= faceMid) fails.push('right BAND-MOVED ' + Math.round(bandMid) + '/' + Math.round(faceMid));
+      if (head.left > count.left) fails.push('right ORDER-REVERSED');
     }
+    /* the dashed seam belongs between the tool row and the band, wherever each of them is */
+    var dashBelow = ts.borderBottomStyle === 'dashed';
+    var dashAbove = ts.borderTopStyle === 'dashed';
     if (edge === 'top') {
       if (tools.top > head.top) fails.push('top TOOLS-NOT-ABOVE-BAND');
+      if (!dashBelow || dashAbove) fails.push('top DIVIDER-NOT-BELOW-TOOLS');
+      if (tools.bottom > head.top) fails.push('top DIVIDER-OVERLAPS-BAND');
     } else if (edge === 'bottom') {
       if (tools.top < head.bottom) fails.push('bottom BAND-NOT-ABOVE-TOOLS');
+      if (!dashAbove || dashBelow) fails.push('bottom DIVIDER-NOT-ABOVE-TOOLS');
+    } else if (!dashAbove || dashBelow) {
+      fails.push(edge + ' DIVIDER-MOVED');
     }
     return Promise.resolve();
   }

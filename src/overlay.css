@@ -858,13 +858,21 @@ body.deck-pill .deck-sheets .deck-sheet {
    second "没改好" report. */
 
 /* 上边: the tool column is what should touch the screen edge, so the face reverses and the DECK
-   band with the number land underneath it. */
+   band with the number land underneath it. The dashed divider belongs to the seam between the
+   two, so it moves with them: on this edge it has to sit under the tool row, not between the row
+   and the screen edge. */
 body.edge-top .deck-face { flex-direction: column-reverse; }
+body.edge-top .dock-tools {
+  border-top: 0; border-bottom: 1px dashed var(--rule-strong);
+  padding-top: 0; padding-bottom: 6px;
+}
+body.deck-pill.edge-top .dock-tools { padding-bottom: calc(3px * var(--ds, 1)); }
 
 /* 左边: the deck's inner side is its right side — that is where the cards and the chips come
    out — so the number and the band mirror the right-edge layout instead of hanging on the screen
-   edge. In the pill the band and the number share one row, and reversing what is inside the band
-   is not enough: the row itself has to move to the right. */
+   edge. Reversing the band's contents is not enough: the number has to come first in the row, and
+   `row-reverse` packs a reversed row against its main start, which is the right-hand edge, so the
+   pair stays right-aligned with the number on the band's left. */
 body.edge-left .deck-count { text-align: right; }
 body.edge-left .deck-head { flex-direction: row-reverse; }
-body.edge-left .deck-top { justify-content: flex-end; }
+body.edge-left .deck-top { flex-direction: row-reverse; }
