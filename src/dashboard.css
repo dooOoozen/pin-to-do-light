@@ -1286,6 +1286,9 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
   padding: 5px; min-width: 150px; box-shadow: var(--pop-shadow);
 }
 .tk-ctx .btn { text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the record-only delete is the lesser of the three, so it is set in the muted ink; .faint on
+   its own loses to .btn, which is declared later in theme.css */
+.tk-ctx .btn.faint { color: var(--ink-3); }
 
 .tk-sum { display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: 10px; letter-spacing: .08em; color: var(--ink-3); }
 .tk-sum b { color: var(--ink); font-variant-numeric: tabular-nums; }

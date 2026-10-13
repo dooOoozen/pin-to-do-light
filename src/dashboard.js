@@ -2207,10 +2207,11 @@
       if (t) openTodoModal(t);
     });
 
-    /* Right-click a block. The ✕ drawn on it only takes the time record away, and what
-       people reach for is the task itself. The native menu is suppressed app-wide, so this
-       is the only way in — and the menu standing between the click and the delete is the
-       confirmation a right-click cannot otherwise have. */
+    /* Right-click a block: the two things a person means when they reach for the task itself —
+       edit it, or delete it — and only then the record-only delete, which is what the ✕ drawn on
+       the block does. The native menu is suppressed app-wide, so this is the only way in, and the
+       menu standing between the click and the delete is the confirmation a right-click cannot
+       otherwise have. A block whose task is already gone keeps just the record entry. */
     let ctxEl = null;
     function closeCtx() { if (ctxEl) { ctxEl.remove(); ctxEl = null; } }
     body.addEventListener('contextmenu', (ev) => {
@@ -2223,12 +2224,15 @@
       const t = D.todoById(S.state, todoId);
       const cut = (s) => (s.length > 14 ? s.slice(0, 13) + '…' : s);
       const items = [];
-      if (t) items.push(['删除任务「' + cut(t.title) + '」', 'danger', () => {
-        API.op({ type: 'todo:delete', id: todoId }).then((res) => {
-          toast(res && res.ok ? '任务已删除 // DELETED' : '删除失败', res && res.ok ? '' : 'bad');
-        });
-      }]);
-      items.push(['只删这条时间记录', '', () => {
+      if (t) {
+        items.push(['编辑任务「' + cut(t.title) + '」', '', () => { openTodoModal(t); }]);
+        items.push(['删除任务「' + cut(t.title) + '」', 'danger', () => {
+          API.op({ type: 'todo:delete', id: todoId }).then((res) => {
+            toast(res && res.ok ? '任务已删除 // DELETED' : '删除失败', res && res.ok ? '' : 'bad');
+          });
+        }]);
+      }
+      items.push(['只删这条时间记录', 'faint', () => {
         API.op({ type: 'timer:delete', id: entryId }).then((res) => {
           if (res && res.ok) toast('已删除记录');
         });
