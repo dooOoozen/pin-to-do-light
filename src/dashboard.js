@@ -367,6 +367,7 @@
         '<i class="dot"></i>' +
         '<span class="gname"></span>' +
         (g.autoDone ? '<span class="gauto" title="组内任务到点自动完成，仍然照常提醒">自动</span>' : '') +
+        '<span class="gfill"></span>' +
         (g.locked ? '<span class="glock" title="固定分组，不可删除"></span>' : '<button class="icon-btn gedit" title="编辑分组">\u270E</button>') +
         '<span class="gcount">' + open + '/' + items.length + '</span>';
       const dot = li.querySelector('.dot');

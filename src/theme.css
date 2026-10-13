@@ -2072,13 +2072,15 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
    every material, because this class of mistake is invisible in a source diff. */
 :root .icon-btn.circle { border-radius: var(--r-dot); }
 /* The ＋ character carries its own side bearing and baseline, so it never sits in the middle of
-   a disc. Two bars do, and they follow the button's colour on hover. */
-:root .icon-btn.plus { position: relative; }
-:root .icon-btn.plus::before, :root .icon-btn.plus::after {
+   a box — that is the "加号没有居中" report on both the 新建分组 disc and the quick-add button.
+   Two bars do, and they follow the button's colour on hover. Keyed on .plus rather than
+   .icon-btn.plus so any button can take the mark. */
+:root .plus { position: relative; }
+:root .plus::before, :root .plus::after {
   content: ""; position: absolute; left: 50%; top: 50%; background: currentColor;
   width: 11px; height: 1.6px; transform: translate(-50%, -50%);
 }
-:root .icon-btn.plus::after { transform: translate(-50%, -50%) rotate(90deg); }
+:root .plus::after { transform: translate(-50%, -50%) rotate(90deg); }
 
 /* The 钉在桌面卡片层 button. It used to be ▸ / , which said "send" but not "pin", and the
    direction was the same glyph as the layout affordance two buttons away. Drawn as a mask over

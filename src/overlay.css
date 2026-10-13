@@ -29,8 +29,8 @@ body.overlay { --uis: 1; }
 .dock { position: fixed; display: flex; gap: 8px; align-items: center; }
 body.edge-right .dock { right: 14px; flex-direction: column; }
 body.edge-left .dock { left: 14px; flex-direction: column; }
-body.edge-top .dock { top: 12px; flex-direction: row; }
-body.edge-bottom .dock { bottom: 12px; flex-direction: row; }
+body.edge-top .dock { top: 12px; }
+body.edge-bottom .dock { bottom: 12px; }
 body.dock-dragging .deck-face { cursor: grabbing; }
 
 .dock-ruler { position: absolute; pointer-events: none; opacity: .75; }
@@ -53,6 +53,20 @@ body.edge-bottom .dock-ruler { bottom: -9px; }
 
 .deck { position: relative; width: calc(184px * var(--ds, 1)); }
 body.edge-top .deck, body.edge-bottom .deck { width: calc(292px * var(--ds, 1)); }
+
+/* Docked along the top or the bottom, the deck is a wide short box and the group chips read as
+   a second toolbar beside it. They go above (top edge) or below (bottom edge) instead, which is
+   what the column direction is for: DOM order is deck then chips, so the top edge reverses it. */
+body.edge-top .dock, body.edge-bottom .dock { flex-direction: column; }
+body.edge-top .dock { flex-direction: column-reverse; }
+/* and on the top edge the face reverses with it: the tool column ends up nearest the screen
+   edge, the DECK band and the count at the bottom where the cards come out */
+body.edge-top .deck-face { flex-direction: column-reverse; }
+/* Docked left, the deck's inner side is its right side — the same side the cards and the chips
+   appear on — so the number and the band mirror the right-edge layout instead of hanging on the
+   screen edge. */
+body.edge-left .deck-count { text-align: right; }
+body.edge-left .deck-head { flex-direction: row-reverse; }
 
 .deck-sheets { position: absolute; inset: 0; pointer-events: none; }
 .deck-sheet {

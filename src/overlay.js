@@ -1289,6 +1289,32 @@
     const deck = deckRect();
     const gap = Math.max(1.5, 2 * cs);
     const items = visibleTodos().map((t) => ({ w: compactWidth(t.title), h: compactHeight() }));
+    const offset = Math.max(8, 12 * cs);
+
+    if (!vertical) {
+      /* 上边/下边: the cards come off the deck in a column going into the screen — down from the
+         top edge, up from the bottom — each one centred on the deck's own middle. Laying them out
+         along the edge, which is what this function used to do here, put the first card under the
+         toolbar and ran the last one off the side of the screen, because a top-docked deck is
+         wide and the row had nowhere to grow. */
+      const deckHalf = deck.height / 2;
+      const baseTotal = items.reduce((a, it) => a + it.h, 0) + gap * (n - 1);
+      const from = c.y + dir.y * (deckHalf + offset);
+      const room = (dir.y > 0 ? area.height - 16 - from : from - 16);
+      const scale = baseTotal > room ? Math.max(0.42, room / baseTotal) : 1;
+      let cursor = from;
+      const slots = [];
+      let bounds = null;
+      items.forEach((it) => {
+        const h = it.h * scale, w = it.w * scale;
+        const y = cursor + dir.y * (h / 2);
+        cursor += dir.y * (h + gap * scale);
+        slots.push({ x: Math.round(c.x), y: Math.round(y), rot: 0, w: w, h: h });
+        const r = { left: c.x - w / 2, top: y - h / 2, right: c.x + w / 2, bottom: y + h / 2 };
+        bounds = bounds ? union(bounds, r) : r;
+      });
+      return { slots: slots, bounds: bounds, scale: scale };
+    }
 
     /* for side edges the chips stack by height, for top/bottom by width */
     const alongSize = (it, scale) => (vertical ? it.h * scale : it.w * scale);
@@ -1302,7 +1328,6 @@
     const avail = Math.max(80, (centerAlong + screenHalf) - startAbs);
     const scale = baseTotal > avail ? Math.max(0.42, avail / baseTotal) : 1;
     const deckHalf = (vertical ? deck.width : deck.height) / 2;
-    const offset = Math.max(8, 12 * cs);
 
     let cursor = startAbs;
     const slots = [];
