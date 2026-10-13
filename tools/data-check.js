@@ -31,15 +31,9 @@ const base = {
 
 /* --- normalize --- */
 let s = D.normalize(JSON.parse(JSON.stringify(base)));
-ok(s.settings.runMotion === 'pulse', 'runMotion defaults to pulse', s.settings.runMotion);
+ok(!('runMotion' in s.settings), 'the motion setting is gone (one animation now)', JSON.stringify(Object.keys(s.settings)));
 ok(s.settings.roundCorners === true, 'roundCorners defaults on');
 ok(!('groupPalette' in s.settings), 'legacy groupPalette is gone', JSON.stringify(Object.keys(s.settings)));
-
-s = D.normalize({ ...JSON.parse(JSON.stringify(base)), settings: { activeGroupId: 'g1', runMotion: 'stripe' } });
-ok(s.settings.runMotion === 'pulse', 'removed motion falls back', s.settings.runMotion);
-
-s = D.normalize({ ...JSON.parse(JSON.stringify(base)), settings: { activeGroupId: 'g1', runMotion: 'halo' } });
-ok(s.settings.runMotion === 'halo', 'new motion kept', s.settings.runMotion);
 
 /* orphan time entries: the residue reports were entries surviving the death of their todo */
 s = D.normalize({ ...JSON.parse(JSON.stringify(base)), timeEntries: [

@@ -20,6 +20,7 @@
   var body = mod.querySelector('.mod-body');
   var was = null;
   var bad = [];
+  var miniChecked = 0;
   var wraps = [];
 
   function tiles() {
@@ -112,6 +113,17 @@
     /* equal is not enough: a tile whose number is cut is equal and unreadable */
     else if (clipped || cut || dw > 1 || dh > 1) bad.push(tag);
     note(line);
+    /* 今日清单's rows carry the running overlay with inset: 0, so each row must be its own
+       containing block — without position: relative the overlay resolves against the module and
+       one timer paints the animation over the whole list. Checked once, on the real rows. */
+    if (!miniChecked) {
+      miniChecked = 1;
+      var mrows = Array.prototype.slice.call(document.querySelectorAll('#miniList .mini-row'));
+      var stuck = mrows.filter(function (n) { return getComputedStyle(n).position === 'static'; });
+      note('mini-rows=' + mrows.length + ' static=' + stuck.length);
+      if (!mrows.length) bad.push('MINI-LIST-EMPTY');
+      else if (stuck.length) bad.push('MINI-ROW-NOT-A-CONTAINING-BLOCK ' + stuck.length + '/' + mrows.length);
+    }
     return n;
   }
   function toDash() {

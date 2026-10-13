@@ -1857,6 +1857,25 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --pop-shadow: 6px 6px 0 var(--edge), 0 16px 28px rgba(0,0,0,.55);
   --pop-shadow-sm: 3px 3px 0 var(--edge);
 }
+/* 铬黄丝网 as the user left it on 2026-10-13. They tuned both halves in the colour lab and asked
+   for the result to become the material's default ("以后铬黄丝网默认就是这个"), so the values are
+   written here and the matching overrides were cleared out of settings — a fresh install and this
+   machine now agree without anyone having to open the lab. Anything the lab still overrides wins
+   over this block, which is how it should stay. */
+:root[data-style="chrome"] {
+  --sage: #b1b941; --teal: #6d999c; --slate: #6c7fa7;
+  --head-hi: #eace66; --plate-today: #e4c553; --plate-overdue: #e09a90;
+}
+:root[data-style="chrome"][data-theme="ink"] {
+  --paper: #30463b; --paper-hi: #151405; --paper-lo: #103223;
+  --ink: #c9bc92;
+  --brick: #60521f; --brick-ink: #2f2a1d;
+  --vermillion: #ac6d62; --honey: #8c8940; --forest: #6b591a; --ochre: #a08737;
+  --cream: #2c2311; --surface-hi: #493c22; --field-focus: #5e4e21;
+  --head-hi: #6a4e06;
+  --plate-mod: #131006; --plate-today: #564415; --plate-overdue: #814832;
+  --memo-rule: #cbb462;
+}
 :root[data-style="chrome"] .hud-head {
   background-image: none; background-color: var(--head-hi); color: var(--ink);
   border-bottom: 3px solid var(--edge);
@@ -2060,3 +2079,17 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   width: 11px; height: 1.6px; transform: translate(-50%, -50%);
 }
 :root .icon-btn.plus::after { transform: translate(-50%, -50%) rotate(90deg); }
+
+/* The 钉在桌面卡片层 button. It used to be ▸ / , which said "send" but not "pin", and the
+   direction was the same glyph as the layout affordance two buttons away. Drawn as a mask over
+   currentColor rather than an emoji so it inverts with the row's hover state and follows the
+   material's ink; the slight tilt is what reads as a pin rather than a nail. */
+.icon-btn.pin { font-size: 0; }
+.icon-btn.pin::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 14px; height: 14px;
+  transform: translate(-50%, -50%) rotate(-22deg);
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%23000'%3E%3Crect x='7.5' y='2.5' width='9' height='3' rx='1.2'/%3E%3Crect x='10.6' y='5.4' width='2.8' height='2.3'/%3E%3Cpath d='M8.6 7.7h6.8l-1.5 5.7h-3.8z'/%3E%3Crect x='11.3' y='13.2' width='1.4' height='8.1' rx='.7'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%23000'%3E%3Crect x='7.5' y='2.5' width='9' height='3' rx='1.2'/%3E%3Crect x='10.6' y='5.4' width='2.8' height='2.3'/%3E%3Cpath d='M8.6 7.7h6.8l-1.5 5.7h-3.8z'/%3E%3Crect x='11.3' y='13.2' width='1.4' height='8.1' rx='.7'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+}
+.icon-btn.pin { position: relative; }

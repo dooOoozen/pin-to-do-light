@@ -17,7 +17,6 @@
   var STYLES = ['blueprint', 'frost', 'diner', 'garden', 'hazard', 'ikb', 'console', 'memphis', 'chrome'];
   var TRANSLUCENT = { blueprint: 1, frost: 1, diner: 1, garden: 1, hazard: 1 };
   var fails = [];
-  var MOT_COUNT = 10;   /* 设置 → 外观 offers ten; a chip that never animates is the failure */
 
   /* Chromium serialises a color-mix() result as color(srgb r g b / a), not as rgba(), so both
      shapes have to be read. Returning 1 for an unparsable string is what made the first run of
@@ -47,7 +46,7 @@
     var raw = String(getComputedStyle(panel).backgroundColor).slice(0, 42);
     var line = style + ' panel=' + a.toFixed(2) + ' [' + raw + '] sub-panel=' + (t < 0 ? 'n/a' : t.toFixed(2)) +
       ' groupBtn=' + (bs ? bs.width + '/' + bs.height + ' r=' + br : 'n/a') +
-      ' motPreviews=' + doc.querySelectorAll('.mot-demo[data-motion]').length +
+      ' motPicks=' + doc.querySelectorAll('[data-mot]').length +
       ' pickers=' + doc.querySelectorAll('.gc-pick').length +
       ' presets=' + doc.querySelectorAll('.pal-pick').length;
     note(line);
@@ -76,19 +75,18 @@
       STYLES.forEach(function (s) {
         chain = chain.then(function () { return setStyle(s); }).then(function () { probe(s); });
       });
-      /* the motion chips only animate when their own variant is the one the root asks for, so
-         count the ones that are actually running rather than the ones present */
       chain = chain.then(function () { return setStyle(before || 'blueprint'); })
         .then(function () { return wait(300); })
         .then(function () {
-          var running = [];
-          doc.querySelectorAll('.mot-demo[data-motion]').forEach(function (n) {
-            var an = getComputedStyle(n, '::after').animationName;
-            running.push(n.dataset.motion + '=' + (an === 'none' ? 'idle' : an));
-          });
-          note('animations ' + running.join(' '));
-          var live = running.filter(function (x) { return x.indexOf('idle') < 0; }).length;
-          if (live !== MOT_COUNT) fails.push('MOTION-PREVIEW-RUNNING ' + live + '/' + MOT_COUNT);
+          /* the picker is gone and the animation is fixed, so the two things worth asserting are
+             that the root asks for the one variant the sheet still defines, and that no chip
+             survived to be clicked */
+          var m = doc.documentElement.dataset.motion;
+          var picks = doc.querySelectorAll('[data-mot]').length;
+          note('root data-motion=' + m + ' motion-picks=' + picks +
+            ' group-pickers=' + doc.querySelectorAll('.gc-pick').length);
+          if (m !== 'duo') fails.push('DATA-MOTION ' + m);
+          if (picks) fails.push('MOTION-PICKER-STILL-THERE ' + picks);
           note('RESULT ' + (fails.length ? 'FAIL ' + fails.join(' | ') : 'PASS'));
         });
       return chain;

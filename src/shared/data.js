@@ -30,10 +30,6 @@
   var COLOR_KEYS = ['sage', 'vermillion', 'honey', 'cream', 'brick', 'forest', 'slate', 'khaki', 'teal', 'plum', 'ochre', 'ink'];
   var HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
-  /* The running-row animation options, picked in 设置 → 外观. Three earlier candidates
-     (a growing edge bar, three bouncing dots, a sliding barber pole) were dropped: the user
-     asked for calmer, less mechanical marks. */
-  var RUN_MOTIONS = ['pulse', 'edge', 'sweep', 'halo', 'aura', 'trail', 'beam', 'flow', 'duo', 'ringlight'];
 
   /* A group's colour belongs to the group, not to the theme: switching material or hour must
      not repaint 工作 from one hue into another, or the reader loses the association they built.
@@ -145,7 +141,7 @@
     'simple', 'muted', 'deckMonitor', 'ai',
     'dockScale', 'autoScale',
     'desktopOnly', 'dockPos', 'deckScale', 'cardScale', 'uiScale', 'dockMovable', 'sideWidth', 'sideCollapsed', 'sound',
-    'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'deckShape', 'roundCorners', 'runMotion', 'theme', 'style', 'palette',
+    'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'deckShape', 'roundCorners', 'theme', 'style', 'palette',
     'memo', 'pomoDate', 'pomoCount', 'dashLayout', 'receipt', 'webdav'
   ];
 
@@ -363,7 +359,6 @@
            deckShape: that chooses the card box's layout, this chooses the arc every surface
            in the app is cut with. */
         roundCorners: true,
-        runMotion: 'pulse',
         theme: 'paper',
         /* the material of the whole UI, independent of the hour. 图纸 is the house default —
            black and white, and the roundness the corner switch then dresses or strips.
@@ -566,10 +561,6 @@
     settings.deckShape = settings.deckShape === 'pill' ? 'pill' : 'stack';
     /* roundness is its own axis: any material can wear round or square corners */
     settings.roundCorners = settings.roundCorners !== false;
-    /* how a running row marks itself, picked in 设置 so the choice can be changed without
-       editing a file */
-    settings.runMotion = RUN_MOTIONS.indexOf(String(settings.runMotion || '')) >= 0
-      ? String(settings.runMotion) : 'pulse';
     settings.hotkey = String(settings.hotkey == null ? 'Control+Alt+T' : settings.hotkey);
     settings.scatterHotkey = String(settings.scatterHotkey == null ? 'Control+Alt+S' : settings.scatterHotkey);
     var wd = settings.webdav && typeof settings.webdav === 'object' ? settings.webdav : {};
@@ -1657,7 +1648,7 @@
 
   return {
     VERSION: VERSION,
-    PALETTE: PALETTE, RUN_MOTIONS: RUN_MOTIONS,
+    PALETTE: PALETTE,
     COLOR_KEYS: COLOR_KEYS,
     PRIORITIES: PRIORITIES,
     PRIORITY_LABEL: PRIORITY_LABEL,

@@ -191,12 +191,12 @@
      tokens, so the night palette is a swap rather than a restyle pass */
   function applyTheme() {
     if (window.NeonTheme) window.NeonTheme.apply(S.state && S.state.settings);
-    /* Group colours are adapted, not replaced: paint() needs the hour and the material's own
-       accent so the hue can lean a few degrees without becoming a different colour. */
+    /* Group colours belong to the group: only the hour moves them, through lightness and
+       saturation, never hue. The accent is passed because both callers already pass it. */
     if (window.NeonTheme && D.setTheme) {
       D.setTheme(window.NeonTheme.themeOf(S.state.settings), window.NeonTheme.current('--brick'));
-      /* which running-row animation the sheet should draw, chosen in 设置 */
-      doc.documentElement.dataset.motion = S.state.settings.runMotion || 'pulse';
+      /* one running-row animation, chosen and kept: 底色呼吸 + 扫光 on the same overlay */
+      doc.documentElement.dataset.motion = 'duo';
     }
     const ink = S.state && S.state.settings.theme === 'ink';
     if (el.btnTheme) {
@@ -457,7 +457,9 @@
     nodes.forEach((n) => {
       const t = D.todoById(S.state, n.dataset.spent);
       if (!t) return;
-      const text = '\u23F1 ' + D.formatSpent(D.spentOf(t, now));
+      /* the clock beside the title carries the number alone — the glyph is what made it look
+         like one of the small flags */
+      const text = (n.classList.contains('task-clock') ? '' : '\u23F1 ') + D.formatSpent(D.spentOf(t, now));
       if (n.textContent !== text) n.textContent = text;
     });
   }
@@ -1242,9 +1244,17 @@
       const right = doc.createElement('div');
       right.className = 'mini-right';
       const spent = D.spentOf(t);
-      if (spent > 0 || t.timerStartedAt) {
+      /* a running clock is state, so it goes beside the title where the eye lands; an
+         accumulated one is history and stays a small mark at the end of the line */
+      let clock = null;
+      if (t.timerStartedAt) {
+        clock = doc.createElement('b');
+        clock.className = 'mini-spent task-clock running num';
+        clock.dataset.spent = t.id;
+        clock.textContent = D.formatSpent(spent);
+      } else if (spent > 0) {
         const sp = doc.createElement('span');
-        sp.className = 'mini-spent' + (t.timerStartedAt ? ' running' : '');
+        sp.className = 'mini-spent';
         sp.dataset.spent = t.id;
         sp.textContent = '\u23F1 ' + D.formatSpent(spent);
         right.appendChild(sp);
@@ -1277,6 +1287,7 @@
 
       row.appendChild(chk);
       row.appendChild(title);
+      if (clock) row.appendChild(clock);
       row.appendChild(dot);
       row.appendChild(right);
       row.addEventListener('dblclick', () => openTodoModal(t));
@@ -2728,8 +2739,19 @@
     if (t.spawnedFrom) flags.appendChild(span('flag', '\u21BB 下一次'));
     if (t.tags && t.tags.length) flags.appendChild(span('flag', t.tags.join(' · ')));
     const spent = D.spentOf(t);
-    if (spent > 0 || t.timerStartedAt) {
-      const tm = span('flag timer' + (t.timerStartedAt ? ' running' : ''), '\u23F1 ' + D.formatSpent(spent));
+    /* A row on the clock has to be readable from across the room, so the elapsed time is its
+       own element beside the title rather than one more 9px flag at the far end of the line.
+       The flag stays for a task that was timed and then stopped — that is history, not state. */
+    if (t.timerStartedAt) {
+      const clock = doc.createElement('b');
+      clock.className = 'task-clock num';
+      clock.dataset.spent = t.id;
+      clock.title = '已计时';
+      clock.textContent = D.formatSpent(spent);
+      line.appendChild(clock);
+    }
+    if (spent > 0 && !t.timerStartedAt) {
+      const tm = span('flag timer', '\u23F1 ' + D.formatSpent(spent));
       tm.dataset.spent = t.id;
       flags.appendChild(tm);
     }
@@ -2774,8 +2796,8 @@
     if (ticking) timerBtn.classList.add('on');
     actions.appendChild(timerBtn);
     actions.appendChild(iconBtn('edit', '\u270E', '编辑'));
-    actions.appendChild(iconBtn('pin', deployed ? '\u25C0' : '\u25B8',
-      deployed ? '收回桌面卡片 // RECALL' : '钉在桌面卡片层 // PIN TO DESK'));
+    actions.appendChild(iconBtn('pin', '',
+      deployed ? '收回桌面卡片 // RECALL' : '钉在桌面卡片层 // PIN TO DESK', 'pin'));
     if (deployed) actions.querySelector('[data-act="pin"]').classList.add('on');
     actions.appendChild(iconBtn('delete', '\u2715', '删除', 'danger'));
 
@@ -3829,6 +3851,9 @@
             API.op({ type: 'settings:update', patch: { theme: v ? 'ink' : 'paper' } });
             toast(v ? '夜间主题 // NIGHT' : '白昼主题 // DAY');
             renderStyleRows();
+            /* the group rows print the colour actually on screen, and that is the night
+               variant from here on */
+            renderGroupColours();
           }));
         /* Roundness belongs to no material: turning this off squares off every surface in
            whichever material is on, and on gives them all one arc. It lives here rather than
@@ -3842,12 +3867,9 @@
         /* Every group's colour on one screen, each with its own picker, so the whole board can
            be re-tinted without opening the group dialog once per group. What gets stored is the
            hex that was picked — the named slots are only what a brand new group starts with. */
-        let palBox = null, motRow = null;
-        const MOT = [['pulse', '① 底色呼吸'], ['edge', '② 描边呼吸'], ['sweep', '③ 扫光'], ['halo', '④ 脉冲环'], ['aura', '⑤ 光晕'],
-          ['trail', '⑥ 底部进度'], ['beam', '⑦ 描边流光'], ['flow', '⑧ 底色流动'], ['duo', '⑨ 呼吸+扫光'], ['ringlight', '⑩ 光环脉冲']];
-        function renderPickRows() {
+        let palBox = null;
+        function renderGroupColours() {
           if (palBox) palBox.remove();
-          if (motRow) motRow.remove();
           palBox = doc.createElement('div');
           palBox.className = 'set-row pick-row';
           palBox.innerHTML = '<div class="pick-label">分组配色 <span class="tiny faint">GROUP COLOURS</span></div>';
@@ -3876,22 +3898,8 @@
           palHint.textContent = '这里改的是各分组自己的颜色，改完立刻在卡盒、时间轴、账本与图例上生效；昼夜只调整明度与饱和度，不会换掉色相。';
           palBox.appendChild(palHint);
           hour.appendChild(palBox);
-          motRow = doc.createElement('div');
-          motRow.className = 'set-row pick-row';
-          motRow.innerHTML = '<div class="pick-label">计时动效 <span class="tiny faint">RUNNING ROW</span></div>' +
-            '<div class="pick-list mot-list">' + MOT.map((m) =>
-              '<button class="mot-pick' + (S.state.settings.runMotion === m[0] ? ' on' : '') + '" type="button" data-mot="' + m[0] + '">' +
-              '<span class="mini-row running mot-demo" data-motion="' + m[0] + '"><b class="task-title">计时示例</b><i class="mot-time">01:45</i></span>' +
-              '<b>' + m[1] + '</b></button>').join('') + '</div>';
-          hour.appendChild(motRow);
         }
-        renderPickRows();
-        hour.addEventListener('click', (ev) => {
-          const m = ev.target.closest('[data-mot]');
-          if (!m) return;
-          API.op({ type: 'settings:update', patch: { runMotion: m.dataset.mot } }).then(renderPickRows);
-          toast('计时动效已切换');
-        });
+        renderGroupColours();
         /* Only the readout is rewritten here — rebuilding the row while the native colour dialog
            is still open would remove the input the dialog is firing events at. */
         hour.addEventListener('input', (ev) => {
