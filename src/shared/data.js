@@ -30,72 +30,21 @@
   var COLOR_KEYS = ['sage', 'vermillion', 'honey', 'cream', 'brick', 'forest', 'slate', 'khaki', 'teal', 'plum', 'ochre', 'ink'];
   var HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
-  /* Four selectable sets, keyed the same way so a group keeps its slot when the set changes.
-     Two of them are published data-visualisation schemes rather than my own invention: Tol's
-     'bright' is the qualitative set he specifies as colour-blind safe, and the eight Okabe-Ito
-     colours are the standard accessibility set. Where a published scheme has fewer than twelve
-     members the remaining slots are filled in the same family, and that is said in the label.
-     The cream set is designed here: it is the current one with the grey taken out, which is
-     what the 太灰 report asked for. */
-  var PALETTES = {
-    morandi: { label: '灰调莫兰迪', c: {
-      brick: '#a8756b', forest: '#6e8271', slate: '#6c7b8f', khaki: '#a99973', teal: '#5f8a83',
-      plum: '#8b7a8c', ochre: '#c09a6f', ink: '#4a4a4c', sage: '#9fb4a3', vermillion: '#c1766a',
-      honey: '#d8b98a', cream: '#ede6da' } },
-    cream: { label: '奶油低饱和', c: {
-      brick: '#C97B63', forest: '#4E9A76', slate: '#5C82B8', khaki: '#BFA05E', teal: '#3E9698',
-      plum: '#9A7BB8', ochre: '#D2924A', ink: '#5C5A63', sage: '#8CB88C', vermillion: '#D9604A',
-      honey: '#E8C173', cream: '#F2E4CC' } },
-    tol: { label: '亮彩 Tol bright', c: {
-      brick: '#EE6677', forest: '#228833', slate: '#4477AA', khaki: '#CCBB44', teal: '#66CCEE',
-      plum: '#AA3377', ochre: '#E58A2E', ink: '#666677', sage: '#7FB069', vermillion: '#D24B3E',
-      honey: '#D9B310', cream: '#E8DCC0' } },
-    okabe: { label: '色盲友好 Okabe-Ito', c: {
-      brick: '#D55E00', forest: '#009E73', slate: '#0072B2', khaki: '#B98F3E', teal: '#56B4E9',
-      plum: '#CC79A7', ochre: '#E69F00', ink: '#4A4A52', sage: '#6FA88C', vermillion: '#C4453B',
-      honey: '#F0E442', cream: '#E7DCC6' } }
-  };
-  var PALETTE_NAMES = ['cream', 'tol', 'okabe', 'morandi'];
-  var RUN_MOTIONS = ['pulse', 'bar', 'dots', 'edge', 'stripe'];
-
-  /* What makes a set read as one family is not the hue — twelve different hues is the whole
-     point — it is the lightness and the saturation living in the same band. So every colour is
-     pushed into a band before it is drawn, and the band moves with the hour and with the
-     material's own accent: a bright yellow screen-print accent lifts the band, a deep ink one
-     drops it. Hue is never touched, which is the rule the 不要改色调 report set. */
-  var BAND = {
-    paper: { s: [0.30, 0.52], l: [0.42, 0.60] },
-    ink: { s: [0.22, 0.40], l: [0.52, 0.68] }
-  };
-
-  function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
-
-  function harmonise(h, s, l, hour, accent) {
-    var b = BAND[hour === 'ink' ? 'ink' : 'paper'];
-    var lo = b.s[0], hi = b.s[1], lolo = b.l[0], hihi = b.l[1];
-    if (accent) {
-      var a = hslOf(rgbOf(accent));
-      /* the material sets the temperature of the whole board; ±0.06 of saturation and ±0.04 of
-         lightness is enough to read as "this palette belongs to this theme" without making a
-         group unrecognisable when the theme changes */
-      var pull = a ? clamp01((a.s - 0.35) * 1.6) : 0.5;
-      lo += (pull - 0.5) * 0.10; hi += (pull - 0.5) * 0.10;
-      var lp = a ? clamp01((a.l - 0.5) * 1.2) : 0;
-      lolo += lp * 0.06; hihi += lp * 0.06;
-    }
-    return hslHex(h, Math.max(lo, Math.min(hi, s)), Math.max(lolo, Math.min(hihi, l)));
-  }
+  /* The running-row animation options, picked in 设置 → 外观. Three earlier candidates
+     (a growing edge bar, three bouncing dots, a sliding barber pole) were dropped: the user
+     asked for calmer, less mechanical marks. */
+  var RUN_MOTIONS = ['pulse', 'edge', 'sweep', 'halo', 'aura', 'trail', 'beam', 'flow', 'duo', 'ringlight'];
 
   /* A group's colour belongs to the group, not to the theme: switching material or hour must
      not repaint 工作 from one hue into another, or the reader loses the association they built.
-     The hour and the material move the lightness and the saturation only. The value may also be
-     a hex the user picked themselves, in which case it is harmonised the same way. */
-  var THEME = { hour: 'paper', accent: null, palette: 'cream' };
+     The hour lifts the lightness and eases the saturation toward the dark ground; the hue is
+     never touched. The stored value is either one of COLOR_KEYS or a hex the user picked. */
+  var THEME = { hour: 'paper', accent: null };
 
-  function setTheme(hour, accent, palette) {
+  /* Only the hour moves a group's colour, so the material's accent is taken and dropped: it is
+     here so the two callers keep their existing shape, and it goes nowhere else. */
+  function setTheme(hour, accent) {
     THEME.hour = hour === 'ink' ? 'ink' : 'paper';
-    THEME.accent = HEX_COLOR.test(String(accent || '')) ? String(accent).toLowerCase() : null;
-    if (palette && PALETTES[palette]) THEME.palette = palette;
   }
 
   function rgbOf(hex) {
@@ -132,31 +81,15 @@
     return hue + d * amount;
   }
 
-  function pal(name) {
-    var p = PALETTES[name || THEME.palette] || PALETTES.morandi;
-    return p.c;
-  }
-
-  /* What a set would actually draw on screen right now, so the picker in 设置 shows the result
-     and not the source values. The active palette is swapped for the duration of the call. */
-  function previewPalette(name) {
-    var was = THEME.palette, out = {};
-    THEME.palette = PALETTES[name] ? name : was;
-    for (var i = 0; i < COLOR_KEYS.length; i++) out[COLOR_KEYS[i]] = paint(COLOR_KEYS[i]);
-    THEME.palette = was;
-    return out;
-  }
-
-  /* The stored value is the group's identity: a slot name from the active set, or a hex the
-     user picked. Neither the hour nor the material may change which colour it is — only how
-     light and how saturated it reads, which is what harmonise does. */
+  /* The stored value is the group's identity: a slot name, or a hex the user picked themselves.
+     Only the lightness and the saturation move with the hour; the hue never does. */
   function paint(colorKey) {
-    var set = pal();
-    var base = set[colorKey] || (HEX_COLOR.test(String(colorKey || '')) ? colorKey : set.brick);
+    var base = PALETTE[colorKey] || (HEX_COLOR.test(String(colorKey || '')) ? colorKey : PALETTE.brick);
+    if (THEME.hour !== 'ink') return base;
     var rgb = rgbOf(base);
     if (!rgb) return base;
     var h = hslOf(rgb);
-    return harmonise(h.h, h.s, h.l, THEME.hour, THEME.accent);
+    return hslHex(h.h, h.s * 0.86, Math.min(0.72, h.l * 1.08 + 0.07));
   }
 
   var PRIORITIES = ['none', 'low', 'med', 'high'];
@@ -212,7 +145,7 @@
     'simple', 'muted', 'deckMonitor', 'ai',
     'dockScale', 'autoScale',
     'desktopOnly', 'dockPos', 'deckScale', 'cardScale', 'uiScale', 'dockMovable', 'sideWidth', 'sideCollapsed', 'sound',
-    'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'deckShape', 'roundCorners', 'groupPalette', 'runMotion', 'theme', 'style', 'palette',
+    'cardFontScale', 'chipFontScale', 'scaleDefaults', 'dockAutoTuck', 'deckShape', 'roundCorners', 'runMotion', 'theme', 'style', 'palette',
     'memo', 'pomoDate', 'pomoCount', 'dashLayout', 'receipt', 'webdav'
   ];
 
@@ -304,9 +237,8 @@
   /* The stored colour with no hour applied to it — what a picker should show, so a custom
      hex reads back as the colour the user chose rather than as the night version of it. */
   function baseColor(key) {
-    var set = pal();
     var s = String(key == null ? '' : key);
-    return set[s] || (HEX_COLOR.test(s) ? s : set.brick);
+    return PALETTE[s] || (HEX_COLOR.test(s) ? s : PALETTE.brick);
   }
 
   function colorOf(state, groupId) {
@@ -431,7 +363,6 @@
            deckShape: that chooses the card box's layout, this chooses the arc every surface
            in the app is cut with. */
         roundCorners: true,
-        groupPalette: 'cream',
         runMotion: 'pulse',
         theme: 'paper',
         /* the material of the whole UI, independent of the hour. 图纸 is the house default —
@@ -604,18 +535,29 @@
     /* two palettes only; anything else falls back to the paper one rather
        than leaving the app half-styled */
     settings.theme = settings.theme === 'ink' ? 'ink' : 'paper';
-    /* per-theme colour overrides: two plain maps of CSS custom property to hex.
-       Anything malformed is dropped rather than written onto the root, because a bad
-       value there silently breaks every derived token at once */
+    /* Colour overrides are keyed by material and then by hour: the colours of 黑黄战术 are not
+       the colours of 图纸, and an edit made in one must not follow the user into the other — that
+       leak is the 调色盘 bug report. Files written before this change held one {paper,ink} pair
+       shared by every material; there is no record of which material was on screen while it was
+       being edited, so the overrides are kept under the material that is on screen now and the
+       other nine go back to their own defaults, which is the outcome the report asks for.
+       Anything malformed is dropped rather than written onto the root, because a bad value there
+       breaks every derived token at once. */
     var pal = settings.palette && typeof settings.palette === 'object' ? settings.palette : {};
-    var clean = {};
-    ['paper', 'ink'].forEach(function (t) {
-      var bag = pal[t] && typeof pal[t] === 'object' ? pal[t] : {};
+    function cleanBag(bag) {
       var out = {};
-      Object.keys(bag).forEach(function (k) {
+      Object.keys(bag && typeof bag === 'object' ? bag : {}).forEach(function (k) {
         if (/^--[a-z0-9-]+$/.test(k) && /^#[0-9a-fA-F]{3,8}$/.test(bag[k])) out[k] = bag[k];
       });
-      clean[t] = out;
+      return out;
+    }
+    var legacy = { paper: cleanBag(pal.paper), ink: cleanBag(pal.ink) };
+    var oldShape = !!(pal.paper || pal.ink);
+    var clean = {};
+    STYLE_IS.forEach(function (s) {
+      var src = oldShape ? (s === settings.style ? legacy : {})
+        : (pal[s] && typeof pal[s] === 'object' ? pal[s] : {});
+      clean[s] = { paper: cleanBag(src.paper), ink: cleanBag(src.ink) };
     });
     settings.palette = clean;
     settings.cardFontScale = Math.min(1.6, Math.max(0.8, Number(settings.cardFontScale) || 1.15));
@@ -624,9 +566,8 @@
     settings.deckShape = settings.deckShape === 'pill' ? 'pill' : 'stack';
     /* roundness is its own axis: any material can wear round or square corners */
     settings.roundCorners = settings.roundCorners !== false;
-    /* which set of group colours is in force, and how a running row marks itself; both are
-       picked in 设置 so the choice can be changed without editing a file */
-    settings.groupPalette = PALETTES[settings.groupPalette] ? settings.groupPalette : 'cream';
+    /* how a running row marks itself, picked in 设置 so the choice can be changed without
+       editing a file */
     settings.runMotion = RUN_MOTIONS.indexOf(String(settings.runMotion || '')) >= 0
       ? String(settings.runMotion) : 'pulse';
     settings.hotkey = String(settings.hotkey == null ? 'Control+Alt+T' : settings.hotkey);
@@ -1716,7 +1657,7 @@
 
   return {
     VERSION: VERSION,
-    PALETTE: PALETTE, PALETTES: PALETTES, PALETTE_NAMES: PALETTE_NAMES, RUN_MOTIONS: RUN_MOTIONS, paletteColors: pal, previewPalette: previewPalette,
+    PALETTE: PALETTE, RUN_MOTIONS: RUN_MOTIONS,
     COLOR_KEYS: COLOR_KEYS,
     PRIORITIES: PRIORITIES,
     PRIORITY_LABEL: PRIORITY_LABEL,

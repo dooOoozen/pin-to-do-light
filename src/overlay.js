@@ -1131,7 +1131,7 @@
     else doc.documentElement.dataset.theme = st.theme === 'ink' ? 'ink' : 'paper';
     /* and the same rule for group colours: adapted to the hour, never replaced by it */
     if (window.NeonTheme && D.setTheme) {
-      D.setTheme(window.NeonTheme.themeOf(st), window.NeonTheme.current('--brick'), st.groupPalette);
+      D.setTheme(window.NeonTheme.themeOf(st), window.NeonTheme.current('--brick'));
     }
     /* The desk fades; a dialog does not. With the opacity on <body>, the 不透明度 setting also
        washed out the quick-add modal and the toasts, and they ended up unreadable against

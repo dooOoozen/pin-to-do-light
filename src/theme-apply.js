@@ -53,9 +53,10 @@
   var HEX = /^#[0-9a-fA-F]{3,8}$/;
   var applied = [];
 
-  /* two independent axes: the material (data-style) and the hour (data-theme). The
-     palette the colour lab edits is keyed by theme, so a style swap keeps the user's
-     pinned colours for that day/night half.
+  /* two independent axes: the material (data-style) and the hour (data-theme). The colour lab
+     writes per material *and* per hour, because a pinned --brick on 黑黄战术 is a decision about
+     that material; sharing one map between all ten, which is what this used to do, meant an edit
+     made in one material silently recoloured every other one.
      Names describe the visual language, not any particular work: `v` stays the stable
      key persisted in settings, `n` is what the settings card shows. */
   var STYLES = [
@@ -95,13 +96,15 @@
     var root = document.documentElement;
     var theme = themeOf(settings);
     root.dataset.theme = theme;
-    root.dataset.style = styleOf(settings);
+    var style = styleOf(settings);
+    root.dataset.style = style;
     /* the third axis: which material, which hour, and whether anything is rounded at all.
        Default is 'on' because the setting is new — an old data file has no key to read. */
     root.dataset.round = settings && settings.roundCorners === false ? 'off' : 'on';
     applied.forEach(function (k) { root.style.removeProperty(k); });
     applied = [];
-    var bag = settings && settings.palette && settings.palette[theme];
+    var per = settings && settings.palette && settings.palette[style];
+    var bag = per && per[theme];
     if (!bag) return;
     Object.keys(bag).forEach(function (k) {
       if (!HEX.test(bag[k])) return;

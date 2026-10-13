@@ -26,10 +26,48 @@ const PANEL_TITLE: &str = "Pin To-Do 任务面板";
    The renderer owns the state reducer (shared/data.js moved over untouched), so the
    boundary carries JSON strings rather than a Rust mirror of the schema. */
 
+/// The folder the app writes to: `data` beside the executable, so running the program does not
+/// leave anything on the system drive. A read-only install (Program Files without admin rights)
+/// cannot create it, and there the old %APPDATA% location is used rather than failing to start.
+fn portable_dir() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    Some(exe.parent()?.join("data"))
+}
+
+/// Copy the store in from wherever it has been living, then move the source aside under a name
+/// that says what happened to it. The rename is the point: a dev build's `data` folder sits next
+/// to the executable inside `target/`, so `cargo clean` deletes it, and if the old copy were still
+/// sitting where takeover looks, the next launch would quietly resurrect a stale store and the
+/// edits made since would be gone. Left in place it is still a backup a person can read.
+fn take_over(dir: &PathBuf, from: &PathBuf) -> bool {
+    if !from.exists() {
+        return false;
+    }
+    if std::fs::copy(from, dir.join(DATA_FILE)).is_err() {
+        return false;
+    }
+    let aside = from.with_file_name(format!("{}.migrated", DATA_FILE));
+    let _ = std::fs::rename(from, aside);
+    true
+}
+
 fn config_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir)
+    let roaming = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    if let Some(local) = portable_dir() {
+        if std::fs::create_dir_all(&local).is_ok() {
+            if !local.join(DATA_FILE).exists() {
+                // the %APPDATA% copy first, then the Electron build's folder it was taken over from
+                if !take_over(&local, &roaming.join(DATA_FILE)) {
+                    if let Some(parent) = roaming.parent() {
+                        let _ = take_over(&local, &parent.join(LEGACY_DIR).join(DATA_FILE));
+                    }
+                }
+            }
+            return Ok(local);
+        }
+    }
+    std::fs::create_dir_all(&roaming).map_err(|e| e.to_string())?;
+    Ok(roaming)
 }
 
 fn data_path(app: &AppHandle) -> Result<PathBuf, String> {
@@ -1415,11 +1453,11 @@ fn receipt_dir(app: AppHandle) -> Result<String, String> {
 }
 
 fn receipts_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
-    let dl = win32::known_folder(&win32::FOLDERID_DOWNLOADS);
-    Ok(match dl {
-        Some(p) if p.is_dir() => p.join("出票机"),
-        _ => config_dir(app)?.join("receipts"),
-    })
+    /* The default is inside the app's own folder, not Downloads: a receipt the user did not ask
+       to put anywhere in particular has no business landing on the system drive. A folder chosen
+       in 设置 still wins — that is an explicit request, and save_receipt applies it before this
+       function is ever consulted. */
+    Ok(config_dir(app)?.join("receipts"))
 }
 
 /* ---------------------------------------------------------------- agent transport

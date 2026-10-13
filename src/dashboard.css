@@ -245,42 +245,128 @@ body.side-dragging { cursor: col-resize; }
 .task.running .task-title { color: var(--brick); }
 .task.running::after, .mini-row.running::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
+  /* the overlay takes the row's own corners, so a glow or an inner ring follows a rounded row
+     instead of drawing a square inside it */
+  border-radius: inherit;
 }
+/* Each settings chip carries its own data-motion, so all five previews run side by side and
+   the choice is made by looking rather than by switching one at a time. The real rows follow
+   data-motion on the root element. */
 /* ① 底色呼吸: the whole plate lifts and settles */
-:root[data-motion="pulse"] .task.running, :root[data-motion="pulse"] .mini-row.running { box-shadow: inset 3px 0 0 var(--brick); }
-:root[data-motion="pulse"] .task.running::after, :root[data-motion="pulse"] .mini-row.running::after {
+:root[data-motion="pulse"] .task.running, :root[data-motion="pulse"] .mini-row.running:not(.mot-demo),
+.mot-demo[data-motion="pulse"] { box-shadow: inset 3px 0 0 var(--brick); }
+:root[data-motion="pulse"] .task.running::after, :root[data-motion="pulse"] .mini-row.running:not(.mot-demo)::after,
+.mot-demo[data-motion="pulse"]::after {
   background: color-mix(in srgb, var(--brick) 22%, transparent);
   animation: row-breathe 4.6s ease-in-out infinite;
 }
 @keyframes row-breathe { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
-/* ② 左标尺: the edge bar grows to full height and back, the row itself stays still */
-:root[data-motion="bar"] .task.running::after, :root[data-motion="bar"] .mini-row.running::after {
-  inset: auto auto 0 0; width: 3px; height: 100%; background: var(--brick);
-  transform-origin: 50% 100%; animation: row-scale-bar 1.9s cubic-bezier(.65,0,.35,1) infinite;
-}
-@keyframes row-scale-bar { 0%, 100% { transform: scaleY(.22); } 50% { transform: scaleY(1); } }
-/* ③ 三点: three dots at the right edge, the classic loading cadence */
-:root[data-motion="dots"] .task.running::after, :root[data-motion="dots"] .mini-row.running::after {
-  inset: 0 8px 0 auto; width: 34px; background-image:
-    radial-gradient(circle at 6px 50%, var(--brick) 0 2.6px, transparent 3.1px),
-    radial-gradient(circle at 17px 50%, var(--brick) 0 2.6px, transparent 3.1px),
-    radial-gradient(circle at 28px 50%, var(--brick) 0 2.6px, transparent 3.1px);
-  background-repeat: no-repeat; animation: row-dots 1.25s steps(3, end) infinite;
-}
-@keyframes row-dots { 0% { opacity: .3; } 50% { opacity: 1; } 100% { opacity: .3; } }
-/* ④ 描边: only the inner ring pulses, so the text never sits on a moving fill */
-:root[data-motion="edge"] .task.running::after, :root[data-motion="edge"] .mini-row.running::after {
+/* ② 描边: only the inner ring pulses, so the text never sits on a moving fill */
+:root[data-motion="edge"] .task.running::after, :root[data-motion="edge"] .mini-row.running:not(.mot-demo)::after,
+.mot-demo[data-motion="edge"]::after {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--brick) 70%, transparent);
   animation: row-edge 3.2s ease-in-out infinite;
 }
 @keyframes row-edge { 0%, 100% { opacity: .18; } 50% { opacity: 1; } }
-/* ⑤ 斜纹: a barber pole sliding along the row, the usual "work in progress" mark */
-:root[data-motion="stripe"] .task.running::after, :root[data-motion="stripe"] .mini-row.running::after {
-  background-image: repeating-linear-gradient(115deg,
-    color-mix(in srgb, var(--brick) 26%, transparent) 0 8px, transparent 8px 16px);
-  background-size: 200% 100%; animation: row-stripe 2.6s linear infinite;
+/* ③ 扫光: a soft highlight crosses the row, the usual "this one is working" mark */
+:root[data-motion="sweep"] .task.running::after, :root[data-motion="sweep"] .mini-row.running:not(.mot-demo)::after,
+.mot-demo[data-motion="sweep"]::after {
+  background-image: linear-gradient(100deg, transparent 0%,
+    color-mix(in srgb, var(--brick) 46%, transparent) 45%, transparent 78%);
+  background-size: 220% 100%; animation: row-sweep 2.8s cubic-bezier(.5,0,.5,1) infinite;
 }
-@keyframes row-stripe { 0% { background-position: 0 0; } 100% { background-position: -64px 0; } }
+@keyframes row-sweep { 0% { background-position: 120% 0; } 100% { background-position: -60% 0; } }
+/* ④ 脉冲环: a dot on the left edge sends one expanding ring out every beat */
+:root[data-motion="halo"] .task.running, :root[data-motion="halo"] .mini-row.running:not(.mot-demo),
+.mot-demo[data-motion="halo"] { box-shadow: inset 3px 0 0 var(--brick); }
+:root[data-motion="halo"] .task.running::after, :root[data-motion="halo"] .mini-row.running:not(.mot-demo)::after,
+.mot-demo[data-motion="halo"]::after {
+  inset: 50% auto auto 9px; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%;
+  background: color-mix(in srgb, var(--brick) 24%, transparent);
+  box-shadow: 0 0 0 1px var(--brick); animation: row-halo 2.2s cubic-bezier(.2,.6,.3,1) infinite;
+}
+/* Stops short of the row's own height: the same mark on a ledger row has nothing clipping it,
+   and a ring that leaves the row draws over the one above and below it. */
+@keyframes row-halo {
+  0% { transform: scale(.45); opacity: 1; }
+  70%, 100% { transform: scale(2.1); opacity: 0; }
+}
+/* ⑤ 光晕: the row breathes with a soft outer glow — the loudest of the five, and the only one
+   that changes the row's silhouette rather than drawing something on top of it */
+:root[data-motion="aura"] .task.running::after, :root[data-motion="aura"] .mini-row.running:not(.mot-demo)::after,
+.mot-demo[data-motion="aura"]::after {
+  inset: -1px; background: transparent; animation: row-aura 3s ease-out infinite;
+}
+@keyframes row-aura {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brick) 55%, transparent); }
+  70%, 100% { box-shadow: 0 0 16px 6px color-mix(in srgb, var(--brick) 0%, transparent); }
+}
+/* ---- five more, the last two deliberately combinations ---- */
+/* ⑥ 底部进度: a short accent line runs along the bottom edge, the "something is in flight" mark */
+:root[data-motion="trail"] .task.running::after, :root[data-motion="trail"] .mini-row.running:not(.mot-demo)::after,
+.mot-demo[data-motion="trail"]::after {
+  inset: auto 0 0 0; height: 2px;
+  background-image: linear-gradient(90deg, transparent, var(--brick) 45%, transparent 62%);
+  background-size: 42% 100%; background-repeat: no-repeat;
+  animation: row-trail 2.4s linear infinite;
+}
+@keyframes row-trail { 0% { background-position: -45% 0; } 100% { background-position: 145% 0; } }
+/* ⑦ 描边流光: one bright arc travels around the row's own outline. The ring is the gap between
+   the pseudo-element's box and its content box, so nothing has to be drawn on top of the text. */
+@property --beam-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+:root[data-motion="beam"] .task.running::after, :root[data-motion="beam"] .mini-row.running:not(.mot-demo)::after,
+.mot-demo[data-motion="beam"]::after {
+  padding: 1.5px;
+  background-image: conic-gradient(from var(--beam-a), transparent 0 58%, var(--brick) 76%, transparent 92%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: row-beam 2.6s linear infinite;
+}
+@keyframes row-beam { to { --beam-a: 360deg; } }
+/* ⑧ 底色流动: the tint itself slides, so the row never goes flat and never blinks */
+:root[data-motion="flow"] .task.running::after, :root[data-motion="flow"] .mini-row.running:not(.mot-demo)::after,
+.mot-demo[data-motion="flow"]::after {
+  background-image: linear-gradient(100deg,
+    color-mix(in srgb, var(--brick) 34%, transparent) 0%,
+    color-mix(in srgb, var(--brick) 4%, transparent) 32%,
+    color-mix(in srgb, var(--brick) 34%, transparent) 62%,
+    color-mix(in srgb, var(--brick) 4%, transparent) 100%);
+  background-size: 300% 100%; animation: row-flow 5.4s ease-in-out infinite;
+}
+@keyframes row-flow { 0%, 100% { background-position: 0% 0; } 50% { background-position: 100% 0; } }
+/* ⑨ 呼吸 + 扫光: the plate lifts while a highlight crosses it. Two animations on one overlay is
+   safe because they drive different properties — opacity and background-position. */
+:root[data-motion="duo"] .task.running, :root[data-motion="duo"] .mini-row.running:not(.mot-demo),
+.mot-demo[data-motion="duo"] { box-shadow: inset 3px 0 0 var(--brick); }
+:root[data-motion="duo"] .task.running::after, :root[data-motion="duo"] .mini-row.running:not(.mot-demo)::after,
+.mot-demo[data-motion="duo"]::after {
+  background-color: color-mix(in srgb, var(--brick) 16%, transparent);
+  background-image: linear-gradient(100deg, transparent 0%,
+    color-mix(in srgb, var(--brick) 46%, transparent) 45%, transparent 78%);
+  background-size: 220% 100%;
+  animation: row-breathe 4.6s ease-in-out infinite, row-sweep 2.8s cubic-bezier(.5,0,.5,1) infinite;
+}
+/* ⑩ 光环脉冲: the outer glow of ⑤ and the travelling ring of ④ at once. The glow has to live on
+   the row because the overlay is already spending its box-shadow on the ring, so both shadows are
+   named in every keyframe — a two-item list does not interpolate against a one-item one. */
+:root[data-motion="ringlight"] .task.running::after, :root[data-motion="ringlight"] .mini-row.running:not(.mot-demo)::after,
+.mot-demo[data-motion="ringlight"]::after {
+  inset: 50% auto auto 9px; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%;
+  background: color-mix(in srgb, var(--brick) 24%, transparent);
+  box-shadow: 0 0 0 1px var(--brick); animation: row-halo 2.2s cubic-bezier(.2,.6,.3,1) infinite;
+}
+:root[data-motion="ringlight"] .task.running, :root[data-motion="ringlight"] .mini-row.running:not(.mot-demo),
+.mot-demo[data-motion="ringlight"] {
+  /* the static mark stays declared so a row still reads as running when 动画 is off; the
+     keyframes repeat it because an animated box-shadow replaces the whole list, not one item */
+  box-shadow: inset 3px 0 0 var(--brick);
+  animation: row-ringlight 2.2s ease-out infinite;
+}
+@keyframes row-ringlight {
+  0% { box-shadow: inset 3px 0 0 var(--brick), 0 0 0 0 color-mix(in srgb, var(--brick) 48%, transparent); }
+  70%, 100% { box-shadow: inset 3px 0 0 var(--brick), 0 0 14px 5px color-mix(in srgb, var(--brick) 0%, transparent); }
+}
 .task.dragging { opacity: .35; }
 .task.drop-target { outline: 1px dashed var(--brick); outline-offset: -2px; }
 
@@ -720,14 +806,12 @@ body.side-dragging { cursor: col-resize; }
 .pomo-len input[type="range"]::-moz-range-track { height: 3px; background: var(--rule-strong); }
 .pomo-len input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border-radius: var(--r-dot); background: var(--vermillion); border: 1px solid var(--edge); }
 
-.mod-today-body { display: flex; flex-direction: column; min-height: 0; }
-.today-body { display: flex; align-items: center; gap: 10px; padding: 10px 10px 4px; flex: 0 0 auto; min-width: 0; }
 /* the mask that turns the conic fill into a band also cuts away anything the element
-   itself paints, so the number lives on the ring, not in it */
-/* the size lives in the merged-plate block at the end of this sheet; a height left here would
-   survive as a declaration the later rule never restates, and 150 wide by 76 tall is how the
-   ring came out as an ellipse with a notch where the circular mask ended */
-.today-ring { position: relative; flex: none; }
+   itself paints, so the number lives on the ring, not in it.
+   The layout rules that used to sit here (`.mod-today-body { display: flex }`, a padded
+   `.today-body`, `position: relative` on the ring) are gone: the merged-plate block at the end
+   of this sheet owns the geometry now, and a leftover here would still apply to any property
+   that block does not restate — the padding is what made the absolute ring sit off-centre. */
 .today-band {
   /* the box is square by aspect-ratio, so a 50% radius and a circular mask agree */
   position: absolute; inset: 0; border-radius: 50%;
@@ -736,8 +820,13 @@ body.side-dragging { cursor: col-resize; }
   -webkit-mask: radial-gradient(circle at 50% 50%, transparent 0 60%, #000 61%);
           mask: radial-gradient(circle at 50% 50%, transparent 0 60%, #000 61%);
 }
-.today-ring b { position: absolute; left: 0; right: 0; top: 24px; text-align: center; font-size: 15px; }
-.today-ring span { position: absolute; left: 0; right: 0; top: 43px; text-align: center; font-size: 8.5px; color: var(--ink-3); }
+/* These two used to carry `position: absolute; top: 24px / 43px`, a leftover from when the ring
+   was a fixed 76px box. Inside the merged plate the ring centres its own children, so those
+   offsets pushed the readout down over the band and the number looked bitten out of the circle —
+   the 环形图仍然变形 report. Geometry and size belong to the merged-plate block at the end of
+   this sheet; only the colours are stated here. */
+.today-ring b { color: var(--ink); }
+.today-ring span { color: var(--ink-3); }
 .today-figs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; min-width: 0; flex: 1; }
 .today-figs > div { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
 .today-figs i { font-style: normal; font-size: 8.5px; letter-spacing: .12em; color: var(--ink-3); }
@@ -786,11 +875,13 @@ body.side-dragging { cursor: col-resize; }
 .quick-add { gap: 4px; }
 .qa-row { position: relative; }
 .qa-row .input { padding: 5px 30px 5px 7px; font-size: 11.5px; }
-/* The same disc as 新建分组: same box, same drawn cross, and its right edge on the same line
-   as that button, because the two were 22×34 against 24×24 and sat at different x. */
+/* Square, not stretched between the input's top and bottom: the box used to be 22 wide by ~20
+   tall, and 11px of radius on a non-square box is exactly the 椭圆 the report names. Equal sides
+   make the same token draw a circle, which is also what 新建分组 is. */
 .qa-btn {
-  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
-  width: 24px; height: 24px; padding: 0; font-size: 12px;
+  position: absolute; right: 3px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; padding: 0;
+  font-size: 13px; font-weight: 700; line-height: 1;
 }
 .qa-preview { font-size: 9px; letter-spacing: .06em; min-height: 12px; }
 
@@ -1353,21 +1444,40 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .mod[data-mod="today"] { container-type: size; container-name: plate; }
 .mod-today-body {
   display: grid;
-  grid-template-columns: clamp(64px, 21cqi, 150px) minmax(0, 1fr);
+  /* The ring's column is a fixed share of the plate rather than max-content: its diameter comes
+     from the height of the counter block (--ring-d below), and if the column were sized by the
+     ring the two would lean on each other — a wider ring narrows the counters, narrower counters
+     set smaller numbers and so are shorter, a shorter stack asks for a smaller ring. */
+  grid-template-columns: clamp(64px, 26cqi, 170px) minmax(0, 1fr);
   grid-template-rows: auto auto;
   gap: 8px 14px; align-content: center; align-items: center;
   min-height: 0; padding: 10px 12px;
 }
-.mod-today-body > .today-body { grid-column: 1; grid-row: 1 / span 2; min-width: 0; }
+.mod-today-body > .today-body {
+  grid-column: 1; grid-row: 1 / span 2; min-width: 0; min-height: 0;
+  position: relative; align-self: stretch;
+}
 .mod-today-body > .pd-stats { grid-column: 2; grid-row: 1; }
 .mod-today-body > .today-figs { grid-column: 2; grid-row: 2; align-self: start; }
-.today-body { display: flex; align-items: center; justify-content: center; min-width: 0; }
 .today-ring {
-  position: relative; width: 100%; max-width: 150px; aspect-ratio: 1;
+  /* Out of flow and centred in its own column, so the ring cannot feed back into the row heights
+     that decide its size. dashboard.js writes --ring-d as the measured height of the two-by-two
+     counter block, clamped by what the plate has — that is the 直径和两个格子的高度一样 request. */
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(var(--ring-d, 96px), 100%); aspect-ratio: 1; min-height: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  /* The ring is its own size container. Its type used to be sized in cqi of the plate, so a
+     small ring still drew a 26px number: the content then forced the box taller than the
+     aspect-ratio width (measured 40×45) and the readout hung out past the circle — the two
+     failures dash-stats now reports as RING-NOT-SQUARE and READOUT-OVERFLOWS-RING. Sized
+     against the ring, the number and the count always fit the hole in the band. */
+  container-type: inline-size; container-name: ring;
 }
-.today-ring b { position: static; font-size: clamp(11px, 16cqi, 26px); }
-.today-ring span { position: static; font-size: clamp(7px, 7.5cqi, 12px); }
+/* The band is absolutely positioned, so without a z-index it paints over the in-flow text and
+   the readout looked bitten — which is the 环形图仍然变形 report. */
+.today-ring b, .today-ring span { position: relative; z-index: 1; }
+.today-ring b { font-size: clamp(9px, 30cqi, 26px); }
+.today-ring span { font-size: clamp(6.5px, 15cqi, 12px); }
 .today-figs { display: flex; flex-wrap: wrap; gap: 3px 16px; min-width: 0; }
 .today-figs > div { display: flex; align-items: baseline; gap: 5px; }
 .today-figs b { font-size: clamp(10px, 8cqi, 16px); }
@@ -1401,27 +1511,29 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .mod[data-mod="today"] .pd-stats .stat .v { font-size: clamp(16px, 16cqw, 40px); line-height: 1.05; }
 .mod[data-mod="today"] .pd-stats .stat[data-stat="done"] .v { transform-origin: 0 50%; text-align: left; }
 /* Narrow plate: the ring goes above the counters, because two columns of counters need ~200px of
-   width before their labels stop losing their tail. */
+   width before their labels stop losing their tail. The ring is out of flow, so its row has to be
+   told how tall it is — that is the same --ring-d the side-by-side layout uses. */
 @container plate (max-inline-size: 300px) {
   .mod-today-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; gap: 6px; }
-  .mod-today-body > .today-body { grid-column: 1; grid-row: 1; }
+  .mod-today-body > .today-body {
+    grid-column: 1; grid-row: 1; position: static; align-self: auto;
+    display: flex; justify-content: center;
+  }
   .mod-today-body > .pd-stats { grid-column: 1; grid-row: 2; }
   .mod-today-body > .today-figs { grid-column: 1; grid-row: 3; justify-content: center; }
-  .today-ring { width: clamp(48px, min(34cqi, 30cqh), 96px); }
+  /* Back in flow when stacked: the counters sit below it across the full width, so the ring's
+     height cannot change what it was measured from — the feedback the absolute layout exists to
+     avoid only happens side by side. Out of flow here it would collapse its own row to zero. */
+  /* relative, not static: the band is absolutely positioned inside the ring, and taking the ring
+     out of the containing-block chain makes `inset: 0` mean the whole plate — measured 270×194 for
+     a 77px ring, which is the BAND-NOT-SQUARE this test then reports. */
+  .today-ring { position: relative; left: auto; top: auto; transform: none; width: min(var(--ring-d, 96px), 100%); }
 }
-/* A plate that is both short and narrow cannot hold the ring and two rows of counters — at
-   212×143 of body the ring's 40px plus 70px of counters plus gaps overflows the plate. The
-   numbers are the information, so the ring is what steps out there; at any wider or taller
-   plate it stays. */
-@container plate (max-height: 180px) and (max-inline-size: 260px) {
-  .mod-today-body > .today-body { display: none; }
-}
-/* A plate under ~210px of module cannot hold the ring and the counters in either direction, so
-   the ring steps out and the counters stay two by two — with the short label and no badge a
-   87px tile fits "已逾期" comfortably, and four stacked rows would not fit the plate at all. */
-@container plate (max-inline-size: 210px) {
-  .mod-today-body > .today-body { display: none; }
-}
+/* The ring is never hidden. Two rules used to take it away below 210px of module, and that is
+   what the 2×N 「看不到环形图」 report is: at that span the plate is narrow but tall, there was
+   room above the counters, and the ring was missing anyway. It now only gets smaller, and the
+   size is one number the renderer measures (--ring-d), not a per-breakpoint width that has to be
+   restated at every query and then fights the others. */
 /* Short plate: the figures line goes first, then the bar and the index badge, which together are
    11px of a 34px tile. The label is what says which number is which, so it is the last thing
    standing. The thresholds read the module, which carries the 24px head as well as the body:
@@ -1431,27 +1543,35 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
   .mod[data-mod="today"] .pd-stats { gap: 4px; }
   .mod[data-mod="today"] .pd-stats .stat { padding: 3px 6px 4px; }
   .mod[data-mod="today"] .pd-stats .stat .idx-mark { display: none; }
-  /* and the ring shrinks with it: at 143px of body a 50px circle plus two rows of counters is
-     128 against 123 available, which is the last clipped stop */
-  .today-ring { width: clamp(40px, min(28cqi, 24cqh), 96px); }
 }
 
 /* ---- the palette and motion pickers in 设置 ---- */
 .pick-row { display: flex; flex-direction: column; gap: 6px; }
 .pick-label { font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-3); }
 .pick-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 6px; }
-.pal-pick, .mot-pick {
+.mot-pick {
   display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 6px 7px;
   text-align: left; cursor: pointer; color: var(--ink);
   background: var(--paper-hi); border: 1px solid var(--rule-strong); border-radius: var(--r-ctl);
 }
-.pal-pick:hover, .mot-pick:hover { border-color: var(--ink); }
-.pal-pick.on, .mot-pick.on { border-color: var(--brick); box-shadow: inset 0 0 0 1px var(--brick); }
-.pal-pick b, .mot-pick b { font-size: 10px; letter-spacing: .06em; font-weight: 700; }
-.pal-strip { display: flex; gap: 2px; height: 14px; }
-.pal-strip i { flex: 1 1 0; display: block; border: 1px solid var(--edge); border-radius: calc(var(--r-dot) / 3); }
+.mot-pick:hover { border-color: var(--ink); }
+.mot-pick.on { border-color: var(--brick); box-shadow: inset 0 0 0 1px var(--brick); }
+.mot-pick b { font-size: 10px; letter-spacing: .06em; font-weight: 700; }
+/* One row per group: the picker, its name, and the colour actually on screen right now — at
+   night that is the adapted one, so the figure is not a lie about what is being drawn. */
+.gc-list { display: flex; flex-direction: column; gap: 4px; }
+.gc-row {
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px; cursor: pointer;
+  background: var(--paper-hi); border: 1px solid var(--rule); border-radius: var(--r-ctl);
+}
+.gc-row:hover { border-color: var(--ink); }
+.gc-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.gc-hex { flex: none; font-family: var(--font-mono); font-size: 9.5px; color: var(--ink-3); letter-spacing: .04em; }
+.gc-pick { width: 30px; height: 22px; padding: 0; background: var(--paper-hi); border: 1px solid var(--edge); cursor: pointer; }
 .mot-demo {
-  position: relative; overflow: hidden; display: flex; align-items: center; gap: 6px;
+  /* visible, not hidden: 光晕 draws its glow outside the row, and clipping here would make the
+     preview of that variant show nothing while the real ledger row shows the whole effect */
+  position: relative; overflow: visible; display: flex; align-items: center; gap: 6px;
   min-height: 26px; padding: 4px 6px; border: 1px solid var(--edge); border-radius: var(--r-ctl);
 }
 .mot-demo .task-title { font-size: 10.5px; }
@@ -1518,12 +1638,18 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
    slab, and a slab cannot show the stack of groups inside a day. The segments are
    flex children sized as a percentage of the chart, so the tallest day fills the frame
    and every other day reads against it. */
-/* Columns and ring side by side, at 1.5 : 1. The ring keeps a floor of its own so a narrow
-   panel wraps it below the chart rather than crushing it. */
-.rp-charts { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; min-width: 0; }
-.rp-chart-l { flex: 1.5 1 240px; min-width: 0; }
+/* Both charts in one container, the container capped at 1080 and centred in the page with a
+   little air on either side. The chart keeps a ceiling of its own so a wide window widens the
+   margins rather than the bars. */
+.rp-charts {
+  display: flex; gap: 18px; align-items: stretch; justify-content: center; flex-wrap: wrap;
+  min-width: 0; width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 8px;
+}
+.rp-chart-l { flex: 1.5 1 240px; min-width: 0; max-width: 660px; }
 .rp-ring-box {
-  flex: 1 1 160px; min-width: 150px; display: flex; flex-direction: column;
+  /* sized to its own content rather than to a share of the row: a box that grew with the panel
+     centred a 176px ring inside 400px of nothing, which is the 空隙过大 report */
+  flex: 0 1 220px; min-width: 150px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 6px;
 }
 .rp-pager { display: inline-flex; gap: 2px; margin-left: 8px; }
@@ -1561,18 +1687,20 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 /* a month is thirty columns in the same width: tighter gaps and narrower bars, and the axis
    names every third day rather than colliding into a grey band */
 .rp-cols.dense { gap: 1px; }
-.rp-cols.dense .rp-col { width: 94%; }
+.rp-cols.dense .rp-col { width: min(94%, 26px); }
 .rp-cols.dense .rp-col-x { font-size: 7.5px; }
 .rp-col {
-  position: relative; justify-self: stretch; width: 88%; min-width: 4px; height: 90%;
+  position: relative; justify-self: center; width: min(88%, 40px); min-width: 4px; height: 90%;
   display: flex; flex-direction: column-reverse; justify-content: flex-start;
   cursor: default;
 }
 .rp-seg { display: block; width: 100%; border-top: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); }
 /* a day that fills the whole track touches the rule above it, which reads as the chart being
    cut off rather than as a full bar; the tallest column now stops at 90% of the track and the
-   rest scale with it, so the proportion between days is unchanged */
-.rp-seg:last-child { border-top: 0; }
+   rest scale with it, so the proportion between days is unchanged.
+   :last-child never matched — the axis label is the real last child of .rp-col, so the renderer
+   marks the top segment with .rp-seg-top instead. */
+.rp-seg-top { border-top: 0; }
 .rp-col.today .rp-col-x { color: var(--brick); font-weight: 700; }
 .rp-col-x {
   position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);

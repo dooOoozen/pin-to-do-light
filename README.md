@@ -146,7 +146,7 @@ npm run build      # release bundle + NSIS installer
 
 The installer lands in `src-tauri/target/release/bundle/nsis/`. `tauri build` shells out to `cargo`, so `~/.cargo/bin` has to be on `PATH` — in Git Bash that means exporting it in the same command line, since each shell starts fresh.
 
-State lives in `%APPDATA%\dev.qoder.pintauri\dashboard1971-data.json` — tasks, groups, work sessions, placements and settings, written on every change. The boot log the test harness reads sits beside it as `boot.log`.
+State lives in `<exe directory>\data\dashboard1971-data.json` — tasks, groups, work sessions, placements and settings, written on every change. The boot log the test harness reads sits beside it as `boot.log`. Nothing goes to the system drive while the app runs; only an install folder that cannot be written to falls back to `%APPDATA%\dev.qoder.pintauri\`, and the first run at a new location copies an existing store across without touching the original.
 
 ## Testing
 

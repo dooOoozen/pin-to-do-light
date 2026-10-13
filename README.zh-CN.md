@@ -146,7 +146,7 @@ npm run build      # release 打包 + NSIS 安装器
 
 安装器在 `src-tauri/target/release/bundle/nsis/`。`tauri build` 会去调 `cargo`，所以 `~/.cargo/bin` 必须在 `PATH` 上——在 Git Bash 里意味着和构建命令写在同一行，因为每个 shell 都是新开的。
 
-数据在 `%APPDATA%\dev.qoder.pintauri\dashboard1971-data.json`：任务、分组、计时段、布局和设置，每次改动即写盘。测试用的启动日志 `boot.log` 就在旁边。
+数据在 `<程序目录>\data\dashboard1971-data.json`：任务、分组、计时段、布局和设置，每次改动即写盘。测试用的启动日志 `boot.log` 就在旁边。运行期间不往 C 盘写东西；只有装在不可写的目录时才退回 `%APPDATA%\dev.qoder.pintauri\`，换到新位置的第一次会把旧数据复制过来，原件不动。
 
 ## 测试
 

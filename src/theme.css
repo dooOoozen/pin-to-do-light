@@ -859,17 +859,6 @@ input[type="range"] { accent-color: var(--brick); }
    with its corners clipped off. Both layers take the token explicitly. */
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; border-radius: var(--r-ctl); }
 input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(--r-ctl) - 2px); }
-/* A control that has to read as a disc: --r-ctl is a corner radius, and 11px of it on a 24px
-   box is a squircle — the "椭圆不是正圆" report on the 新建分组 button. */
-.icon-btn.circle { border-radius: var(--r-dot); }
-/* The ＋ character carries its own side bearing and baseline, so it never sits in the middle of
-   a disc. Two bars do, and they follow the button's colour on hover. */
-.icon-btn.plus { position: relative; }
-.icon-btn.plus::before, .icon-btn.plus::after {
-  content: ""; position: absolute; left: 50%; top: 50%; background: currentColor;
-  width: 11px; height: 1.6px; transform: translate(-50%, -50%);
-}
-.icon-btn.plus::after { transform: translate(-50%, -50%) rotate(90deg); }
 
 /* ==========================================================================
    MATERIAL: 群青构成 / CONSTRUCTIVIST  (data-style="ikb")
@@ -1577,13 +1566,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
 /* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
   --tex-grain: none;
 }
-/* the panes: translucent so the room reads through them, which is what makes it frosted */
-:root[data-style="blueprint"] .hud,
-:root[data-style="blueprint"] .hud-thin,
-:root[data-style="blueprint"] .modal-panel,
-:root[data-style="blueprint"] .plan-pop {
-  background-color: color-mix(in srgb, var(--paper-hi) 74%, transparent);
-}
+/* the panes: see DIALOG TRANSPARENCY at the end of the sheet — one rule, one alpha, shared
+   with 雾绿磨砂 / 餐厅 / 晨雾花园 / 黑黄战术 */
 :root[data-style="blueprint"] .deck-face,
 :root[data-style="blueprint"] .deck-sheet,
 :root[data-style="blueprint"] .todo-card {
@@ -2003,13 +1987,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --pop-shadow: 0 14px 30px rgba(0,0,0,.42), 0 2px 6px rgba(0,0,0,.3);
   --bevel: inset 0 1px 0 rgba(255,255,255,.10);
 }
-/* the panes: translucent so the room reads through them, which is what makes it frosted */
-:root[data-style="frost"] .hud,
-:root[data-style="frost"] .modal-panel,
-:root[data-style="frost"] .plan-pop {
-  /* inside the panel this is a pane over the material's own ground, so 72% reads as glass */
-  background-color: color-mix(in srgb, var(--paper-hi) 74%, transparent);
-}
+/* the panes: see DIALOG TRANSPARENCY at the end of the sheet — same alpha as 图纸 */
 :root[data-style="frost"] .deck-face,
 :root[data-style="frost"] .deck-sheet,
 :root[data-style="frost"] .todo-card {
@@ -2040,6 +2018,19 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
 :root[data-style="frost"] .mod-head { color: var(--ink-2); }
 :root[data-style="frost"] .day-head { border-width: 1px; }
 
+/* ==========================================================================
+   DIALOG TRANSPARENCY — one rule, one alpha
+   图纸 was the example the request came from, so its numbers are the ones every material
+   below now borrows: the shell, the settings sub-panels and the popups all sit at 74%, and
+   the four materials are listed here instead of carrying their own copy so the parameter
+   cannot drift apart again. No blur: this is alpha only. The card layer keeps its own,
+   much higher opacity (the 94% rules inside each material block) because behind that window
+   there is no ground of ours at all — 74% there would put a task title on the wallpaper. */
+:root:is([data-style="blueprint"], [data-style="frost"], [data-style="diner"], [data-style="garden"], [data-style="hazard"])
+  :is(.hud, .hud-thin, .modal-panel, .plan-pop) {
+  background-color: color-mix(in srgb, var(--paper-hi) 74%, transparent);
+}
+
 /* ---------------------------------------------------------------- the corner switch
    Round or square is the third axis, and it belongs to no material: 图纸 with square corners
    and 印刷 with round ones are both things a person may want. So this overrides the four
@@ -2050,3 +2041,22 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
    and a 50% dot, which is three different answers to the same question. */
 :root[data-round="on"] { --r-plate: 16px; --r-ctl: 11px; --r-pill: 999px; --r-dot: 50%; }
 :root[data-round="off"] { --r-plate: 0px; --r-ctl: 0px; --r-pill: 0px; --r-dot: 0px; }
+
+/* ---------------------------------------------------------------- the disc control
+   A control that has to read as a circle: --r-ctl is a corner radius, and 11px of it on a 24px
+   box is a squircle — the "椭圆不是正圆" report on the 新建分组 button.
+   These rules sit at the very end of the sheet for the same reason the corner switch above does.
+   A material block such as `:root[data-style="blueprint"] .icon-btn { border-radius: var(--r-ctl) }`
+   is (0,3,0) once :root is counted, exactly what `:root .icon-btn.circle` is, so whoever is
+   written later wins — which is how 图纸 and 黑黄战术 kept a squircle while the other seven
+   materials showed a disc. tests/style-audit.js reads the computed radius of #btnAddGroup on
+   every material, because this class of mistake is invisible in a source diff. */
+:root .icon-btn.circle { border-radius: var(--r-dot); }
+/* The ＋ character carries its own side bearing and baseline, so it never sits in the middle of
+   a disc. Two bars do, and they follow the button's colour on hover. */
+:root .icon-btn.plus { position: relative; }
+:root .icon-btn.plus::before, :root .icon-btn.plus::after {
+  content: ""; position: absolute; left: 50%; top: 50%; background: currentColor;
+  width: 11px; height: 1.6px; transform: translate(-50%, -50%);
+}
+:root .icon-btn.plus::after { transform: translate(-50%, -50%) rotate(90deg); }

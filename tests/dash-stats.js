@@ -57,11 +57,51 @@
        pushing the number down a row. Reported, not failed: which stops it happens at is a
        judgement about the label text, and a red suite over it would hide the cuts that matter. */
     var tightLabel = list.filter(function (t) { return t.labW > t.labBox + 1; }).length;
+    /* 环形图仍然变形 was reported three times, and both earlier fixes were aimed at the wrong
+       declaration: the ring is square by aspect-ratio, so a width and a height that disagree can
+       only come from a stale rule restating one of them. Asserted here at every stop, together
+       with the readout staying inside the circle it is drawn in. A ring the container query has
+       hidden measures 0 and is not a deformed one. */
+    var ring = mod.querySelector('.today-ring');
+    var rr = ring ? ring.getBoundingClientRect() : null;
+    var ringTxt = '';
+    if (rr && rr.width > 2) {
+      ringTxt = ' ring=' + Math.round(rr.width) + 'x' + Math.round(rr.height);
+      if (Math.abs(rr.width - rr.height) > 1) bad.push(tag + ' RING-NOT-SQUARE ' + ringTxt);
+      /* 直径应该和两个格子的高度一样: the ring is measured against the counter block it stands
+         beside, and the renderer sizes it from that measurement, so a ring that comes out much
+         smaller than the stack means the measurement never landed */
+      var tops = list.map(function (t) { return t.y; });
+      var bots = list.map(function (t) { return t.bottom; });
+      var stack = Math.max.apply(null, bots) - Math.min.apply(null, tops);
+      ringTxt += ' stack=' + Math.round(stack);
+      /* Only where the ring stands beside the block. Stacked, it is deliberately smaller than the
+         counters because both have to fit the plate, and the renderer caps it accordingly. */
+      var sideBySide = rr.top < Math.max.apply(null, bots) - 4 && rr.bottom > Math.min.apply(null, tops) + 4;
+      if (sideBySide && stack > 40 && rr.height < stack * 0.88) {
+        bad.push(tag + ' RING-TOO-SMALL ' + Math.round(rr.height) + '<' + Math.round(stack));
+      }
+      var band = ring.querySelector('.today-band');
+      var br = band ? band.getBoundingClientRect() : null;
+      if (br && Math.abs(br.width - br.height) > 1) bad.push(tag + ' BAND-NOT-SQUARE ' + Math.round(br.width) + 'x' + Math.round(br.height));
+      var num = ring.querySelector('b');
+      if (num) {
+        var nr = num.getBoundingClientRect();
+        if (nr.left < rr.left - 1 || nr.right > rr.right + 1 || nr.top < rr.top - 1 || nr.bottom > rr.bottom + 1) {
+          bad.push(tag + ' READOUT-OVERFLOWS-RING');
+        }
+        /* the band is absolutely positioned and paints above in-flow text unless the text is
+           lifted with it — that is what made the number look bitten out of the circle */
+        var cs = getComputedStyle(num);
+        if (cs.position === 'static') bad.push(tag + ' READOUT-NO-ZINDEX');
+      }
+    }
     var n = columns(list);
     var line = tag + ' body=' + Math.round(b.width) + 'x' + Math.round(b.height) + ' tiles=' + list.length +
       ' cols=' + n + ' w=' + ws.join('/') + ' h=' + hs.join('/') +
       ' vFont=' + Math.round(parseFloat(getComputedStyle(list[0].node.querySelector('.v')).fontSize) * 10) / 10 +
       ' kFont=' + Math.round(parseFloat(getComputedStyle(list[0].node.querySelector('.k')).fontSize) * 10) / 10 +
+      ringTxt +
       (dw > 1 ? ' WIDTH-SPREAD ' + dw : '') + (dh > 1 ? ' HEIGHT-SPREAD ' + dh : '') +
       (clipped ? ' CLIPPED ' + clipped : '') + (cut ? ' CONTENT-CUT ' + cut : '') +
       (tightLabel ? ' LABEL-CUT ' + tightLabel : '');

@@ -194,8 +194,7 @@
     /* Group colours are adapted, not replaced: paint() needs the hour and the material's own
        accent so the hue can lean a few degrees without becoming a different colour. */
     if (window.NeonTheme && D.setTheme) {
-      D.setTheme(window.NeonTheme.themeOf(S.state.settings), window.NeonTheme.current('--brick'),
-        S.state.settings.groupPalette);
+      D.setTheme(window.NeonTheme.themeOf(S.state.settings), window.NeonTheme.current('--brick'));
       /* which running-row animation the sheet should draw, chosen in 设置 */
       doc.documentElement.dataset.motion = S.state.settings.runMotion || 'pulse';
     }
@@ -1126,6 +1125,35 @@
       if (tt) tt.textContent = '共 ' + sum + ' 项';
     }
     renderMemo();
+    fitTodayRing();
+  }
+
+  /* 环形图的直径 = 两个格子的高度. Measured rather than guessed, because the counter block's
+     height moves with the interface scale, the module's span and row count, and how many digits
+     each figure has — no container query can know that. The ring is out of flow in dashboard.css,
+     so writing this back cannot change the height it just measured. */
+  function fitTodayRing() {
+    const stats = doc.querySelector('#modToday .pd-stats');
+    const body = doc.querySelector('#modToday .mod-today-body');
+    if (!stats || !body) return;
+    const measure = () => {
+      const stack = stats.getBoundingClientRect().height;
+      const room = body.clientHeight;
+      /* one column means the ring sits above the counters, so it only gets what the counters
+         leave over; two columns means it is beside them and the whole height is available */
+      const cols = getComputedStyle(body).gridTemplateColumns.split(' ').length;
+      const cap = cols === 1 ? room - stack - 16 : room;
+      const d = Math.round(Math.max(44, Math.min(stack, cap > 44 ? cap : stack, 170)));
+      if (d !== body.__ringD) {
+        body.__ringD = d;
+        body.style.setProperty('--ring-d', d + 'px');
+      }
+    };
+    if (!stats.__ringObs && window.ResizeObserver) {
+      stats.__ringObs = new ResizeObserver(measure);
+      stats.__ringObs.observe(stats);
+    }
+    requestAnimationFrame(measure);
   }
 
   /* "还有 2 天 13 时" / "逾期 4 天 20 时" — the countdown the dedicated panel used to
@@ -3690,21 +3718,32 @@
       const palRows = $('#palRows', root);
 
       function savePalette(token, value) {
-        const theme = window.NeonTheme.themeOf(S.state.settings);
-        const next = { paper: {}, ink: {} };
-        ['paper', 'ink'].forEach((t) => {
-          Object.assign(next[t], (S.state.settings.palette || {})[t] || {});
+        /* keyed by material and hour: an edit made while 黑黄战术 is on must not follow the user
+           into 图纸. The whole map is rebuilt rather than patched in place, so a stored value of
+           null or a stray key cannot reach the root as a broken token. */
+        const style = NeonTheme.styleOf(S.state.settings);
+        const theme = NeonTheme.themeOf(S.state.settings);
+        const stored = S.state.settings.palette || {};
+        const next = {};
+        Object.keys(stored).forEach((k) => {
+          const one = stored[k] || {};
+          next[k] = { paper: Object.assign({}, one.paper), ink: Object.assign({}, one.ink) };
         });
-        if (token === null) next[theme] = {};
-        else next[theme][token] = value;
+        const mine = next[style] || (next[style] = { paper: {}, ink: {} });
+        if (token === null) mine[theme] = {};
+        else mine[theme][token] = value;
         API.op({ type: 'settings:update', patch: { palette: next } });
       }
 
       function renderPalette() {
         if (!palRows || !window.NeonTheme) return;
-        const theme = window.NeonTheme.themeOf(S.state.settings);
+        const theme = NeonTheme.themeOf(S.state.settings);
         const tag = $('#palTheme', root);
-        if (tag) tag.textContent = theme === 'ink' ? '// NIGHT' : '// DAY';
+        if (tag) {
+          const st = NeonTheme.STYLES.filter((x) => x.v === NeonTheme.styleOf(S.state.settings))[0];
+          tag.textContent = '// ' + (st ? st.n.split(' ')[0] : '') +
+            (theme === 'ink' ? ' · 夜' : ' · 昼');
+        }
         palRows.innerHTML = '';
         NeonTheme.TOKENS.forEach((grp) => {
           const head = doc.createElement('div');
@@ -3772,8 +3811,10 @@
           b.appendChild(name);
           b.appendChild(hint);
           b.addEventListener('click', () => {
+            /* the lab shows the colours of whichever material is on, so it has to be rebuilt
+               with the material — otherwise it keeps offering last material's values */
             API.op({ type: 'settings:update', patch: { style: s.v } })
-              .then(() => renderStyleRows());
+              .then(() => { renderStyleRows(); renderPalette(); });
             toast('外观风格：' + s.n + ' // STYLE ' + s.v.toUpperCase());
           });
           host.appendChild(b);
@@ -3798,40 +3839,67 @@
             API.op({ type: 'settings:update', patch: { roundCorners: v } });
             toast(v ? '圆角风格 // ROUNDED' : '直角风格 // SQUARE');
           }));
-        /* Both of these are choices to be made by looking, so each option draws its own result:
-           the palette chips show the twelve colours as the app would render them right now
-           (same hour, same material), and each motion chip carries a live running row. */
-        const palRow = doc.createElement('div');
-        palRow.className = 'set-row pick-row';
-        palRow.innerHTML = '<div class="pick-label">分组配色 <span class="tiny faint">GROUP PALETTE</span></div>' +
-          '<div class="pick-list">' + D.PALETTE_NAMES.map((n) => {
-            const c = D.previewPalette(n);
-            return '<button class="pal-pick' + (st.groupPalette === n ? ' on' : '') + '" type="button" data-pal="' + n + '">' +
-              '<span class="pal-strip">' + D.COLOR_KEYS.map((k) => '<i style="background:' + c[k] + '"></i>').join('') + '</span>' +
-              '<b>' + D.PALETTES[n].label + '</b></button>';
-          }).join('') + '</div>' +
-          '<div class="set-hint">色相是分组自己的身份，切换主题时只动明度与饱和度；一套配色里的十二个色块共用同一条明度/饱和度带，所以看起来是一族而不是十二个颜色在打架。</div>';
-        hour.appendChild(palRow);
-        const MOT = [['pulse', '① 底色呼吸'], ['bar', '② 左标尺'], ['dots', '③ 三点'], ['edge', '④ 描边'], ['stripe', '⑤ 斜纹']];
-        const motRow = doc.createElement('div');
-        motRow.className = 'set-row pick-row';
-        motRow.innerHTML = '<div class="pick-label">计时动效 <span class="tiny faint">RUNNING ROW</span></div>' +
-          '<div class="pick-list mot-list">' + MOT.map((m) =>
-            '<button class="mot-pick' + (st.runMotion === m[0] ? ' on' : '') + '" type="button" data-mot="' + m[0] + '">' +
-            '<span class="mini-row running mot-demo"><b class="task-title">计时示例</b><i class="mot-time">01:45</i></span>' +
-            '<b>' + m[1] + '</b></button>').join('') + '</div>';
-        hour.appendChild(motRow);
+        /* Every group's colour on one screen, each with its own picker, so the whole board can
+           be re-tinted without opening the group dialog once per group. What gets stored is the
+           hex that was picked — the named slots are only what a brand new group starts with. */
+        let palBox = null, motRow = null;
+        const MOT = [['pulse', '① 底色呼吸'], ['edge', '② 描边呼吸'], ['sweep', '③ 扫光'], ['halo', '④ 脉冲环'], ['aura', '⑤ 光晕'],
+          ['trail', '⑥ 底部进度'], ['beam', '⑦ 描边流光'], ['flow', '⑧ 底色流动'], ['duo', '⑨ 呼吸+扫光'], ['ringlight', '⑩ 光环脉冲']];
+        function renderPickRows() {
+          if (palBox) palBox.remove();
+          if (motRow) motRow.remove();
+          palBox = doc.createElement('div');
+          palBox.className = 'set-row pick-row';
+          palBox.innerHTML = '<div class="pick-label">分组配色 <span class="tiny faint">GROUP COLOURS</span></div>';
+          const gcList = doc.createElement('div');
+          gcList.className = 'gc-list';
+          S.state.groups.slice().sort((a, b) => a.order - b.order).forEach((g) => {
+            const row = doc.createElement('label');
+            row.className = 'gc-row';
+            const pick = doc.createElement('input');
+            pick.type = 'color';
+            pick.className = 'cbtn gc-pick';
+            pick.dataset.gid = g.id;
+            pick.value = D.baseColor(g.color);
+            const name = doc.createElement('span');
+            name.className = 'gc-name';
+            name.textContent = g.name;
+            const hex = doc.createElement('span');
+            hex.className = 'gc-hex';
+            hex.textContent = D.paint(g.color).toUpperCase();
+            row.appendChild(pick); row.appendChild(name); row.appendChild(hex);
+            gcList.appendChild(row);
+          });
+          palBox.appendChild(gcList);
+          const palHint = doc.createElement('div');
+          palHint.className = 'set-hint';
+          palHint.textContent = '这里改的是各分组自己的颜色，改完立刻在卡盒、时间轴、账本与图例上生效；昼夜只调整明度与饱和度，不会换掉色相。';
+          palBox.appendChild(palHint);
+          hour.appendChild(palBox);
+          motRow = doc.createElement('div');
+          motRow.className = 'set-row pick-row';
+          motRow.innerHTML = '<div class="pick-label">计时动效 <span class="tiny faint">RUNNING ROW</span></div>' +
+            '<div class="pick-list mot-list">' + MOT.map((m) =>
+              '<button class="mot-pick' + (S.state.settings.runMotion === m[0] ? ' on' : '') + '" type="button" data-mot="' + m[0] + '">' +
+              '<span class="mini-row running mot-demo" data-motion="' + m[0] + '"><b class="task-title">计时示例</b><i class="mot-time">01:45</i></span>' +
+              '<b>' + m[1] + '</b></button>').join('') + '</div>';
+          hour.appendChild(motRow);
+        }
+        renderPickRows();
         hour.addEventListener('click', (ev) => {
-          const p = ev.target.closest('[data-pal]'), m = ev.target.closest('[data-mot]');
-          if (p) {
-            API.op({ type: 'settings:update', patch: { groupPalette: p.dataset.pal } });
-            toast('分组配色：' + D.PALETTES[p.dataset.pal].label);
-            renderStyleRows();
-          } else if (m) {
-            API.op({ type: 'settings:update', patch: { runMotion: m.dataset.mot } });
-            toast('计时动效已切换');
-            renderStyleRows();
-          }
+          const m = ev.target.closest('[data-mot]');
+          if (!m) return;
+          API.op({ type: 'settings:update', patch: { runMotion: m.dataset.mot } }).then(renderPickRows);
+          toast('计时动效已切换');
+        });
+        /* Only the readout is rewritten here — rebuilding the row while the native colour dialog
+           is still open would remove the input the dialog is firing events at. */
+        hour.addEventListener('input', (ev) => {
+          const pick = ev.target.closest('.gc-pick');
+          if (!pick) return;
+          API.op({ type: 'group:update', id: pick.dataset.gid, patch: { color: pick.value } });
+          const hex = pick.parentElement && pick.parentElement.querySelector('.gc-hex');
+          if (hex) hex.textContent = D.paint(pick.value).toUpperCase();
         });
       }
       /* ---- 坚果云备份 ----
@@ -3993,9 +4061,9 @@
             if (!dirBox.value) dirBox.placeholder = rcpDefault;
             const hint = $('#rcpDirHint', root);
             if (hint) {
-              /* the wording is the one a person reads in Explorer, not a path they have to
-                 decode; the real folder is still there for anyone who needs it */
-              hint.textContent = '留空即写到 此电脑 › 下载 › 出票机（没有会自动新建）';
+              /* the default is no longer a known folder, so the wording points at the program
+                 and the tooltip carries the absolute path */
+              hint.textContent = '留空即写到程序目录下的 data › receipts（没有会自动新建）';
               hint.title = rcpDefault || '';
             }
           }).catch(() => {});
@@ -4289,7 +4357,7 @@
         if (act === 'palReset') {
           savePalette(null);
           setTimeout(renderPalette, 60);
-          toast('本主题配色已还原 // PALETTE RESET');
+          toast('本材质本时段的配色已还原 // PALETTE RESET');
           return;
         }
         if (act === 'resetSettings') {
