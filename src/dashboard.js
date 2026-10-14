@@ -3699,12 +3699,6 @@
       '    <div class="divider"></div>' +
       '    <div class="set-row"><div><div class="set-label">卡盒位置</div><div class="set-hint">解锁后可直接拖动桌面卡盒，也可点右侧置中</div></div><button class="btn sm" data-act="dockReset">置中</button></div>' +
       '  </div>' +
-      '  <div class="panel hud-thin" id="panelStyle">' +
-      '    <h3>外观风格 / STYLE <span class="tiny faint" id="styleNow"></span></h3>' +
-      '    <div class="style-grid" id="styleRows"></div>' +
-      '    <div id="styleHour"></div>' +
-      '    <div class="set-hint" style="margin-top:7px">风格决定材质（圆角、铬条、阴影、字体），昼夜只决定颜色。两者互不干涉，随时可切；调色台里钉住的颜色仍按昼/夜分别保存。</div>' +
-      '  </div>' +
       '  <div class="panel hud-thin" id="panelReceipt">' +
       '    <h3>小票机 / RECEIPT <span class="tiny faint" id="rcpNow"></span></h3>' +
       '    <div id="rcpRows"></div>' +
@@ -3736,27 +3730,38 @@
       '    <div class="row"><span class="set-hint" id="aiKeyHint">—</span><input class="input" id="aiKey" type="password" placeholder="粘贴密钥" autocomplete="off" /><button class="btn sm" id="aiKeyUse">保存</button><button class="btn sm ghost" id="aiKeyDel">清除</button></div>' +
       '    <div class="set-hint" style="margin-top:7px">密钥只写进 Windows 凭据管理器：不进数据文件、不随「导出」离开这台机器，请求由宿主进程发出，页面读不到它。开启后每次发送的是你输入的那句话加上当前任务列表；关闭后不发任何请求。</div>' +
       '  </div>' +
-      '  <div class="panel hud-thin" id="panelPalette">' +
-      '    <h3>调色台 / COLOUR LAB <span class="tiny faint" id="palTheme"></span></h3>' +
-      '    <div class="row" style="margin-bottom:6px">' +
-      '      <span class="tiny faint">正在调整</span><span class="spacer"></span>' +
-      '      <button class="btn sm" data-act="palDay">白昼</button>' +
-      '      <button class="btn sm" data-act="palNight">夜间</button>' +
-      '      <button class="btn sm danger" data-act="palReset">重置本主题</button>' +
+      /* The whole lab is one band that spans the settings columns, and the token groups are
+         sections inside it. Splitting the groups into loose sections balanced the two columns to
+         4px apart and scattered one screen across both of them, which is the other thing the user
+         will not accept; `column-span: all` gets both — the lab stays in one place, and the
+         sections are still small enough for the columns above and below it to end level. */
+      '  <div class="pal-band">' +
+      /* 外观风格 travels with the lab and spans the band: as a 940px loose section it was the
+         thing forcing the four sections above it 632px apart. */
+      '    <div class="panel hud-thin band-span" id="panelStyle">' +
+      '      <h3>外观风格 / STYLE <span class="tiny faint" id="styleNow"></span></h3>' +
+      '      <div class="style-grid" id="styleRows"></div>' +
+      '      <div id="styleHour"></div>' +
+      '      <div class="set-hint" style="margin-top:7px">风格决定材质（圆角、铬条、阴影、字体），昼夜只决定颜色。' +
+      '两者互不干涉，随时可切；调色台里钉住的颜色仍按昼/夜分别保存。</div>' +
       '    </div>' +
-      '    <div class="set-hint" style="margin-bottom:6px">改动即时生效并保存，只作用于当前材质与当前昼夜。'
+      '    <div class="panel hud-thin" id="panelPalette">' +
+      '      <h3>调色台 / COLOUR LAB <span class="tiny faint" id="palTheme"></span></h3>' +
+      '      <div class="row" style="margin-bottom:6px">' +
+      '        <span class="tiny faint">正在调整</span><span class="spacer"></span>' +
+      '        <button class="btn sm" data-act="palDay">白昼</button>' +
+      '        <button class="btn sm" data-act="palNight">夜间</button>' +
+      '        <button class="btn sm danger" data-act="palReset">重置本主题</button>' +
+      '      </div>' +
+      '      <div class="set-hint">改动即时生效并保存，只作用于当前材质与当前昼夜。'
       + '每一行下面那行小字写明这个颜色画在界面哪里。「线条」那一组是取色器加浓度滑条：'
       + '取色器定它是什么颜色，滑条定它有多实；没动过的线仍然跟着「正文」色，调正文即可。</div>' +
-      '  </div>' +
-      /* One panel per token group rather than one 1658px lab. The settings body flows by column,
-         and the balancer can only move pieces it was given: with the lab as a single block that
-         cannot fit beside it, the two columns ended 1127px apart. Each heading names the lab
-         because the column flow does not keep these next to the intro panel. */
+      '    </div>' +
       (window.NeonTheme ? NeonTheme.TOKENS.map(function (grp, i) {
-        return '  <div class="panel hud-thin pal-panel">' +
-          '<h3>调色台 · ' + escapeHtml(grp.group) + '</h3>' +
+        return '    <div class="panel hud-thin pal-panel"><h3>' + escapeHtml(grp.group) + '</h3>' +
           '<div class="pal-rows" data-pal="' + i + '"></div></div>';
       }).join('') : '') +
+      '  </div>' +
       '  <div class="panel hud-thin" id="panelToggles">' +
       '    <h3>行为 · 提醒 · 系统</h3>' +
       '  </div>' +

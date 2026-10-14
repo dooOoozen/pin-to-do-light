@@ -394,6 +394,17 @@ body.side-dragging { cursor: col-resize; }
   column-width: 300px; column-gap: 8px;
 }
 .settings-grid .panel { break-inside: avoid; margin: 0 0 8px; }
+/* The colour lab spans the settings columns as one band, so its six sections sit together
+   instead of being scattered one per column, and inside the band they flow by column the same
+   way — a grid would size each row to its tallest member and put the holes back. */
+.pal-band {
+  column-span: all; break-inside: avoid; margin: 0 0 8px;
+  column-width: 300px; column-gap: 8px;
+}
+.pal-band .panel { break-inside: avoid; margin: 0 0 8px; }
+/* 外观风格 across the band rather than down one column of it: ten material cards in a 306px
+   column is 940px of height, in 664px it is a third of that */
+.pal-band > .band-span { column-span: all; }
 .panel { padding: 9px 10px; }
 .panel h3 { font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; margin-bottom: 7px; padding-bottom: 5px; border-bottom: 1px solid var(--edge); }
 .set-row {
