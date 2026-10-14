@@ -1180,6 +1180,19 @@
          moment the counters stopped wrapping. */
       const tile = stats.querySelector('.stat');
       const th = tile ? tile.getBoundingClientRect().height : stack / 2;
+      /* The tile's own height is what its number and label are sized against next to its width:
+         a filled plate gives a 127x113 tile, and type measured from the width alone drew a 20px
+         number in it. Only the stretched layout may use it — there the row track comes from the
+         plate, so writing it back cannot change the height it was read from. Stacked, the tile is
+         as tall as its own text, and feeding that back would grow the type, then the tile, then
+         the type again, so the height term is taken out of play and the width governs, which is
+         what it did before. */
+      const hVar = tracks === 2 ? Math.round(th) + 'px' : '9999px';
+      if (body.__tileH !== hVar) {
+        body.__tileH = hVar;
+        body.style.setProperty('--tile-h', hVar);
+        body.dataset.tileH = th >= 52 ? 'tall' : 'short';
+      }
       const want = th * 2 + gap;
       /* Beside the counters the ring is capped by their own height, not by the plate: the plate
          includes the figures row and the body's padding, and a ring that tall drew over the edge

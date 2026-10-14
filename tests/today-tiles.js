@@ -18,6 +18,10 @@
     if (b) b.click();
     return !!b;
   }
+  function font(tile, sel) {
+    var n = tile && tile.querySelector(sel);
+    return n ? parseFloat(getComputedStyle(n).fontSize) : 0;
+  }
   function probe(tag, span, row) {
     var mod = doc.getElementById('modToday');
     var body = doc.querySelector('#modToday .mod-today-body');
@@ -61,8 +65,11 @@
       ' area=' + Math.round(areaW) + 'x' + Math.round(areaH) +
       ' fill=' + Math.round(fillW * 100) + '/' + Math.round(fillH * 100) +
       ' cols=' + tiles.filter(function (n) { return Math.round(n.getBoundingClientRect().top) === Math.round(t0.top); }).length +
-      ' tiles=' + sizes.join(',') + ' aspect=' + aspect.toFixed(2) + ' label-cut=' + cut +
-      ' sqashed=' + sq;
+      ' tiles=' + sizes.join(',') + ' aspect=' + aspect.toFixed(2) +
+      ' vFont=' + Math.round(font(tiles[0], '.v') * 10) / 10 + ' kFont=' + Math.round(font(tiles[0], '.k') * 10) / 10 +
+      ' badge=' + (doc.querySelector('#modToday .stat .idx-mark') &&
+        getComputedStyle(doc.querySelector('#modToday .stat .idx-mark')).display !== 'none' ? 'on' : 'off') +
+      ' label-cut=' + cut + ' sqashed=' + sq;
     note(line);
     if (sq) bad.push(tag + ' TILE-SQUASHED ' + sq + '/' + tiles.length);
     if (side) {

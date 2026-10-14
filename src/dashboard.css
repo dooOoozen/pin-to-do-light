@@ -1490,11 +1490,17 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
   box-shadow: none;
 }
 .mod[data-mod="today"] .pd-stats .stat-head { display: flex; align-items: center; gap: 6px; margin-bottom: 0; min-width: 0; }
-.mod[data-mod="today"] .pd-stats .stat .idx-mark { height: auto; min-width: 0; flex: none; font-size: clamp(6.5px, 4.2cqw, 10px); }
+/* The three lines of a counter are sized from whichever of the tile's two sides binds first:
+   `--tile-h` is written by dashboard.js only where the row height comes from the plate, and is
+   9999px otherwise, so a stacked tile keeps the width-only rule it always had. */
+.mod[data-mod="today"] .pd-stats .stat .idx-mark {
+  height: auto; min-width: 0; flex: none;
+  font-size: clamp(6.5px, min(6cqw, calc(var(--tile-h, 40px) * .1)), 11px);
+}
 /* "OVERDUE / 已逾期" is thirteen glyphs at .22em tracking, so the label is sized from the tile's
    width and gives up its tail with an ellipsis rather than pushing the number down a row. */
 .mod[data-mod="today"] .pd-stats .stat .k {
-  font-size: clamp(6.5px, 5.2cqw, 10px); white-space: nowrap; min-width: 0;
+  font-size: clamp(6.5px, min(8cqw, calc(var(--tile-h, 40px) * .11)), 11px); white-space: nowrap; min-width: 0;
   overflow: hidden; text-overflow: ellipsis;
 }
 .mod[data-mod="today"] .pd-stats .stat .k i { font-style: normal; }
@@ -1505,7 +1511,9 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
   .mod[data-mod="today"] .pd-stats .stat .k-full { display: none; }
   .mod[data-mod="today"] .pd-stats .stat .k-short { display: inline; }
 }
-.mod[data-mod="today"] .pd-stats .stat .v { font-size: clamp(16px, 16cqw, 40px); line-height: 1.05; }
+.mod[data-mod="today"] .pd-stats .stat .v {
+  font-size: clamp(16px, min(24cqw, calc(var(--tile-h, 40px) * .4)), 44px); line-height: 1.05;
+}
 .mod[data-mod="today"] .pd-stats .stat[data-stat="done"] .v { transform-origin: 0 50%; text-align: left; }
 /* Narrow plate: the ring goes above the counters, because two columns of counters need ~200px of
    width before their labels stop losing their tail. The ring is out of flow, so its row has to be
@@ -1550,7 +1558,11 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 @container plate (max-height: 205px) {
   .mod[data-mod="today"] .pd-stats { gap: 4px; }
   .mod[data-mod="today"] .pd-stats .stat { padding: 3px 6px 4px; }
-  .mod[data-mod="today"] .pd-stats .stat .idx-mark { display: none; }
+}
+/* The badge is dropped by the height of the tile it shares, not of the module: a one-row plate is
+   168px of module but 113px of filled tile, and the badge was disappearing there for no reason.
+   dashboard.js writes the attribute from the same measurement the type uses. */
+.mod-today-body[data-tile-h="short"] .pd-stats .stat .idx-mark { display: none; }
 }
 
 /* ---- the palette and motion pickers in 设置 ---- */

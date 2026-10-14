@@ -29,7 +29,8 @@
       },
       "nsis": {
         "installMode": "currentUser",
-        "compression": "lzma"
+        "compression": "lzma",
+        "languages": ["SimpChinese", "English"]
       }
     }
   }
