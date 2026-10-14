@@ -1468,17 +1468,22 @@ pub const REPO: &str = "dooOoozen/pin-to-do-light";
 
 #[tauri::command]
 fn latest_release() -> Result<serde_json::Value, String> {
-    let url = format!("https://api.github.com/repos/{}/releases/latest", REPO);
+    /* /releases/latest answers 404 while every release is marked 预发布, which is the state this
+       project is in right now — "latest" excludes prereleases by definition. The list endpoint
+       returns them newest-first and includes them, so the pre-release is findable and the panel
+       can say so. */
+    let url = format!("https://api.github.com/repos/{}/releases?per_page=15", REPO);
     let (status, text) = net::get_json(&url, "")?;
-    /* a repository with no published release answers 404, which is an answer rather than a
-       failure — the panel says so instead of reporting an error */
-    if status == 404 {
-        return Ok(serde_json::json!({ "none": true }));
-    }
     if !(200..300).contains(&status) {
         return Err(format!("GitHub 返回 {}", status));
     }
-    let v: serde_json::Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+    let list: Vec<serde_json::Value> = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+    let pick = list.iter().find(|r| {
+        r.get("draft").and_then(|d| d.as_bool()) != Some(true)
+    });
+    let Some(v) = pick else {
+        return Ok(serde_json::json!({ "none": true }));
+    };
     let field = |k: &str| -> String {
         v.get(k).and_then(|x| x.as_str()).unwrap_or("").to_string()
     };
@@ -1486,6 +1491,7 @@ fn latest_release() -> Result<serde_json::Value, String> {
         "tag": field("tag_name"),
         "url": field("html_url"),
         "published": field("published_at"),
+        "prerelease": v.get("prerelease").and_then(|p| p.as_bool()).unwrap_or(false),
     }))
 }
 

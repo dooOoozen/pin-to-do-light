@@ -4685,9 +4685,10 @@
           API.latestRelease().then((r) => {
             if (!r || r.none) { if (out) out.textContent = '这个仓库还没有发布版本，没有可比的东西。'; return; }
             const newer = cmpVer(r.tag, aboutInfo.version) > 0;
+            const pre = r.prerelease ? '，预发布' : '';
             if (out) {
               out.textContent = (newer ? '有新版本 ' + r.tag : '已经是最新的 ' + aboutInfo.version) +
-                (r.published ? '（发布 ' + String(r.published).slice(0, 10) + '）' : '');
+                (r.published ? '（发布 ' + String(r.published).slice(0, 10) + pre + '）' : pre);
             }
             if (newer) {
               releaseUrl = r.url || '';
