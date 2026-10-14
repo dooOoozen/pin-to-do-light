@@ -57,22 +57,34 @@
       var btns = Array.prototype.slice.call(nav.querySelectorAll('.set-navbtn'));
       check(btns.length === panels.length, 'nav has ' + btns.length + ' entries for ' + panels.length + ' sections');
       check(btns.every(function (b) { return (b.textContent || '').trim().length > 1; }), 'a nav entry has no label');
+      /* the first level is the category, not the section title */
+      var cats = Array.prototype.slice.call(nav.querySelectorAll('.set-cat'));
+      var catNames = cats.map(function (c) { return (c.textContent || '').trim(); });
+      notes.push('cats=' + cats.length + '[' + catNames.join(' ') + ']');
+      check(cats.length >= 3 && cats.length <= 6, cats.length + ' categories, expected a handful');
+      check((catNames[0] || '').indexOf('个性化') === 0, 'the first category is not 个性化: ' + catNames[0]);
+      check(btns.some(function (b) { return b.classList.contains('set-nest'); }),
+        'nothing sits under a second level — the colour lab groups should be nested');
       /* the body itself must not scroll as well, or two bars fight over the same wheel */
       if (body) check(body.scrollHeight <= body.clientHeight + 2,
         'the modal body scrolls too: ' + body.scrollHeight + '>' + body.clientHeight);
-      /* a middle section can reach the top of the pane, so that is what its entry has to do */
+      /* a click lands where it points, immediately — gliding past six sections is the old bug */
       btns[1].click();
-      return wait(1000);
+      return wait(120);
     })
     .then(function () {
       var main = q('.set-main'), nav = q('.set-nav');
       var panels = Array.prototype.slice.call(main.querySelectorAll(':scope > .panel'));
       var d2 = Math.round(box(panels[1]).y - box(main).y);
       var on2 = Array.prototype.slice.call(main.parentElement.querySelectorAll('.set-navbtn.on'));
-      notes.push('toSecond=' + d2 + ' active=' + ((on2[0] || {}).textContent || '').trim());
+      var here2 = Array.prototype.slice.call(nav.querySelectorAll('.set-cat.here'));
+      notes.push('toSecond=' + d2 + ' active=' + ((on2[0] || {}).textContent || '').trim() +
+        ' cat=' + ((here2[0] || {}).textContent || '').trim());
       check(d2 >= -2 && d2 <= 6, 'the second entry left its section ' + d2 + 'px from the top');
       check(on2.length === 1 && (on2[0].textContent || '').indexOf('外观') >= 0,
         'the entry that was clicked is not the one marked active: ' + ((on2[0] || {}).textContent || 'none'));
+      check(here2.length === 1 && (here2[0].textContent || '').indexOf('个性化') === 0,
+        'the category of the visible section is not lit: ' + ((here2[0] || {}).textContent || 'none'));
       Array.prototype.slice.call(nav.querySelectorAll('.set-navbtn'))[panels.length - 1].click();
       return wait(1600);
     })

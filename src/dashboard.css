@@ -402,15 +402,27 @@ body.side-dragging { cursor: col-resize; }
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .set-nav::-webkit-scrollbar { width: 0; height: 0; }
+/* Level one is the category — 个性化, not 界面显示 — and it lights while anything inside it is
+   on screen. Level two is the section heading, level three (调色台's token groups) sits under it. */
+.set-cat {
+  display: flex; align-items: baseline; gap: 5px; width: 100%;
+  margin: 8px 0 3px; padding: 0 4px 3px; text-align: left; cursor: pointer;
+  border: 0; border-bottom: 1px solid var(--rule); background: none;
+  font-size: 9px; letter-spacing: .2em; color: var(--ink-3);
+}
+.set-cat:first-child { margin-top: 0; }
+.set-cat i { font-style: normal; font-size: 7px; letter-spacing: .1em; opacity: .7; }
+.set-cat:hover { color: var(--ink); }
+.set-cat.here { color: var(--ink); border-bottom-color: var(--ink); }
 .set-navbtn {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  display: block; width: 100%;
   padding: 4px 6px; border: 1px solid transparent; background: none; cursor: pointer;
   font-size: 10.5px; line-height: 1.25; color: var(--ink-2); text-align: left;
 }
-.set-navbtn i { font-style: normal; font-size: 7.5px; letter-spacing: .14em; color: var(--ink-3); }
 .set-navbtn:hover { color: var(--ink); border-color: var(--rule); }
 .set-navbtn.on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
-.set-navbtn.on i { color: var(--paper-dim); }
+.set-nest { padding-left: 15px; font-size: 9.5px; color: var(--ink-3); }
+.set-nest.on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 .set-main {
   position: relative; flex: 1 1 auto; min-width: 0; overflow-y: auto;
   scrollbar-width: none; -ms-overflow-style: none;

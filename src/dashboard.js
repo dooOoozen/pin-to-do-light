@@ -3680,7 +3680,7 @@
       '<div class="set-layout">' +
       '  <nav class="set-nav" id="setNav"></nav>' +
       '  <div class="set-main" id="setMain">' +
-      '  <div class="panel hud-thin" id="panelInterface">' +
+      '  <div class="panel hud-thin" id="panelInterface" data-cat="个性化">' +
       '    <h3>界面显示 / INTERFACE</h3>' +
       '    <div class="range-row"><span class="tiny faint">字体大小</span><input type="range" id="rUi" min="0.8" max="2" step="0.05" value="' + st.uiScale + '" /><span class="val" id="vUi">' + Number(st.uiScale).toFixed(2) + '\u00D7</span></div>' +
       '    <div class="row" style="margin-top:6px"><span class="set-hint" id="uiHint">调整后点“应用”生效</span><span class="spacer"></span><button class="btn sm primary" data-act="applyUi">应用</button></div>' +
@@ -3701,14 +3701,14 @@
       '    <div class="divider"></div>' +
       '    <div class="set-row"><div><div class="set-label">卡盒位置</div><div class="set-hint">解锁后可直接拖动桌面卡盒，也可点右侧置中</div></div><button class="btn sm" data-act="dockReset">置中</button></div>' +
       '  </div>' +
-      '  <div class="panel hud-thin" id="panelStyle">' +
+      '  <div class="panel hud-thin" id="panelStyle" data-cat="个性化">' +
       '    <h3>外观风格 / STYLE <span class="tiny faint" id="styleNow"></span></h3>' +
       '    <div class="style-grid" id="styleRows"></div>' +
       '    <div id="styleHour"></div>' +
       '    <div class="set-hint" style="margin-top:7px">风格决定材质（圆角、铬条、阴影、字体），昼夜只决定颜色。' +
       '两者互不干涉，随时可切；调色台里钉住的颜色仍按昼/夜分别保存。</div>' +
       '  </div>' +
-      '  <div class="panel hud-thin" id="panelPalette">' +
+      '  <div class="panel hud-thin" id="panelPalette" data-cat="个性化">' +
       '    <h3>调色台 / COLOUR LAB <span class="tiny faint" id="palTheme"></span></h3>' +
       '    <div class="row" style="margin-bottom:6px">' +
       '      <span class="tiny faint">正在调整</span><span class="spacer"></span>' +
@@ -3721,10 +3721,10 @@
       + '取色器定它是什么颜色，滑条定它有多实；没动过的线仍然跟着「正文」色，调正文即可。</div>' +
       '  </div>' +
       (window.NeonTheme ? NeonTheme.TOKENS.map(function (grp, i) {
-        return '  <div class="panel hud-thin pal-panel"><h3>' + escapeHtml(grp.group) + '</h3>' +
+        return '  <div class="panel hud-thin pal-panel" data-cat="个性化" data-nest="1"><h3>' + escapeHtml(grp.group) + '</h3>' +
           '<div class="pal-rows" data-pal="' + i + '"></div></div>';
       }).join('') : '') +
-      '  <div class="panel hud-thin" id="panelReceipt">' +
+      '  <div class="panel hud-thin" id="panelReceipt" data-cat="功能">' +
       '    <h3>小票机 / RECEIPT <span class="tiny faint" id="rcpNow"></span></h3>' +
       '    <div id="rcpRows"></div>' +
       '    <div class="divider"></div>' +
@@ -3732,7 +3732,7 @@
       '    <div class="row"><input class="input" id="rcpDir" placeholder="留空 = 使用默认文件夹" /><button class="btn sm" id="rcpDirUse">用这个</button></div>' +
       '    <div class="row" style="margin-top:6px"><span class="set-hint" id="rcpDirHint">定时出票会把 PNG 直接写进这个文件夹</span><span class="spacer"></span><button class="btn sm" id="rcpDirOpen">打开文件夹</button></div>' +
       '  </div>' +
-      '  <div class="panel hud-thin" id="panelAi">' +
+      '  <div class="panel hud-thin" id="panelAi" data-cat="功能">' +
       '    <h3>AI 助手 / AGENT <span class="tiny faint" id="aiNow"></span></h3>' +
       '    <div id="aiRows"></div>' +
       '    <div class="divider"></div>' +
@@ -3755,10 +3755,10 @@
       '    <div class="row"><span class="set-hint" id="aiKeyHint">—</span><input class="input" id="aiKey" type="password" placeholder="粘贴密钥" autocomplete="off" /><button class="btn sm" id="aiKeyUse">保存</button><button class="btn sm ghost" id="aiKeyDel">清除</button></div>' +
       '    <div class="set-hint" style="margin-top:7px">密钥只写进 Windows 凭据管理器：不进数据文件、不随「导出」离开这台机器，请求由宿主进程发出，页面读不到它。开启后每次发送的是你输入的那句话加上当前任务列表；关闭后不发任何请求。</div>' +
       '  </div>' +
-      '  <div class="panel hud-thin" id="panelToggles">' +
+      '  <div class="panel hud-thin" id="panelToggles" data-cat="行为">' +
       '    <h3>行为 · 提醒 · 系统</h3>' +
       '  </div>' +
-      '  <div class="panel hud-thin">' +
+      '  <div class="panel hud-thin" data-cat="行为">' +
       '    <h3>卡片层操作 / DECK OPS</h3>' +
       '    <div class="about-line">' +
       '      [ 悬停 卡盒 ] → 分组卡片在旁边铺开，逐张可读<br>' +
@@ -3770,7 +3770,7 @@
       '      [ 拖动 / ⤺ ⤻ ] → 摆放与倾斜（自动记忆）' +
       '    </div>' +
       '  </div>' +
-      '  <div class="panel hud-thin">' +
+      '  <div class="panel hud-thin" data-cat="行为">' +
       '    <h3>全局快捷键</h3>' +
       '    <div class="row"><input class="input" id="hotkeyInput" value="' + escapeHtml(st.hotkey) + '" /><button class="btn sm" data-act="hotkey">应用</button></div>' +
       '    <div class="set-hint" style="margin-top:6px">例如 Control+Alt+T · 按下后立即唤出桌面卡片层并新建任务</div>' +
@@ -3778,7 +3778,7 @@
       '    <div class="set-hint" style="margin-top:6px">例如 Control+Alt+S · 按下把当前组别散布到桌面并钉住，再按收回。' +
       '钉住期间即使别的窗口在前台也保持可见</div>' +
       '  </div>' +
-      '  <div class="panel hud-thin">' +
+      '  <div class="panel hud-thin" data-cat="数据">' +
       '    <h3>坚果云备份 · WEBDAV</h3>' +
       '    <div class="row"><input class="input" id="wdAcct" placeholder="坚果云账号（邮箱）" autocomplete="off" /></div>' +
       '    <div class="row" style="margin-top:6px"><input class="input" id="wdDir" placeholder="备份目录" /></div>' +
@@ -3791,7 +3791,7 @@
       '    <div class="set-hint" style="margin-top:4px">应用密码在坚果云「账户信息 - 安全选项 - 添加应用」里生成，' +
       '只存进 Windows 凭据管理器，不会写进数据文件，也不会被导出带走</div>' +
       '  </div>' +
-      '  <div class="panel hud-thin">' +
+      '  <div class="panel hud-thin" data-cat="数据">' +
       '    <h3>数据 · 维护</h3>' +
       '    <div class="row" style="flex-wrap:wrap">' +
       '      <button class="btn sm" data-act="export">导出 JSON</button>' +
@@ -3809,7 +3809,7 @@
       '    <div class="divider"></div>' +
       '    <div class="about-line" id="aboutLine">DASHBOARD 1971</div>' +
       '  </div>' +
-      '  <div class="panel hud-thin">' +
+      '  <div class="panel hud-thin" data-cat="数据">' +
       '    <h3>关于 / ABOUT <span class="tiny faint" id="aboutVer"></span></h3>' +
       '    <div class="set-hint">桌面任务卡片：卡盒停在屏幕边缘，悬停铺开卡片，单击把它们散布到桌面。' +
       '全部数据只存在这台机器上，不经过任何服务器。</div>' +
@@ -3832,30 +3832,48 @@
       '<button class="btn primary" data-act="done">完成 CLOSE</button>';
 
     openModal(modalShell('系统设置', 'SETTINGS // CONTROL DECK', body, foot, true), async (root) => {
-      /* The nav is read off the sections that actually rendered — one entry per panel, its
-         heading split into the Chinese name and the English word — so adding a section can
-         never leave the nav one item short, which is what a hand-written list would do. */
+      /* The nav is read off the sections that actually rendered — each carries its own
+         `data-cat`, so adding a section can never leave the nav one item short, and grouping is
+         not a second list that has to be remembered. Two levels: the category, then the section
+         heading it was built under; the colour lab's token groups sit one deeper still. */
       const setMain = $('#setMain', root), setNav = $('#setNav', root);
       const secs = setMain ? Array.prototype.slice.call(setMain.querySelectorAll(':scope > .panel')) : [];
       if (setNav && secs.length) {
-        setNav.innerHTML = secs.map(function (p, i) {
+        const info = secs.map(function (p) {
           const h = p.querySelector('h3');
           const t = ((h && h.textContent) || '').trim();
-          const zh = t.split(' /')[0].trim();
-          const en = ((t.split('/')[1] || '').split('//')[0] || '').trim().split(' ')[0];
-          return '<button class="set-navbtn" type="button" data-sec="' + i + '">' +
-            escapeHtml(zh) + (en ? '<i>' + escapeHtml(en) + '</i>' : '') + '</button>';
+          return { cat: p.dataset.cat || '其他', nest: p.dataset.nest === '1',
+            zh: t.split(' /')[0].trim() };
+        });
+        const CAT_EN = { 个性化: 'PERSONAL', 功能: 'MODULES', 行为: 'BEHAVIOUR', 数据: 'DATA' };
+        let lastCat = '';
+        setNav.innerHTML = info.map(function (s, i) {
+          let html = '';
+          if (s.cat !== lastCat) {
+            lastCat = s.cat;
+            html += '<button class="set-cat" type="button" data-sec="' + i + '">' +
+              escapeHtml(s.cat) + '<i>' + escapeHtml(CAT_EN[s.cat] || '') + '</i></button>';
+          }
+          return html + '<button class="set-navbtn' + (s.nest ? ' set-nest' : '') +
+            '" type="button" data-sec="' + i + '">' + escapeHtml(s.zh) + '</button>';
         }).join('');
+        const btns = Array.prototype.slice.call(setNav.children);
         const mark = (i) => {
-          Array.prototype.forEach.call(setNav.children, function (b) {
-            b.classList.toggle('on', Number(b.dataset.sec) === i);
+          const cat = info[i] ? info[i].cat : '';
+          btns.forEach(function (b) {
+            const k = Number(b.dataset.sec);
+            if (b.classList.contains('set-cat')) b.classList.toggle('here', info[k].cat === cat);
+            else b.classList.toggle('on', k === i);
           });
         };
         setNav.addEventListener('click', (ev) => {
-          const b = ev.target.closest('.set-navbtn');
+          const b = ev.target.closest('.set-cat, .set-navbtn');
           if (!b) return;
           const p = secs[Number(b.dataset.sec)];
-          setMain.scrollTo({ top: p.offsetTop, behavior: 'smooth' });
+          /* No smooth: gliding past six sections on the way to the seventh is the reader
+             watching a scrollbar travel rather than going anywhere. The wheel still scrolls
+             natively, which is the only place that animation belongs. */
+          setMain.scrollTop = p.offsetTop;
           mark(Number(b.dataset.sec));
         });
         /* the highlight follows the scroll, so the nav says where you are, not where you last
