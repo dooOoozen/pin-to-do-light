@@ -9,48 +9,64 @@
 (function (g) {
   'use strict';
 
-  /* the opaque tokens worth exposing, grouped the way the panels are read */
+  /* the tokens the lab drives, grouped the way the panels are read. `w` is where that colour
+     actually paints — the list is long enough that 压暗 and 面板底 are not self-explanatory,
+     and a picker with no address is a guess. `src` and `a` mark a line token: it is drawn from
+     one colour at one strength (theme.css mixes them), so the lab gets a colour picker for the
+     source and a slider for the strength instead of one picker that would flatten the alpha. */
   var TOKENS = [
     { group: '纸面 / PAPER', items: [
-      { v: '--paper', n: '底色' },
-      { v: '--paper-hi', n: '提亮' },
-      { v: '--paper-lo', n: '压暗' },
-      { v: '--paper-dim', n: '面板底' },
-      { v: '--surface-hi', n: '输入卡' },
-      { v: '--head-hi', n: '标题条' },
-      { v: '--field-focus', n: '输入聚焦' },
-      { v: '--plate-mod', n: '模块底板' },
-      { v: '--cream', n: '奶油' }
+      { v: '--paper', n: '底色', w: '面板与卡片层的整体底色' },
+      { v: '--paper-hi', n: '提亮', w: '卡片正面、输入框、弹窗面板' },
+      { v: '--paper-lo', n: '压暗', w: '左导航底、时间轴栏、进度槽' },
+      { v: '--paper-dim', n: '面板底', w: '悬停时的行底、环形图未完成那段弧' },
+      { v: '--surface-hi', n: '输入卡', w: '新建任务输入区的表面' },
+      { v: '--head-hi', n: '标题条', w: '模块与弹窗标题栏的底色' },
+      { v: '--field-focus', n: '输入聚焦', w: '输入框获得焦点时的底色' },
+      { v: '--plate-mod', n: '模块底板', w: '仪表盘每块模块自己的板底' },
+      { v: '--cream', n: '奶油', w: '图标按钮选中态、计时徽章底' }
     ] },
-    { group: '分组与信纸 / PLATES', items: [
-      { v: '--plate-day', n: '日期分组底' },
-      { v: '--plate-today', n: '今天分组底' },
-      { v: '--plate-overdue', n: '逾期分组底' },
-      { v: '--memo-rule', n: '信纸横线' }
+    { group: '分组底板 / PLATES', items: [
+      { v: '--plate-day', n: '日期分组底', w: '台账里日期分组的底色' },
+      { v: '--plate-today', n: '今天分组底', w: '「今天」那一组的底色' },
+      { v: '--plate-overdue', n: '逾期分组底', w: '逾期日期组的底色' }
     ] },
     { group: '墨色 / INK', items: [
-      { v: '--ink', n: '正文' },
-      { v: '--ink-2', n: '次级' },
-      { v: '--ink-3', n: '三级' }
+      { v: '--ink', n: '正文', w: '正文文字；未钉住的线条默认都从它派生' },
+      { v: '--ink-2', n: '次级', w: '次要文字与图标' },
+      { v: '--ink-3', n: '三级', w: '最弱的提示文字、输入占位符' }
+    ] },
+    { group: '线条 / LINES', items: [
+      { v: '--edge', n: '描边', w: '面板、卡片、按钮外框那圈实线', src: '--edge-ink', a: '--edge-a' },
+      { v: '--rule', n: '细虚线', w: '列表行下沿、时间轴的横线与竖轴', src: '--rule-ink', a: '--rule-a' },
+      { v: '--rule-strong', n: '粗虚线', w: '模块标题下沿、卡盒菜单栏分隔', src: '--rule-strong-ink', a: '--rule-strong-a' },
+      { v: '--grid-line', n: '网格细线', w: '背景方格纸的小格', src: '--grid-line-ink', a: '--grid-line-a' },
+      { v: '--grid-line-bold', n: '网格粗线', w: '背景方格纸的大格', src: '--grid-line-bold-ink', a: '--grid-line-bold-a' },
+      { v: '--hatch-line', n: '斜纹', w: '卡片背面的 45° 斜纹', src: '--hatch-line-ink', a: '--hatch-line-a' },
+      { v: '--wm-ink', n: '水印', w: '卡片右下角的大数字水印', src: '--wm-src', a: '--wm-a' },
+      { v: '--hit-line', n: '拖拽高亮', w: '侧栏宽度拖拽条悬停时', src: '--hit-line-ink', a: '--hit-line-a' },
+      { v: '--ink-glow', n: '字晕', w: '发光标题的文字光晕', src: '--ink-glow-ink', a: '--ink-glow-a' },
+      { v: '--memo-rule', n: '信纸线', w: '备忘录的横线', src: '--memo-rule-ink', a: '--memo-rule-a' }
     ] },
     { group: '强调 / ACCENTS', items: [
-      { v: '--brick', n: '砖红' },
-      { v: '--brick-ink', n: '砖红字' },
-      { v: '--vermillion', n: '朱红' },
-      { v: '--honey', n: '蜜黄' },
-      { v: '--sage', n: '鼠尾草' },
-      { v: '--forest', n: '森绿' },
-      { v: '--forest-ink', n: '森绿字' },
-      { v: '--teal', n: '青' },
-      { v: '--slate', n: '石板蓝' },
-      { v: '--slate-ink', n: '蓝底字' },
-      { v: '--khaki', n: '卡其' },
-      { v: '--plum', n: '李紫' },
-      { v: '--ochre', n: '赭石' }
+      { v: '--brick', n: '砖红', w: '品牌标题、选中态、卡盒标题条底色' },
+      { v: '--brick-ink', n: '砖红字', w: '压在强调色块上的文字' },
+      { v: '--vermillion', n: '朱红', w: '关闭按钮、逾期标记与逾期组标题' },
+      { v: '--honey', n: '蜜黄', w: '低优先圆点、悬停计时读数、今天的时间轴列' },
+      { v: '--sage', n: '鼠尾草', w: '最高优先圆点、番茄钟读数' },
+      { v: '--forest', n: '森绿', w: '完成态的进度条与文字' },
+      { v: '--forest-ink', n: '森绿字', w: '绿底上的文字' },
+      { v: '--teal', n: '青', w: '今日完成环形图的已完成段、登记成功提示' },
+      { v: '--slate', n: '石板蓝', w: '部分材质的序号块与信纸线' },
+      { v: '--slate-ink', n: '蓝底字', w: '蓝底上的文字' },
+      { v: '--khaki', n: '卡其', w: '热力图次高档、警告提示条' },
+      { v: '--plum', n: '李紫', w: '备用强调槽位，当前没有界面用它' },
+      { v: '--ochre', n: '赭石', w: '快速新建的加号按钮、热力图最高档' }
     ] }
   ];
 
   var HEX = /^#[0-9a-fA-F]{3,8}$/;
+  var PERCENT = /^\d+(?:\.\d+)?%$/;
   var applied = [];
 
   /* two independent axes: the material (data-style) and the hour (data-theme). The colour lab
@@ -107,7 +123,9 @@
     var bag = per && per[theme];
     if (!bag) return;
     Object.keys(bag).forEach(function (k) {
-      if (!HEX.test(bag[k])) return;
+      /* a colour pin or a line strength — those are the only two shapes the lab can produce,
+         and anything else (a stray "auto", an old key) is dropped rather than written to the root */
+      if (!HEX.test(bag[k]) && !PERCENT.test(bag[k])) return;
       root.style.setProperty(k, bag[k]);
       applied.push(k);
     });
@@ -156,6 +174,21 @@
     return toHex(resolveColour('var(' + token + ')'));
   }
 
+  /* How strong a line actually is right now: Chromium hands a translucent colour back as
+     color(srgb r g b / a) or rgba(...,a), and the strength slider has to start on that number,
+     not on whatever --x-a happens to spell — most materials never write it and ride the fallback
+     in the mix. 1 for anything unparsable, so a broken read leaves the line opaque rather than
+     silently invisible. */
+  function alphaOf(css) {
+    var s = String(css || '').trim();
+    if (s === 'transparent') return 0;
+    var m = /color\(\s*srgb[^)]*?\/\s*([\d.]+)/.exec(s);
+    if (m) return parseFloat(m[1]);
+    m = /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(s);
+    if (m) return parseFloat(m[1]);
+    return 1;
+  }
+
   /* Ink for text sitting *on* a filled block. The group palette contains cream and honey,
      and the deck band paints its head with the group colour while the label used to stay
      the light brick-ink — pale on pale, unreadable. Choose by the block's own luminance. */
@@ -177,6 +210,8 @@
     styleOf: styleOf,
     current: current,
     toHex: toHex,
+    resolve: resolveColour,
+    alphaOf: function (token) { return alphaOf(resolveColour('var(' + token + ')')); },
     inkOn: inkOn,
     isHex: function (v) { return HEX.test(v); }
   };

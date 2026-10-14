@@ -13,21 +13,30 @@
   --ink:        #14120d;
   --ink-2:      #4b4536;
   --ink-3:      #7d735d;
-  --rule:       color-mix(in srgb, var(--ink) 16%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 38%, transparent);
+  /* Every hairline on the panel is one source colour at one strength, written as a pair of
+     variables rather than as a single finished color-mix. That is what lets the colour lab
+     retune the lines at all: a picker can only hand back an opaque colour, so a token that
+     already baked its own alpha into the declaration could only be overridden by *losing* the
+     alpha — pin --rule and the 16% dashed separator becomes a solid bar. The source falls back
+     to the body ink, so a material that says nothing about a line still follows --ink, and the
+     strength falls back to what 印刷 1971 uses, which is what the sheet measured before any of
+     this existed. */
+  --edge:        color-mix(in srgb, var(--edge-ink, var(--ink)) var(--edge-a, 100%), transparent);
+  --rule:        color-mix(in srgb, var(--rule-ink, var(--ink)) var(--rule-a, 16%), transparent);
+  --rule-strong: color-mix(in srgb, var(--rule-strong-ink, var(--ink)) var(--rule-strong-a, 38%), transparent);
   /* the graph grid and the stacked-print shadow are the two places the ink is used at
      partial alpha; as variables so the dark theme can flip them rather than carry a
      second copy of every rule */
-  --grid-line:  color-mix(in srgb, var(--ink) 10%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 18%, transparent);
+  --grid-line:   color-mix(in srgb, var(--grid-line-ink, var(--ink)) var(--grid-line-a, 10%), transparent);
+  --grid-line-bold: color-mix(in srgb, var(--grid-line-bold-ink, var(--ink)) var(--grid-line-bold-a, 18%), transparent);
   /* layered ambient elevation: a tight contact shadow plus two wide soft ones, no
      offset — the panel reads as lifted off the desk rather than doubled. */
   --pop-shadow: 0 1px 1px rgba(20, 18, 13, .05), 0 6px 16px rgba(20, 18, 13, .10), 0 22px 44px rgba(20, 18, 13, .12);
   --pop-shadow-sm: 0 1px 2px rgba(20, 18, 13, .08), 0 4px 10px rgba(20, 18, 13, .12);
-  --ink-glow:   color-mix(in srgb, var(--ink) 90%, transparent);
-  --hit-line:   color-mix(in srgb, var(--ink) 22%, transparent);
-  --wm-ink:     color-mix(in srgb, var(--ink) 13%, transparent);
-  --hatch-line: color-mix(in srgb, var(--ink) 5%, transparent);
+  --ink-glow:    color-mix(in srgb, var(--ink-glow-ink, var(--ink)) var(--ink-glow-a, 90%), transparent);
+  --hit-line:    color-mix(in srgb, var(--hit-line-ink, var(--ink)) var(--hit-line-a, 22%), transparent);
+  --wm-ink:      color-mix(in srgb, var(--wm-src, var(--ink)) var(--wm-a, 13%), transparent);
+  --hatch-line:  color-mix(in srgb, var(--hatch-line-ink, var(--ink)) var(--hatch-line-a, 5%), transparent);
   /* Surfaces that the colour lab can retune on their own: the day-group plates in the
      ledger, the module plate on the dashboard, and the rule on the memo pad. Defaults
      are mixed from the inks above so they follow a palette change until you pin them. */
@@ -35,7 +44,7 @@
   --plate-today:   color-mix(in srgb, var(--brick) 22%, var(--paper));
   --plate-overdue: color-mix(in srgb, var(--vermillion) 16%, var(--paper));
   --plate-mod:     var(--paper);
-  --memo-rule:     color-mix(in srgb, var(--ink) 16%, transparent);
+  --memo-rule:     color-mix(in srgb, var(--memo-rule-ink, var(--ink)) var(--memo-rule-a, 16%), transparent);
 
   --brick:      #8d3a27;
   --brick-ink:  #f5ecda;
@@ -565,16 +574,16 @@ input[type="range"] { accent-color: var(--brick); }
   --ink:        #d9d3c5;
   --ink-2:      #a9a08b;
   --ink-3:      #837b69;
-  --rule:       color-mix(in srgb, var(--ink) 14%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 32%, transparent);
-  --grid-line:  color-mix(in srgb, var(--ink) 6%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 11%, transparent);
+  --rule-ink: var(--ink); --rule-a: 14%;
+  --rule-strong-ink: var(--ink); --rule-strong-a: 32%;
+  --grid-line-ink: var(--ink); --grid-line-a: 6%;
+  --grid-line-bold-ink: var(--ink); --grid-line-bold-a: 11%;
   --pop-shadow: 0 1px 1px rgba(0, 0, 0, .30), 0 6px 16px rgba(0, 0, 0, .45), 0 22px 44px rgba(0, 0, 0, .50);
   --pop-shadow-sm: 0 1px 2px rgba(0, 0, 0, .40), 0 4px 10px rgba(0, 0, 0, .45);
-  --ink-glow:   color-mix(in srgb, var(--ink) 90%, transparent);
-  --hit-line:   color-mix(in srgb, var(--ink) 22%, transparent);
-  --wm-ink:     color-mix(in srgb, var(--ink) 12%, transparent);
-  --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
+  --ink-glow-ink: var(--ink); --ink-glow-a: 90%;
+  --hit-line-ink: var(--ink); --hit-line-a: 22%;
+  --wm-src: var(--ink); --wm-a: 12%;
+  --hatch-line-ink: var(--ink); --hatch-line-a: 6%;
 
   --surface-hi: #262319;
   --head-hi: #2f2b21;
@@ -647,7 +656,7 @@ input[type="range"] { accent-color: var(--brick); }
   --r-plate: 0px;
   --r-ctl: 0px;
   --r-pill: 0px;
-  --edge: var(--ink);
+  --edge-ink: var(--ink); --edge-a: 100%;
   --r-dot: 0px;
   --font-display: var(--font-mono);
   --bevel: none;
@@ -663,10 +672,10 @@ input[type="range"] { accent-color: var(--brick); }
   --ink:        #2c3444;
   --ink-2:      #4d5665;
   --ink-3:      #77808f;
-  --rule:       color-mix(in srgb, var(--ink) 13%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 30%, transparent);
-  --grid-line:  color-mix(in srgb, var(--ink) 7%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 12%, transparent);
+  --rule-ink: var(--ink); --rule-a: 13%;
+  --rule-strong-ink: var(--ink); --rule-strong-a: 30%;
+  --grid-line-ink: var(--ink); --grid-line-a: 7%;
+  --grid-line-bold-ink: var(--ink); --grid-line-bold-a: 12%;
 
   /* enamel does not show paper grain, and the console is lit from above: the shadow is
      soft and slightly cool rather than the print build's doubled hard offset */
@@ -695,12 +704,12 @@ input[type="range"] { accent-color: var(--brick); }
   --plate-day:     color-mix(in srgb, var(--ink) 7%, var(--paper));
   --plate-today:   color-mix(in srgb, var(--brick) 16%, var(--paper));
   --plate-overdue: color-mix(in srgb, var(--vermillion) 14%, var(--paper));
-  --memo-rule:     color-mix(in srgb, var(--slate) 26%, transparent);
+  --memo-rule-ink: var(--slate); --memo-rule-a: 26%;
 
   --r-plate: 18px;
   --r-ctl: 11px;
   --r-pill: 999px;
-  --edge: #b9c3cd;
+  --edge-ink: #b9c3cd; --edge-a: 100%;
   --bevel: inset 0 1px 0 rgba(255, 255, 255, .75);
   --font-ui: "Century Gothic", "Futura", "Avenir Next", "Trebuchet MS", ui-sans-serif, system-ui, sans-serif;
 }
@@ -715,7 +724,7 @@ input[type="range"] { accent-color: var(--brick); }
   --ink:        #e9e3d6;
   --ink-2:      #b3bcc7;
   --ink-3:      #8f99a6;
-  --edge:       #56626f;
+  --edge-ink: #56626f; --edge-a: 100%;
   --bevel: inset 0 1px 0 rgba(255, 255, 255, .10);
   --pop-shadow: 0 2px 3px rgba(0, 0, 0, .35), 0 10px 22px rgba(0, 0, 0, .45), 0 26px 52px rgba(0, 0, 0, .50);
   --pop-shadow-sm: 0 1px 2px rgba(0, 0, 0, .45), 0 5px 12px rgba(0, 0, 0, .45);
@@ -876,17 +885,17 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --ink:        #12141a;
   --ink-2:      #3d4450;
   --ink-3:      #8c93a1;
-  --rule:       color-mix(in srgb, var(--ink) 22%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 45%, transparent);
-  --grid-line:  color-mix(in srgb, var(--ink) 11%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 22%, transparent);
+  --rule-ink: var(--ink); --rule-a: 22%;
+  --rule-strong-ink: var(--ink); --rule-strong-a: 45%;
+  --grid-line-ink: var(--ink); --grid-line-a: 11%;
+  --grid-line-bold-ink: var(--ink); --grid-line-bold-a: 22%;
   --tex-grain: none;
   --pop-shadow: none;
   --pop-shadow-sm: none;
-  --ink-glow:   color-mix(in srgb, var(--ink) 92%, transparent);
-  --hit-line:   color-mix(in srgb, var(--ink) 30%, transparent);
-  --wm-ink:     color-mix(in srgb, var(--ink) 11%, transparent);
-  --hatch-line: color-mix(in srgb, var(--ink) 7%, transparent);
+  --ink-glow-ink: var(--ink); --ink-glow-a: 92%;
+  --hit-line-ink: var(--ink); --hit-line-a: 30%;
+  --wm-src: var(--ink); --wm-a: 11%;
+  --hatch-line-ink: var(--ink); --hatch-line-a: 7%;
 
   --brick:      #002fa7;   /* International Klein Blue is the primary */
   --brick-ink:  #f4f2ec;
@@ -909,9 +918,9 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --plate-day:     #e4e2da;
   --plate-today:   color-mix(in srgb, var(--brick) 14%, var(--paper));
   --plate-overdue: color-mix(in srgb, var(--vermillion) 16%, var(--paper));
-  --memo-rule:     color-mix(in srgb, var(--ink) 30%, transparent);
+  --memo-rule-ink: var(--ink); --memo-rule-a: 30%;
 
-  --edge: #12141a;
+  --edge-ink: #12141a; --edge-a: 100%;
   --r-plate: 0px; --r-ctl: 0px; --r-pill: 0px; --r-dot: 0px;
   --bevel: none;
   --font-ui: "Helvetica Neue", Helvetica, Arial, "Segoe UI", sans-serif;
@@ -922,7 +931,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   /* the day plates were never overridden here, so a date group header was near-white paper
      with light ink on it — 1.2:1, an invisible row rather than a dark one */
   --plate-day: #282d36; --plate-today: #303741; --plate-overdue: #3a1a1d;
-  --memo-rule: color-mix(in srgb, var(--ink) 22%, transparent);
+  --memo-rule-ink: var(--ink); --memo-rule-a: 22%;
   /* the day sheet's forest and plum are near-black, which on a dark plate is not a dim colour
      but no colour at all — 1.0:1 wherever a group colour is used as text */
   --forest: #6f9ad8; --forest-ink: #10131a; --plum: #9db4ff;
@@ -933,7 +942,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --ink:        #d3d3cf;
   --ink-2:      #b7bcc5;
   --ink-3:      #8e96a5;
-  --edge:       #d3d3cf;
+  --edge-ink: #d3d3cf; --edge-a: 100%;
   --brick:      #2e63d8;
   --brick-ink:  #0b0e14;
   --vermillion: #ff4a4a;
@@ -1009,16 +1018,16 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --ink:        #17342f;
   --ink-2:      #35665c;
   --ink-3:      #6d9a8e;
-  --rule:       color-mix(in srgb, var(--ink) 16%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 34%, transparent);
-  --grid-line:  color-mix(in srgb, var(--sage) 22%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--brick) 18%, transparent);
+  --rule-ink: var(--ink); --rule-a: 16%;
+  --rule-strong-ink: var(--ink); --rule-strong-a: 34%;
+  --grid-line-ink: var(--sage); --grid-line-a: 22%;
+  --grid-line-bold-ink: var(--brick); --grid-line-bold-a: 18%;
   --pop-shadow: 0 2px 6px rgba(239, 93, 118, .16), 0 10px 26px rgba(23, 52, 47, .12), 0 26px 54px rgba(23, 52, 47, .10);
   --pop-shadow-sm: 0 1px 3px rgba(239, 93, 118, .18), 0 6px 14px rgba(23, 52, 47, .12);
-  --ink-glow:   color-mix(in srgb, var(--ink) 88%, transparent);
-  --hit-line:   color-mix(in srgb, var(--sage) 55%, transparent);
-  --wm-ink:     color-mix(in srgb, var(--brick) 24%, transparent);
-  --hatch-line: color-mix(in srgb, var(--sage) 16%, transparent);
+  --ink-glow-ink: var(--ink); --ink-glow-a: 88%;
+  --hit-line-ink: var(--sage); --hit-line-a: 55%;
+  --wm-src: var(--brick); --wm-a: 24%;
+  --hatch-line-ink: var(--sage); --hatch-line-a: 16%;
 
   --brick:      #ef5d76;   /* coral, strong enough to sit on the rose half */
   --brick-ink:  #fff3f1;
@@ -1041,9 +1050,9 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --plate-day:     color-mix(in srgb, var(--sage) 18%, var(--paper-hi));
   --plate-today:   color-mix(in srgb, var(--brick) 20%, var(--paper-hi));
   --plate-overdue: color-mix(in srgb, var(--vermillion) 30%, var(--paper-hi));
-  --memo-rule:     color-mix(in srgb, var(--sage) 55%, transparent);
+  --memo-rule-ink: var(--sage); --memo-rule-a: 55%;
 
-  --edge: #2f8f79;
+  --edge-ink: #2f8f79; --edge-a: 100%;
   --r-plate: 16px; --r-ctl: 10px; --r-pill: 999px; --r-dot: 50%;
   --bevel: none;
   --font-ui: Georgia, "Noto Serif SC", "Songti SC", SimSun, serif;
@@ -1059,7 +1068,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --ink:        #f0e7da;
   --ink-2:      #c3d6c9;
   --ink-3:      #90ac9d;
-  --edge:       #4fbf95;
+  --edge-ink: #4fbf95; --edge-a: 100%;
   --pop-shadow: 0 2px 6px rgba(0, 0, 0, .4), 0 10px 26px rgba(0, 0, 0, .45), 0 26px 54px rgba(0, 0, 0, .4);
   --pop-shadow-sm: 0 1px 3px rgba(0, 0, 0, .45), 0 6px 14px rgba(0, 0, 0, .4);
   --brick:      #ff8ba0;
@@ -1171,18 +1180,18 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --ink:        #22241e;
   --ink-2:      #4e5147;
   --ink-3:      #7e8175;
-  --rule:       color-mix(in srgb, var(--ink) 20%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 42%, transparent);
-  --grid-line:  color-mix(in srgb, var(--ink) 9%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 16%, transparent);
+  --rule-ink: var(--ink); --rule-a: 20%;
+  --rule-strong-ink: var(--ink); --rule-strong-a: 42%;
+  --grid-line-ink: var(--ink); --grid-line-a: 9%;
+  --grid-line-bold-ink: var(--ink); --grid-line-bold-a: 16%;
   --tex-grain: none;
   /* the hard 3px band under the plate is the bezel edge, not an ambient shadow */
   --pop-shadow: 0 3px 0 rgba(34, 36, 30, .55), 0 12px 24px rgba(34, 36, 30, .22), 0 28px 52px rgba(34, 36, 30, .18);
   --pop-shadow-sm: 0 2px 0 rgba(34, 36, 30, .45), 0 6px 14px rgba(34, 36, 30, .20);
-  --ink-glow:   color-mix(in srgb, var(--ink) 92%, transparent);
-  --hit-line:   color-mix(in srgb, var(--ink) 28%, transparent);
-  --wm-ink:     color-mix(in srgb, var(--slate) 34%, transparent);
-  --hatch-line: color-mix(in srgb, var(--ink) 7%, transparent);
+  --ink-glow-ink: var(--ink); --ink-glow-a: 92%;
+  --hit-line-ink: var(--ink); --hit-line-a: 28%;
+  --wm-src: var(--slate); --wm-a: 34%;
+  --hatch-line-ink: var(--ink); --hatch-line-a: 7%;
 
   --brick:      #d2601a;   /* safety orange */
   --brick-ink:  #fff3e6;
@@ -1205,9 +1214,9 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --plate-day:     #dcd5c4;
   --plate-today:   color-mix(in srgb, var(--brick) 20%, var(--paper));
   --plate-overdue: color-mix(in srgb, var(--vermillion) 22%, var(--paper));
-  --memo-rule:     color-mix(in srgb, var(--slate) 40%, transparent);
+  --memo-rule-ink: var(--slate); --memo-rule-a: 40%;
 
-  --edge: #23251f;
+  --edge-ink: #23251f; --edge-a: 100%;
   --r-plate: 14px; --r-ctl: 9px; --r-pill: 999px; --r-dot: 50%;
   --bevel: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -2px 0 rgba(34, 36, 30, .12);
   --font-ui: "Bahnschrift", "DIN Alternate", "Trebuchet MS", sans-serif;
@@ -1218,7 +1227,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
 :root[data-style="console"][data-theme="ink"] {
   /* same miss as ikb: the console's powered-down screen kept the daylight plates */
   --plate-day: #333435; --plate-today: #3c3e3f; --plate-overdue: #4a2a22;
-  --memo-rule: color-mix(in srgb, var(--ink) 22%, transparent);
+  --memo-rule-ink: var(--ink); --memo-rule-a: 22%;
   --plum: #b9a6ff; --khaki: #b3afa0;
   --paper:      #222324;
   --paper-hi:   #2a2c2e;
@@ -1227,7 +1236,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --ink:        #e3decd;
   --ink-2:      #b3afa0;
   --ink-3:      #8a8779;
-  --edge:       #4a4e52;
+  --edge-ink: #4a4e52; --edge-a: 100%;
   --bevel: inset 0 1px 0 rgba(255, 255, 255, .10), inset 0 -2px 0 rgba(0, 0, 0, .35);
   --pop-shadow: 0 3px 0 rgba(0, 0, 0, .6), 0 12px 24px rgba(0, 0, 0, .5), 0 28px 52px rgba(0, 0, 0, .45);
   --pop-shadow-sm: 0 2px 0 rgba(0, 0, 0, .55), 0 6px 14px rgba(0, 0, 0, .45);
@@ -1512,17 +1521,17 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
 :root[data-style="blueprint"] {
   --paper: #e8e8e6; --paper-hi: #f7f7f6; --paper-lo: #d9d9d6; --paper-dim: #cbcac6;
   --ink: #1b1c1d; --ink-2: #4a4b4c; --ink-3: #87888a;
-  --rule: color-mix(in srgb, var(--ink) 11%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 26%, transparent);
-  --grid-line: color-mix(in srgb, var(--ink) 5%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 9%, transparent);
+  --rule-ink: var(--ink); --rule-a: 11%;
+  --rule-strong-ink: var(--ink); --rule-strong-a: 26%;
+  --grid-line-ink: var(--ink); --grid-line-a: 5%;
+  --grid-line-bold-ink: var(--ink); --grid-line-bold-a: 9%;
   /* the plate is lifted, not outlined: a wide soft fall and a light-catching top edge */
   --pop-shadow: 0 12px 28px rgba(20,20,22,.10), 0 2px 6px rgba(20,20,22,.06);
   --pop-shadow-sm: 0 2px 8px rgba(20,20,22,.10);
-  --ink-glow: color-mix(in srgb, var(--ink) 88%, transparent);
-  --hit-line: color-mix(in srgb, var(--ink) 34%, transparent);
-  --wm-ink: color-mix(in srgb, var(--ink) 12%, transparent);
-  --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
+  --ink-glow-ink: var(--ink); --ink-glow-a: 88%;
+  --hit-line-ink: var(--ink); --hit-line-a: 34%;
+  --wm-src: var(--ink); --wm-a: 12%;
+  --hatch-line-ink: var(--ink); --hatch-line-a: 6%;
   /* the brief is "no color", so every accent is a step on one grey ladder and the priority
      signal has to be carried by weight and position instead */
   --brick: #232425; --brick-ink: #ffffff;
@@ -1533,8 +1542,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --plate-day: #f1f2f0; --plate-today: color-mix(in srgb, var(--ink) 7%, var(--paper-hi));
   --plate-overdue: color-mix(in srgb, var(--ink) 13%, var(--paper-hi));
   --plate-mod: #f8f9f7;
-  --memo-rule: color-mix(in srgb, var(--ink) 18%, transparent);
-  --edge: color-mix(in srgb, var(--ink) 16%, transparent);
+  --memo-rule-ink: var(--ink); --memo-rule-a: 18%;
+  --edge-ink: var(--ink); --edge-a: 16%;
   --r-plate: 16px; --r-ctl: 11px; --r-pill: 999px; --r-dot: 50%;
   --bevel: inset 0 1px 0 rgba(255,255,255,.72);
 /* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
@@ -1547,11 +1556,11 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
 :root[data-style="blueprint"][data-theme="ink"] {
   --paper: #1c1d1e; --paper-hi: #2e3032; --paper-lo: #151617; --paper-dim: #3a3c3e;
   --ink: #e2e3e2; --ink-2: #b0b2b2; --ink-3: #83858a;
-  --edge: color-mix(in srgb, #ffffff 22%, transparent);
-  --rule: color-mix(in srgb, #ffffff 12%, transparent);
-  --rule-strong: color-mix(in srgb, #ffffff 28%, transparent);
-  --grid-line: color-mix(in srgb, #ffffff 5%, transparent);
-  --grid-line-bold: color-mix(in srgb, #ffffff 9%, transparent);
+  --edge-ink: #ffffff; --edge-a: 22%;
+  --rule-ink: #ffffff; --rule-a: 12%;
+  --rule-strong-ink: #ffffff; --rule-strong-a: 28%;
+  --grid-line-ink: #ffffff; --grid-line-a: 5%;
+  --grid-line-bold-ink: #ffffff; --grid-line-bold-a: 9%;
   --brick: #f0f1f0; --brick-ink: #131415;
   --vermillion: #c9caca; --honey: #9b9d9e; --sage: #b6b7b7; --teal: #d5d6d5;
   --forest: #e6e7e6; --forest-ink: #131415; --slate: #8f9193; --slate-ink: #131415;
@@ -1559,8 +1568,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --cream: #2a2c2d; --surface-hi: #2b2d2f; --head-hi: #242627; --field-focus: #333537;
   --plate-day: #2a2c2d; --plate-mod: #262728;
   --plate-today: #343638; --plate-overdue: #434547;
-  --wm-ink: color-mix(in srgb, var(--ink) 14%, transparent);
-  --memo-rule: color-mix(in srgb, var(--ink) 24%, transparent);
+  --wm-src: var(--ink); --wm-a: 14%;
+  --memo-rule-ink: var(--ink); --memo-rule-a: 24%;
   --pop-shadow: 0 14px 30px rgba(0,0,0,.42), 0 2px 6px rgba(0,0,0,.3);
   --bevel: inset 0 1px 0 rgba(255,255,255,.10);
 /* 网点去掉了（用户：不好看）。这条线以后别为了「还原参考图」再加回来。 */
@@ -1618,17 +1627,17 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
 :root[data-style="memphis"] {
   --paper: #f1eff6; --paper-hi: #ffffff; --paper-lo: #e6e3ef; --paper-dim: #d6d2e3;
   --ink: #171225; --ink-2: #453a63; --ink-3: #7d739c;
-  --rule: color-mix(in srgb, var(--ink) 18%, transparent);
-  --rule-strong: color-mix(in srgb, var(--brick) 52%, transparent);
-  --grid-line: color-mix(in srgb, var(--brick) 7%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--brick) 13%, transparent);
+  --rule-ink: var(--ink); --rule-a: 18%;
+  --rule-strong-ink: var(--brick); --rule-strong-a: 52%;
+  --grid-line-ink: var(--brick); --grid-line-a: 7%;
+  --grid-line-bold-ink: var(--brick); --grid-line-bold-a: 13%;
   /* the collage is stacked, so a plate casts a hard flat block of its own colour */
   --pop-shadow: 6px 6px 0 color-mix(in srgb, var(--slate) 30%, transparent), 0 18px 34px rgba(23,18,37,.14), 0 34px 62px rgba(23,18,37,.10);
   --pop-shadow-sm: 3px 3px 0 color-mix(in srgb, var(--slate) 26%, transparent);
-  --ink-glow: color-mix(in srgb, var(--ink) 92%, transparent);
-  --hit-line: color-mix(in srgb, var(--brick) 34%, transparent);
-  --wm-ink: color-mix(in srgb, var(--brick) 22%, transparent);
-  --hatch-line: color-mix(in srgb, var(--brick) 8%, transparent);
+  --ink-glow-ink: var(--ink); --ink-glow-a: 92%;
+  --hit-line-ink: var(--brick); --hit-line-a: 34%;
+  --wm-src: var(--brick); --wm-a: 22%;
+  --hatch-line-ink: var(--brick); --hatch-line-a: 8%;
   --brick: #6d28d9; --brick-ink: #f7f2ff;
   --vermillion: #3a3350; --honey: #6f6a86; --sage: #2047d6; --teal: #00766c;
   --forest: #2f2f8f; --forest-ink: #eef0ff; --slate: #2047d6; --slate-ink: #eef2ff;
@@ -1638,8 +1647,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --plate-today: color-mix(in srgb, var(--honey) 22%, var(--paper));
   --plate-overdue: color-mix(in srgb, var(--vermillion) 16%, var(--paper));
   --plate-mod: #ffffff;
-  --memo-rule: color-mix(in srgb, var(--brick) 26%, transparent);
-  --edge: var(--ink);
+  --memo-rule-ink: var(--brick); --memo-rule-a: 26%;
+  --edge-ink: var(--ink); --edge-a: 100%;
   /* square: the collage reads as cut paper, so nothing is rounded — plates, controls and
      badges all meet at a corner, and only the status dot stays a dot */
   --r-plate: 0; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
@@ -1706,16 +1715,16 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
      hi-vis accent that is legible as a block is not legible as type on a light ground */
   --paper: #e6e6e1; --paper-hi: #f3f3ee; --paper-lo: #d8d8d2; --paper-dim: #c6c6bf;
   --ink: #0d0f0c; --ink-2: #3a3f36; --ink-3: #757b6f;
-  --rule: color-mix(in srgb, var(--ink) 26%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 60%, transparent);
-  --grid-line: color-mix(in srgb, var(--ink) 7%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 14%, transparent);
+  --rule-ink: var(--ink); --rule-a: 26%;
+  --rule-strong-ink: var(--ink); --rule-strong-a: 60%;
+  --grid-line-ink: var(--ink); --grid-line-a: 7%;
+  --grid-line-bold-ink: var(--ink); --grid-line-bold-a: 14%;
   --pop-shadow: 0 2px 0 color-mix(in srgb, var(--ink) 40%, transparent), 0 16px 30px rgba(13,15,12,.22), 0 32px 60px rgba(13,15,12,.14);
   --pop-shadow-sm: 0 1px 0 color-mix(in srgb, var(--ink) 34%, transparent);
-  --ink-glow: color-mix(in srgb, var(--ink) 92%, transparent);
-  --hit-line: color-mix(in srgb, var(--brick) 46%, transparent);
-  --wm-ink: color-mix(in srgb, var(--ink) 16%, transparent);
-  --hatch-line: color-mix(in srgb, var(--brick) 22%, transparent);
+  --ink-glow-ink: var(--ink); --ink-glow-a: 92%;
+  --hit-line-ink: var(--brick); --hit-line-a: 46%;
+  --wm-src: var(--ink); --wm-a: 16%;
+  --hatch-line-ink: var(--brick); --hatch-line-a: 22%;
   --brick: #4a5307; --brick-ink: #f4ff9a;
   --vermillion: #4a5057; --honey: #c9d400; --sage: #4a5057; --teal: #4a5057;
   --forest: #23301c; --forest-ink: #eef5e2; --slate: #4a5057; --slate-ink: #eef1f4;
@@ -1724,8 +1733,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --plate-day: #f3f3ee; --plate-today: color-mix(in srgb, var(--honey) 26%, var(--paper));
   --plate-overdue: color-mix(in srgb, var(--vermillion) 18%, var(--paper));
   --plate-mod: #ecece6;
-  --memo-rule: color-mix(in srgb, var(--ink) 22%, transparent);
-  --edge: var(--ink);
+  --memo-rule-ink: var(--ink); --memo-rule-a: 22%;
+  --edge-ink: var(--ink); --edge-a: 100%;
   --r-plate: 2px; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
   --bevel: none;
   --tex-grain: repeating-linear-gradient(115deg, color-mix(in srgb, var(--ink) 5%, transparent) 0 1px, transparent 1px 26px);
@@ -1804,10 +1813,10 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
 :root[data-style="chrome"] {
   --paper: #fbfaf5; --paper-hi: #ffffff; --paper-lo: #f0eee2; --paper-dim: #e3e0d0;
   --ink: #14120d; --ink-2: #3a362d; --ink-3: #7a7466;
-  --rule: color-mix(in srgb, var(--ink) 26%, transparent);
-  --rule-strong: var(--ink);
-  --grid-line: color-mix(in srgb, #f5c518 22%, transparent);
-  --grid-line-bold: color-mix(in srgb, #f5c518 40%, transparent);
+  --rule-ink: var(--ink); --rule-a: 26%;
+  --rule-strong-ink: var(--ink); --rule-strong-a: 100%;
+  --grid-line-ink: #f5c518; --grid-line-a: 22%;
+  --grid-line-bold-ink: #f5c518; --grid-line-bold-a: 40%;
   --brick: #f5c518; --brick-ink: #14120d;
   --vermillion: #d8341a; --honey: #f5c518; --sage: #1f7a4d; --teal: #0d6e75;
   --forest: #14120d; --forest-ink: #f5c518; --slate: #1a3f8f; --slate-ink: #f0f4ff;
@@ -1815,14 +1824,14 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --cream: #ffffff; --surface-hi: #ffffff; --head-hi: #f5c518; --field-focus: #fff6d8;
   --plate-day: #f0eee2; --plate-mod: #ffffff; --plate-today: #f5c518;
   --plate-overdue: #d8341a;
-  --memo-rule: color-mix(in srgb, #f5c518 60%, transparent);
-  --wm-ink: color-mix(in srgb, #f5c518 55%, transparent);
-  --hit-line: color-mix(in srgb, var(--ink) 45%, transparent);
-  --hatch-line: color-mix(in srgb, var(--ink) 10%, transparent);
-  --ink-glow: color-mix(in srgb, var(--ink) 92%, transparent);
+  --memo-rule-ink: #f5c518; --memo-rule-a: 60%;
+  --wm-src: #f5c518; --wm-a: 55%;
+  --hit-line-ink: var(--ink); --hit-line-a: 45%;
+  --hatch-line-ink: var(--ink); --hatch-line-a: 10%;
+  --ink-glow-ink: var(--ink); --ink-glow-a: 92%;
   --pop-shadow: 6px 6px 0 var(--ink), 0 16px 28px rgba(20,18,13,.16);
   --pop-shadow-sm: 3px 3px 0 var(--ink);
-  --edge: #14120d;
+  --edge-ink: #14120d; --edge-a: 100%;
   --r-plate: 0; --r-ctl: 0; --r-pill: 0; --r-dot: 50%;
   --bevel: none;
 /* 无网点：这套材质的颗粒感来自色块本身，加点阵只会脏 */
@@ -1838,9 +1847,9 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   /* The hairline around every panel, and the solid offset block under a lifted one, were the
      full chrome: 59% luminance on a 1% room. Brass at 17% keeps the material readable as gold
      without lighting the desk. */
-  --edge: #8a6f22;
-  --rule: color-mix(in srgb, var(--ink) 26%, transparent);
-  --rule-strong: var(--ink);
+  --edge-ink: #8a6f22; --edge-a: 100%;
+  --rule-ink: var(--ink); --rule-a: 26%;
+  --rule-strong-ink: var(--ink); --rule-strong-a: 100%;
   --brick: #f5c518; --brick-ink: #14120d;
   --vermillion: #ff5a3c; --honey: #f5c518; --sage: #35d6b0; --teal: #35d6b0;
   --forest: #f5c518; --forest-ink: #14120d; --slate: #8f8bff; --slate-ink: #14120d;
@@ -1851,9 +1860,9 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
      probe could not see. A gold-lit plate at 10% still reads as this material at night. */
   --head-hi: #6f5411;
   --plate-day: #343028; --plate-mod: #2e2b23; --plate-today: #403a2b; --plate-overdue: #4b291c;
-  --memo-rule: color-mix(in srgb, var(--honey) 40%, transparent);
-  --wm-ink: color-mix(in srgb, var(--honey) 26%, transparent);
-  --hit-line: color-mix(in srgb, var(--ink) 45%, transparent);
+  --memo-rule-ink: var(--honey); --memo-rule-a: 40%;
+  --wm-src: var(--honey); --wm-a: 26%;
+  --hit-line-ink: var(--ink); --hit-line-a: 45%;
   --pop-shadow: 6px 6px 0 var(--edge), 0 16px 28px rgba(0,0,0,.55);
   --pop-shadow-sm: 3px 3px 0 var(--edge);
 }
@@ -1874,7 +1883,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --cream: #2c2311; --surface-hi: #493c22; --field-focus: #5e4e21;
   --head-hi: #6a4e06;
   --plate-mod: #131006; --plate-today: #564415; --plate-overdue: #814832;
-  --memo-rule: #cbb462;
+  --memo-rule-ink: #cbb462; --memo-rule-a: 100%;
 }
 :root[data-style="chrome"] .hud-head {
   background-image: none; background-color: var(--head-hi); color: var(--ink);
@@ -1936,16 +1945,16 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --ink:        #17282e;
   --ink-2:      #46616b;
   --ink-3:      #7f959d;
-  --rule:       color-mix(in srgb, var(--ink) 11%, transparent);
-  --rule-strong: color-mix(in srgb, var(--ink) 26%, transparent);
-  --grid-line:  color-mix(in srgb, var(--ink) 5%, transparent);
-  --grid-line-bold: color-mix(in srgb, var(--ink) 9%, transparent);
+  --rule-ink: var(--ink); --rule-a: 11%;
+  --rule-strong-ink: var(--ink); --rule-strong-a: 26%;
+  --grid-line-ink: var(--ink); --grid-line-a: 5%;
+  --grid-line-bold-ink: var(--ink); --grid-line-bold-a: 9%;
   --pop-shadow: 0 12px 28px rgba(23,40,46,.10), 0 2px 6px rgba(23,40,46,.06);
   --pop-shadow-sm: 0 2px 8px rgba(23,40,46,.10);
-  --ink-glow:   color-mix(in srgb, var(--ink) 88%, transparent);
-  --hit-line:   color-mix(in srgb, var(--brick) 34%, transparent);
-  --wm-ink:     color-mix(in srgb, var(--brick) 13%, transparent);
-  --hatch-line: color-mix(in srgb, var(--ink) 6%, transparent);
+  --ink-glow-ink: var(--ink); --ink-glow-a: 88%;
+  --hit-line-ink: var(--brick); --hit-line-a: 34%;
+  --wm-src: var(--brick); --wm-a: 13%;
+  --hatch-line-ink: var(--ink); --hatch-line-a: 6%;
 
   --brick:      #2f9e94;   /* the one interactive colour: teal */
   --brick-ink:  #ffffff;
@@ -1969,9 +1978,9 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --plate-mod:     #f4f9f7;
   --plate-today:   color-mix(in srgb, var(--brick) 13%, var(--paper-hi));
   --plate-overdue: color-mix(in srgb, var(--vermillion) 12%, var(--paper-hi));
-  --memo-rule:     color-mix(in srgb, var(--brick) 22%, transparent);
+  --memo-rule-ink: var(--brick); --memo-rule-a: 22%;
 
-  --edge: color-mix(in srgb, var(--ink) 16%, transparent);
+  --edge-ink: var(--ink); --edge-a: 16%;
   --r-plate: 16px; --r-ctl: 11px; --r-pill: 999px; --r-dot: 50%;
   --bevel: inset 0 1px 0 rgba(255,255,255,.72);
 /* 无网点：这套材质靠半透明分层，加点阵立刻变脏 */
@@ -1989,11 +1998,11 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --ink:        #dfe9e6;
   --ink-2:      #a9bdba;
   --ink-3:      #7b938f;
-  --edge: color-mix(in srgb, #ffffff 22%, transparent);
-  --rule:       color-mix(in srgb, #ffffff 12%, transparent);
-  --rule-strong: color-mix(in srgb, #ffffff 28%, transparent);
-  --grid-line:  color-mix(in srgb, #ffffff 5%, transparent);
-  --grid-line-bold: color-mix(in srgb, #ffffff 9%, transparent);
+  --edge-ink: #ffffff; --edge-a: 22%;
+  --rule-ink: #ffffff; --rule-a: 12%;
+  --rule-strong-ink: #ffffff; --rule-strong-a: 28%;
+  --grid-line-ink: #ffffff; --grid-line-a: 5%;
+  --grid-line-bold-ink: #ffffff; --grid-line-bold-a: 9%;
   --brick:      #4fd0c2; --brick-ink: #0d1a1e;
   --vermillion: #ff8774; --honey: #f0c25f; --sage: #58d6bd; --teal: #4fd0c2;
   --forest: #3fbfa8; --forest-ink: #0d1a1e; --slate: #7fb2d8; --slate-ink: #0d1a1e;
@@ -2001,8 +2010,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
   --cream: #22333a; --surface-hi: #24373f; --head-hi: #213339; --field-focus: #2c4149;
   --plate-day: #22333a; --plate-mod: #1f3036;
   --plate-today: #27424a; --plate-overdue: #3c262a;
-  --wm-ink:     color-mix(in srgb, var(--brick) 16%, transparent);
-  --memo-rule:  color-mix(in srgb, var(--brick) 26%, transparent);
+  --wm-src: var(--brick); --wm-a: 16%;
+  --memo-rule-ink: var(--brick); --memo-rule-a: 26%;
   --pop-shadow: 0 14px 30px rgba(0,0,0,.42), 0 2px 6px rgba(0,0,0,.3);
   --bevel: inset 0 1px 0 rgba(255,255,255,.10);
 }
@@ -2095,3 +2104,97 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%23000'%3E%3Crect x='7.5' y='2.5' width='9' height='3' rx='1.2'/%3E%3Crect x='10.6' y='5.4' width='2.8' height='2.3'/%3E%3Cpath d='M8.6 7.7h6.8l-1.5 5.7h-3.8z'/%3E%3Crect x='11.3' y='13.2' width='1.4' height='8.1' rx='.7'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
 }
 .icon-btn.pin { position: relative; }
+
+
+/* ==========================================================================
+   MATERIALS AS TUNED — the colours pinned in the colour lab on 2026-10-14, written in
+   as each material's own default. The saved settings still apply on top of this, so
+   nothing changes on the machine that tuned them; what changes is that 重置本主题 and a
+   fresh install now land here instead of on the older values. A pin on a line token
+   lands on its source at 100% strength, which is what data.js migrates a stored pin
+   into, so the strength slider keeps working after the reset.
+   ========================================================================== */
+/* blueprint · 夜间 */
+:root[data-style="blueprint"][data-theme="ink"] {
+  --brick: #ababab;
+  --brick-ink: #919191;
+  --forest: #c7c7c7;
+  --ink: #ababab;
+  --ink-2: #919191;
+  --ink-3: #82858c;
+  --memo-rule-ink: #a3a3a3; --memo-rule-a: 100%;
+  --vermillion: #a8a8a8;
+}
+/* print · 夜间 */
+:root[data-style="print"][data-theme="ink"] {
+  --cream: #b0a99b;
+  --ink: #b3a280;
+  --memo-rule-ink: #a49f94; --memo-rule-a: 100%;
+  --paper: #2e2d29;
+  --paper-hi: #3f3a27;
+  --paper-lo: #2d2b25;
+  --plate-overdue: #423333;
+}
+/* ikb · 夜间 */
+:root[data-style="ikb"][data-theme="ink"] {
+  --brick: #576c98;
+  --head-hi: #292d33;
+  --honey: #9a8e65;
+  --ink: #858585;
+  --ink-2: #aab4c5;
+  --ink-3: #656972;
+  --paper: #24262e;
+  --paper-dim: #3d4651;
+  --paper-hi: #2a2b2d;
+  --paper-lo: #333333;
+  --plate-overdue: #1a1b32;
+  --slate-ink: #bcc4d2;
+  --vermillion: #625b8f;
+}
+/* console · 夜间 */
+:root[data-style="console"][data-theme="ink"] {
+  --brick: #af874b;
+  --honey: #d7b36a;
+  --ink: #988c67;
+  --memo-rule-ink: #c9c1a6; --memo-rule-a: 100%;
+}
+/* memphis · 白昼 */
+:root[data-style="memphis"] {
+  --brick: #ac84eb;
+  --forest: #4f4fb0;
+  --head-hi: #9f77df;
+  --memo-rule-ink: #9768e3; --memo-rule-a: 100%;
+  --paper: #f8f9fc;
+  --paper-dim: #e5e3ee;
+  --paper-lo: #eef1f6;
+  --plate-day: #e0e7f0;
+  --plate-overdue: #7478ec;
+  --plate-today: #ffffff;
+  --sage: #6467ce;
+  --teal: #6dd5cc;
+  --vermillion: #645695;
+}
+/* memphis · 夜间 */
+:root[data-style="memphis"][data-theme="ink"] {
+  --brick: #402b5f;
+  --ink: #aca2c3;
+  --ink-2: #8073a0;
+  --ink-3: #79777e;
+  --memo-rule-ink: #957eb4; --memo-rule-a: 100%;
+  --paper: #1b152e;
+  --paper-dim: #49435b;
+  --paper-hi: #221b3b;
+  --paper-lo: #221e2e;
+  --vermillion: #837698;
+}
+/* hazard · 夜间 */
+:root[data-style="hazard"][data-theme="ink"] {
+  --brick: #74832f;
+  --honey: #96a121;
+  --khaki: #a1995e;
+  --ochre: #989471;
+}
+/* chrome · 夜间 */
+:root[data-style="chrome"][data-theme="ink"] {
+  --memo-rule-ink: #cbb462; --memo-rule-a: 100%;
+}

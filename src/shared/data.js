@@ -539,10 +539,25 @@
        Anything malformed is dropped rather than written onto the root, because a bad value there
        breaks every derived token at once. */
     var pal = settings.palette && typeof settings.palette === 'object' ? settings.palette : {};
+    /* The hairlines are drawn from one colour at one strength, so a stored solid pin on the
+       finished token (--memo-rule: #a3a3a3) is really a decision about the source at 100% — and
+       while it stands it mutes both controls, because the strength variable never gets read.
+       Rewritten on the way in: same pixels, and the strength slider works again. */
+    var LINE_SRC = {
+      '--edge': '--edge-ink', '--rule': '--rule-ink', '--rule-strong': '--rule-strong-ink',
+      '--grid-line': '--grid-line-ink', '--grid-line-bold': '--grid-line-bold-ink',
+      '--hatch-line': '--hatch-line-ink', '--wm-ink': '--wm-src', '--hit-line': '--hit-line-ink',
+      '--ink-glow': '--ink-glow-ink', '--memo-rule': '--memo-rule-ink'
+    };
     function cleanBag(bag) {
       var out = {};
       Object.keys(bag && typeof bag === 'object' ? bag : {}).forEach(function (k) {
-        if (/^--[a-z0-9-]+$/.test(k) && /^#[0-9a-fA-F]{3,8}$/.test(bag[k])) out[k] = bag[k];
+        if (!/^--[a-z0-9-]+$/.test(k)) return;
+        var v = bag[k];
+        if (/-a$/.test(k)) { if (/^\d+(?:\.\d+)?%$/.test(v)) out[k] = v; return; }
+        if (!/^#[0-9a-fA-F]{3,8}$/.test(v)) return;
+        if (LINE_SRC[k]) { out[LINE_SRC[k]] = v; out[k === '--wm-ink' ? '--wm-a' : k + '-a'] = '100%'; return; }
+        out[k] = v;
       });
       return out;
     }

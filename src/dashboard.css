@@ -35,7 +35,14 @@ body.dash { height: 100vh; overflow: hidden; }
   overflow-x: hidden;
   display: flex; flex-direction: column; gap: 10px;
   padding-right: 2px;
+  /* The bar is gone, not restyled. It was drawn from the global material scrollbar (track
+     --paper-lo, thumb --paper), which in most materials is a tone apart and reads as panel
+     colour — in 群青构成 and 铬黄丝网 the two are near-black against near-white, so the same bar
+     suddenly looked like a second element. The dashboard grid already hides its bar and scrolls
+     on the wheel; the sidebar does the same, and the 11px it used to take goes back to the rows. */
+  scrollbar-width: none; -ms-overflow-style: none;
 }
+.side-scroll::-webkit-scrollbar { width: 0; height: 0; }
 .brand { display: flex; align-items: center; gap: 9px; padding-bottom: 9px; border-bottom: 1px solid var(--edge); }
 .brand-mark {
   width: 34px; height: 34px; flex: none;
@@ -728,10 +735,14 @@ body.side-dragging { cursor: col-resize; }
 .today-band {
   /* the box is square by aspect-ratio, so a 50% radius and a circular mask agree */
   position: absolute; inset: 0; border-radius: 50%;
-  border: 1px solid var(--edge);
   background-color: var(--paper-dim);
   -webkit-mask: radial-gradient(circle at 50% 50%, transparent 0 60%, #000 61%);
           mask: radial-gradient(circle at 50% 50%, transparent 0 60%, #000 61%);
+  /* No 1px --edge ring here. It was the whole of the 未完成部分有一点点完成的颜色 report: the two
+     arcs meet on a razor-sharp radial boundary (measured pixel by pixel through the same Skia
+     shader the CSS uses — no bleed at 0%, 54.55% or 100%), but that hairline painted a grey rim
+     along the outside of the undone arc, and in a grey material like 图纸 the rim is the same tone
+     as the done colour, so the pale arc read as contaminated. */
 }
 /* These two used to carry `position: absolute; top: 24px / 43px`, a leftover from when the ring
    was a fixed 76px box. Inside the merged plate the ring centres its own children, so those
@@ -787,7 +798,11 @@ body.side-dragging { cursor: col-resize; }
 /* compact quick add: the plus lives inside the input */
 .quick-add { gap: 4px; }
 .qa-row { position: relative; }
-.qa-row .input { padding: 5px 30px 5px 7px; font-size: 11.5px; }
+/* 30px of right padding was 8px more than the 22px button at right:3px needs, and the placeholder
+   has nowhere to go when it runs out of room — an input clips it, it never ellipsises. With the
+   sidebar's scrollbar gone (it took 11px of the same row) this leaves the example sentence ~15px
+   of slack on the widest material. */
+.qa-row .input { padding: 5px 27px 5px 6px; font-size: 11.5px; }
 /* Square, not stretched between the input's top and bottom: the box used to be 22 wide by ~20
    tall, and 11px of radius on a non-square box is exactly the 椭圆 the report names. Equal sides
    make the same token draw a circle, which is also what 新建分组 is. */
@@ -1059,9 +1074,15 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
   font-size: 9px; letter-spacing: .18em; color: var(--ink-3);
   margin: 8px 0 3px; padding-bottom: 2px; border-bottom: 1px dashed var(--rule);
 }
-.pal-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; cursor: pointer; }
-.pal-name { flex: 1; min-width: 0; font-size: 11px; }
-.pal-hex { font-size: 10px; color: var(--ink-3); width: 62px; text-align: right; }
+.pal-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
+/* name on top, and under it the one line that says where this colour actually paints — thirty-odd
+   swatches labelled 提亮 / 压暗 / 面板底 are not navigable without it */
+.pal-key { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pal-name { font-size: 11px; }
+.pal-where { font-size: 9px; line-height: 1.35; color: var(--ink-3); }
+.pal-hex { font-size: 10px; color: var(--ink-3); width: 62px; text-align: right; flex: none; }
+.pal-alpha { flex: 0 1 88px; min-width: 46px; width: 88px; height: 14px; margin: 0; }
+.pal-av { width: 34px; }
 .pal-swatch {
   flex: none; width: 42px; height: 20px; padding: 0; cursor: pointer;
   background: none; border: 1px solid var(--edge);
@@ -1444,6 +1465,23 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
      out of the containing-block chain makes `inset: 0` mean the whole plate — measured 270×194 for
      a 77px ring, which is the BAND-NOT-SQUARE this test then reports. */
   .today-ring { position: relative; left: auto; top: auto; transform: none; width: min(var(--ring-d, 96px), 100%); }
+}
+/* A one-row plate is 168px tall: the ring takes the height and the counters have to take the
+   width. Two columns of counters in that plate measured 108×35 each — three times as wide as
+   tall, which is the 长方形 the report names, and it happens at every scale because 1fr columns
+   follow the plate, never the other way round. Four across the same 220px is 52×35, and the row
+   the counters no longer need is the row the ring gets. */
+@container plate (max-block-size: 220px) {
+  /* Four across, and the block stops growing at 340px: on a six-column plate the counters would
+     otherwise be 122px wide each against 35px of height, which is the same 长方形 that started
+     this, only further out. Past that width the plate belongs to the ring, not to the tiles.
+     An explicit width rather than aspect-ratio on the tile, because aspect-ratio on a box that is
+     `overflow: hidden` and therefore has no automatic minimum size squashed a 48px tile to 22px
+     and cut the number in half — measured, not assumed. */
+  .mod[data-mod="today"] .pd-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: min(100%, 340px); justify-self: center;
+  }
 }
 /* The ring is never hidden. Two rules used to take it away below 210px of module, and that is
    what the 2×N 「看不到环形图」 report is: at that span the plate is narrow but tall, there was

@@ -1149,11 +1149,18 @@
     const measure = () => {
       const stack = stats.getBoundingClientRect().height;
       const room = body.clientHeight;
+      /* 环形图的直径 = 两个格子的高度 — stated in tile heights, not in the height of the block,
+         because a short plate lays the four counters out in one row (dashboard.css) and the block
+         is then one tile tall. Reading the block would have shrunk the ring to its 44px floor the
+         moment the counters stopped wrapping. */
+      const tile = stats.querySelector('.stat');
+      const th = tile ? tile.getBoundingClientRect().height : stack / 2;
+      const want = th * 2 + (parseFloat(getComputedStyle(stats).rowGap) || 6);
       /* one column means the ring sits above the counters, so it only gets what the counters
          leave over; two columns means it is beside them and the whole height is available */
       const cols = getComputedStyle(body).gridTemplateColumns.split(' ').length;
       const cap = cols === 1 ? room - stack - 16 : room;
-      const d = Math.round(Math.max(44, Math.min(stack, cap > 44 ? cap : stack, 170)));
+      const d = Math.round(Math.max(44, Math.min(want, cap > 44 ? cap : want, 170)));
       if (d !== body.__ringD) {
         body.__ringD = d;
         body.style.setProperty('--ring-d', d + 'px');
@@ -3697,7 +3704,9 @@
       '      <button class="btn sm" data-act="palNight">夜间</button>' +
       '      <button class="btn sm danger" data-act="palReset">重置本主题</button>' +
       '    </div>' +
-      '    <div class="set-hint" style="margin-bottom:6px">改动即时生效并保存。规则线、网格、水印都从「正文」色自动派生，调它一处即可。</div>' +
+      '    <div class="set-hint" style="margin-bottom:6px">改动即时生效并保存，只作用于当前材质与当前昼夜。'
+      + '每一行下面那行小字写明这个颜色画在界面哪里。「线条」那一组是取色器加浓度滑条：'
+      + '取色器定它是什么颜色，滑条定它有多实；没动过的线仍然跟着「正文」色，调正文即可。</div>' +
       '    <div id="palRows"></div>' +
       '  </div>' +
       '  <div class="panel hud-thin" id="panelToggles">' +
@@ -3798,13 +3807,28 @@
           grp.items.forEach((it) => {
             const row = doc.createElement('label');
             row.className = 'pal-row';
+            const key = doc.createElement('span');
+            key.className = 'pal-key';
             const name = doc.createElement('span');
             name.className = 'pal-name';
             name.textContent = it.n;
+            const where = doc.createElement('small');
+            where.className = 'pal-where';
+            where.textContent = it.w || '';
+            key.appendChild(name);
+            key.appendChild(where);
+            /* a line token is mixed from a source colour at a strength, and the finished value is
+               not a colour the picker could hand back without throwing the strength away — so the
+               picker drives the source (--edge-ink) and the slider beside it drives the strength
+               (--edge-a). Reading the source through its own fallback is what makes the chip show
+               the body ink on a material that never names one. */
+            const token = it.src || it.v;
             const sw = doc.createElement('input');
             sw.type = 'color';
             sw.className = 'pal-swatch';
-            sw.value = NeonTheme.current(it.v);
+            sw.value = it.src
+              ? NeonTheme.toHex(NeonTheme.resolve('var(' + it.src + ', var(--ink))'))
+              : NeonTheme.current(it.v);
             const hex = doc.createElement('span');
             hex.className = 'pal-hex';
             hex.textContent = sw.value;
@@ -3812,13 +3836,30 @@
                the root directly, and only write to the store once it settles, or the
                data file is rewritten on every tick */
             sw.addEventListener('input', () => {
-              doc.documentElement.style.setProperty(it.v, sw.value);
+              doc.documentElement.style.setProperty(token, sw.value);
               hex.textContent = sw.value;
             });
-            sw.addEventListener('change', () => savePalette(it.v, sw.value));
-            row.appendChild(name);
+            sw.addEventListener('change', () => savePalette(token, sw.value));
+            row.appendChild(key);
             row.appendChild(sw);
             row.appendChild(hex);
+            if (it.a) {
+              const sl = doc.createElement('input');
+              sl.type = 'range';
+              sl.className = 'pal-alpha';
+              sl.min = '2'; sl.max = '100'; sl.step = '1';
+              sl.value = String(Math.max(2, Math.round(NeonTheme.alphaOf(it.v) * 100)));
+              const av = doc.createElement('span');
+              av.className = 'pal-hex pal-av';
+              av.textContent = sl.value + '%';
+              sl.addEventListener('input', () => {
+                doc.documentElement.style.setProperty(it.a, sl.value + '%');
+                av.textContent = sl.value + '%';
+              });
+              sl.addEventListener('change', () => savePalette(it.a, sl.value + '%'));
+              row.appendChild(sl);
+              row.appendChild(av);
+            }
             palRows.appendChild(row);
           });
         });
