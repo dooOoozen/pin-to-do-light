@@ -238,6 +238,9 @@ body.side-dragging { cursor: col-resize; }
   padding: 7px 6px 7px 4px;
   border-bottom: 1px dashed var(--rule-strong);
   transition: background .16s ease-out, opacity .22s ease-out;
+  /* the row is its own size container so the narrow-row rules at the end of this sheet answer to
+     the width the row actually has, which follows the sidebar, the panel and 界面缩放 at once */
+  container-type: inline-size; container-name: row;
 }
 .task.done { opacity: .6; }
 .task.done .task-title { text-decoration: line-through; color: var(--ink-2); }
@@ -295,9 +298,10 @@ body.side-dragging { cursor: col-resize; }
 /* the schedule on the right edge, countdown beside it — one line, so a row is one
    row tall whatever it carries */
 .task-due {
-  /* shrinkable, but only down to the date: b is fixed and the countdown beside it is the part
-     that gives, which is the order the report asked for — 日期 stays, 逾期 X 天 / 还有 X 小时 goes */
-  flex: 0 1 auto; align-self: center; text-align: right;
+  /* 不缩。`flex: 0 1 auto` 让整列按自己的内容宽度参与收缩，一行 383px 时它被压到 30px，而里面的
+     日期是 `flex: none` 的 82px —— 日期于是画到自己的盒子外面去，压住标题（tests/row-narrow.js
+     量到的就是这一条）。日期要保留，能保留的只有整列不缩、由倒计时自己让位这一种写法。 */
+  flex: 0 0 auto; align-self: center; text-align: right;
   display: flex; align-items: baseline; justify-content: flex-end; gap: 7px;
   max-width: 260px; min-width: 0; font-variant-numeric: tabular-nums;
 }
@@ -334,7 +338,7 @@ body.side-dragging { cursor: col-resize; }
    outgrew what was left they kept drawing straight through the schedule column — 分组文字和日期
    重叠, 重复方式和日期重叠 — and at 界面缩放 1.35 the same text needs a third more room to say
    the same thing. */
-.task-line { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.task-line { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; position: relative; }
 /* shrink-to-fit, not flex-grow: the hover buttons sit on the title's shoulder, and a
    stretched title would push them off to the right edge where the schedule lives */
 .task-title {
@@ -345,9 +349,11 @@ body.side-dragging { cursor: col-resize; }
 }
 /* The shrink weight is the priority order: with 1000 against the title's 1, the dot and its
    flags are what disappears when the row runs out, and the title only starts losing characters
-   once there is nothing left to drop. */
+   once there is nothing left to drop. That only works if the shrink reaches the flags, which it
+   did not: `flex: none` on the inner box made it hold its content width, so the outer box was
+   clipped by `.task-line`'s overflow instead, and the title paid for the difference. */
 .task-right { display: flex; align-items: center; gap: 8px; flex: 0 1000 auto; margin-left: auto; min-width: 0; overflow: hidden; }
-.task-flags { display: flex; align-items: center; gap: 7px; flex: none; }
+.task-flags { display: flex; align-items: center; gap: 7px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
 .flag {
   font-size: 9px; letter-spacing: .06em; color: var(--ink-3);
   white-space: nowrap; font-variant-numeric: tabular-nums;
@@ -1730,3 +1736,25 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .ai-trace .tr span { flex: 1 1 auto; min-width: 0; word-break: break-word; }
 .ai-trace .tr.warn { background: color-mix(in srgb, var(--brick) 12%, transparent); }
 .ai-trace .tr.warn b { color: var(--brick); }
+
+/* ---- 窄行：时间先让，倒计时再让，标题最后倒 ----
+   实测（tests/row-narrow.js）在界面缩放 1.35、面板拖到最小宽度时一行只有 ~330px：日期列占 158px
+   （日期 + 「逾期 3 天 4 时」），左侧时间栏固定 42px，两个都不肯让，于是标题被压到 3.2em 的地板上，
+   十二个字只剩四个。左侧时间栏和日期末尾的时间是同一个读数，倒计时又是日期的另一种说法，所以在窄
+   行里它们先出局，日期本身留下。分组圆点、重复方式、标签不用断点：.task-right 的收缩权重是 1000
+   （标题是 1），它们本来就该在标题之前让位，前提是 .task-flags 允许被收缩。 */
+@container row (max-inline-size: 440px) {
+  .task .tl-time { display: none; }
+  .task .task-due i { display: none; }
+}
+/* 悬停按钮不再常年占位。四个图标按钮平时 opacity:0，却在行里留着 105px —— 一行 383px 的时候这是
+   最大的一笔固定开销，比日期还贵，而它买到的是一段什么都看不见的空白。窄行里改成贴着标题区右边缘
+   浮出（.task-line 是定位父级，标题区到日期列为止），悬停时让出同一位置的分组点与标记。宽行不动，
+   维持「按钮跟在标题右边」的原有排法。 */
+@container row (max-inline-size: 700px) {
+  .task .task-actions {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    background: var(--ink); padding-left: 4px;
+  }
+  .task:hover .task-right { visibility: hidden; }
+}
