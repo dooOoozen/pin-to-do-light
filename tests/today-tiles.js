@@ -38,7 +38,15 @@
     var gap = parseFloat(getComputedStyle(stats).rowGap) || 6;
     var want = t0.height * 2 + gap;
     var room = body.clientHeight;
-    var cols = getComputedStyle(stats).gridTemplateColumns.split(' ').length;
+    /* the plate's own tracks: column 1 is the ring's, column 2 the counters'. A block that stops
+       short of its track is the dead space the report is about, so fill is measured against the
+       track rather than against the module. */
+    var colsTr = getComputedStyle(body).gridTemplateColumns.split(' ').map(parseFloat);
+    var rowsTr = getComputedStyle(body).gridTemplateRows.split(' ').map(parseFloat);
+    var side = colsTr.length === 2;
+    var areaW = side ? colsTr[1] : sr.width;
+    var areaH = side ? (rowsTr[0] || sr.height) : sr.height;
+    var fillW = sr.width / areaW, fillH = sr.height / areaH;
     var cut = tiles.filter(function (n) {
       var k = n.querySelector('.k');
       return k && k.scrollWidth > k.clientWidth + 1;
@@ -49,19 +57,39 @@
     var line = tag + ' plate=' + Math.round(m.width) + 'x' + Math.round(m.height) +
       ' ring=' + Math.round(rb.width) + 'x' + Math.round(rb.height) +
       ' want2=' + Math.round(want) + '/' + room +
-      ' stats=' + Math.round(sr.width) + 'x' + Math.round(sr.height) + ' cols=' + cols +
+      ' stats=' + Math.round(sr.width) + 'x' + Math.round(sr.height) +
+      ' area=' + Math.round(areaW) + 'x' + Math.round(areaH) +
+      ' fill=' + Math.round(fillW * 100) + '/' + Math.round(fillH * 100) +
+      ' cols=' + tiles.filter(function (n) { return Math.round(n.getBoundingClientRect().top) === Math.round(t0.top); }).length +
       ' tiles=' + sizes.join(',') + ' aspect=' + aspect.toFixed(2) + ' label-cut=' + cut +
       ' sqashed=' + sq;
     note(line);
     if (sq) bad.push(tag + ' TILE-SQUASHED ' + sq + '/' + tiles.length);
-    /* the short plate is the one that reported 长方形: four tiles across it must come in at
-       roughly square, while a two-row plate keeps its wide counters on purpose */
-    if (row === 1 && aspect > 2.4) bad.push(tag + ' TILE-TOO-WIDE ' + aspect.toFixed(2));
+    if (side) {
+      /* 尽量铺满模块: both axes, or the block is back to floating in the plate */
+      if (fillW < 0.97) bad.push(tag + ' NOT-WIDE ' + Math.round(fillW * 100) + '%');
+      if (fillH < 0.9) bad.push(tag + ' NOT-TALL ' + Math.round(fillH * 100) + '%');
+      /* and a filled block still has to divide into tiles that read as tiles, not as slabs:
+         the whole point of 模块尺寸水平方向越小，小格子越像正方形 */
+      if (aspect > 2.8) bad.push(tag + ' TILE-TOO-WIDE ' + aspect.toFixed(2));
+      if (aspect < 0.55) bad.push(tag + ' TILE-TOO-THIN ' + aspect.toFixed(2));
+      /* the ring is square from its width, which is its own column, the block's height, two tile
+         heights or 170 — whichever of those is smallest */
+      var expect = Math.min(want, sr.height, colsTr[0], 170);
+      if (rb.width > want + 1) bad.push(tag + ' RING-OVER-TWO-TILES ' + Math.round(rb.width) + '>' + Math.round(want));
+      if (rb.width < expect - 3) bad.push(tag + ' RING-UNDER-TWO-TILES ' + Math.round(rb.width) + '<' + Math.round(expect));
+    } else if (row === 1 && aspect > 2.4) {
+      bad.push(tag + ' TILE-TOO-WIDE ' + aspect.toFixed(2));
+    } else {
+      if (rb.width > want + 1) bad.push(tag + ' RING-OVER-TWO-TILES ' + Math.round(rb.width) + '>' + Math.round(want));
+      if (rb.width < Math.min(want, room) - 3) {
+        bad.push(tag + ' RING-UNDER-TWO-TILES ' + Math.round(rb.width) + '<' + Math.round(Math.min(want, room)));
+      }
+    }
     if (Math.abs(rb.width - rb.height) > 1) bad.push(tag + ' RING-NOT-SQUARE');
-    /* 环形图直径 = 两个格子的高度, or exactly as much of it as the plate has left */
-    if (rb.width > want + 1) bad.push(tag + ' RING-OVER-TWO-TILES ' + Math.round(rb.width) + '>' + Math.round(want));
-    if (rb.width < Math.min(want, room) - 3) bad.push(tag + ' RING-UNDER-TWO-TILES ' + Math.round(rb.width) + '<' + Math.round(Math.min(want, room)));
-    if (cut > 0 && cut < tiles.length) bad.push(tag + ' SOME-LABELS-CUT ' + cut + '/' + tiles.length);
+    /* all four cutting is not "the label is short at this scale", it is a divide the renderer
+       should have refused: at 43px of tile the short label still loses its tail */
+    if (cut) bad.push(tag + ' LABELS-CUT ' + cut + '/' + tiles.length);
   }
 
   API.getState().then(function (st) {

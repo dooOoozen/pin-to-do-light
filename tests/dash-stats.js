@@ -22,6 +22,7 @@
   var bad = [];
   var miniChecked = 0;
   var wraps = [];
+  var divides = [];
 
   function tiles() {
     return Array.prototype.map.call(mod.querySelectorAll('.pd-stats .stat'), function (n) {
@@ -69,9 +70,9 @@
     if (rr && rr.width > 2) {
       ringTxt = ' ring=' + Math.round(rr.width) + 'x' + Math.round(rr.height);
       if (Math.abs(rr.width - rr.height) > 1) bad.push(tag + ' RING-NOT-SQUARE ' + ringTxt);
-      /* 直径应该和两个格子的高度一样: the ring is measured against the counter block it stands
-         beside, and the renderer sizes it from that measurement, so a ring that comes out much
-         smaller than the stack means the measurement never landed */
+      /* 直径应该和两个格子的高度一样: the gauge is measured against the tiles it stands beside,
+         never against the whole block — a plate that divides the counters four rows deep has a
+         block twice the ring's diameter by design. */
       var tops = list.map(function (t) { return t.y; });
       var bots = list.map(function (t) { return t.bottom; });
       var stack = Math.max.apply(null, bots) - Math.min.apply(null, tops);
@@ -79,8 +80,11 @@
       /* Only where the ring stands beside the block. Stacked, it is deliberately smaller than the
          counters because both have to fit the plate, and the renderer caps it accordingly. */
       var sideBySide = rr.top < Math.max.apply(null, bots) - 4 && rr.bottom > Math.min.apply(null, tops) + 4;
-      if (sideBySide && stack > 40 && rr.height < stack * 0.88) {
-        bad.push(tag + ' RING-TOO-SMALL ' + Math.round(rr.height) + '<' + Math.round(stack));
+      var bodyEl = mod.querySelector('.mod-today-body');
+      var colTrack = parseFloat(getComputedStyle(bodyEl).gridTemplateColumns.split(' ')[0]) || 0;
+      var want = Math.min(list[0].h * 2 + 6, stack, 170, sideBySide ? colTrack : 1e9);
+      if (sideBySide && want > 40 && rr.height < want - 4) {
+        bad.push(tag + ' RING-TOO-SMALL ' + Math.round(rr.height) + '<' + Math.round(want));
       }
       var band = ring.querySelector('.today-band');
       var br = band ? band.getBoundingClientRect() : null;
@@ -145,7 +149,6 @@
     var open = JSON.parse(JSON.stringify(was.dashLayout));
     open.collapsed = [];
     var chain = set({ dashLayout: open });
-    var prevWide = 0;
     /* The plate holds the ring row and the counters now, so the two axes that decide whether
        they fit are the interface scale and the module's own box — width from span, height from
        rows. One row is the tight case and the one that overflowed; two is the default. */
@@ -158,8 +161,11 @@
           return set({ uiScale: sc, dashLayout: L });
         }).then(function () {
           var n = stop('scale=' + sc + ' span=' + size[0] + ' row=' + size[1]);
-          if (size[0] === 4 && n < prevWide) bad.push('columns dropped at span 4');
-          if (size[0] === 2) prevWide = n;
+          /* the divide follows the shape of the counters area, not the width of the module: a
+             span-2 plate is narrow enough that four across keeps its tiles square, a span-4 one has
+             room for two rows. The check that the count never drops as the plate widens was the
+             长方形 this layout exists to stop. */
+          divides.push(size[0] + 'x' + size[1] + '=' + n);
         });
       });
     });
@@ -168,6 +174,7 @@
     return API.op({ type: 'settings:update', patch: { uiScale: was.uiScale, dashLayout: was.dashLayout } });
   }).then(function () {
     note('RESULT ' + (bad.length ? 'FAIL ' + bad.join(' | ') : 'PASS nothing cut and tiles equal across four scales, both spans and both row counts') +
+      ' divides=' + divides.join(' ') +
       ' (restored uiScale=' + was.uiScale + ' labelShort=' + wraps.length + (wraps.length ? ': ' + wraps.join(',') : '') + ')');
   }).catch(function (e) {
     if (was) API.op({ type: 'settings:update', patch: { uiScale: was.uiScale, dashLayout: was.dashLayout } });

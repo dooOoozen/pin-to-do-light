@@ -544,10 +544,14 @@
        while it stands it mutes both controls, because the strength variable never gets read.
        Rewritten on the way in: same pixels, and the strength slider works again. */
     var LINE_SRC = {
-      '--edge': '--edge-ink', '--rule': '--rule-ink', '--rule-strong': '--rule-strong-ink',
-      '--grid-line': '--grid-line-ink', '--grid-line-bold': '--grid-line-bold-ink',
-      '--hatch-line': '--hatch-line-ink', '--wm-ink': '--wm-src', '--hit-line': '--hit-line-ink',
-      '--ink-glow': '--ink-glow-ink', '--memo-rule': '--memo-rule-ink'
+      '--edge': ['--edge-ink', '--edge-a'], '--rule': ['--rule-ink', '--rule-a'],
+      '--rule-strong': ['--rule-strong-ink', '--rule-strong-a'],
+      '--grid-line': ['--grid-line-ink', '--grid-line-a'],
+      '--grid-line-bold': ['--grid-line-bold-ink', '--grid-line-bold-a'],
+      '--hatch-line': ['--hatch-line-ink', '--hatch-line-a'],
+      '--wm-ink': ['--wm-src', '--wm-a'], '--hit-line': ['--hit-line-ink', '--hit-line-a'],
+      '--ink-glow': ['--ink-glow-ink', '--ink-glow-a'], '--memo-rule': ['--memo-rule-ink', '--memo-rule-a'],
+      '--pop-bg': ['--pop-ink', '--pop-a']
     };
     function cleanBag(bag) {
       var out = {};
@@ -556,7 +560,7 @@
         var v = bag[k];
         if (/-a$/.test(k)) { if (/^\d+(?:\.\d+)?%$/.test(v)) out[k] = v; return; }
         if (!/^#[0-9a-fA-F]{3,8}$/.test(v)) return;
-        if (LINE_SRC[k]) { out[LINE_SRC[k]] = v; out[k === '--wm-ink' ? '--wm-a' : k + '-a'] = '100%'; return; }
+        if (LINE_SRC[k]) { out[LINE_SRC[k][0]] = v; out[LINE_SRC[k][1]] = '100%'; return; }
         out[k] = v;
       });
       return out;

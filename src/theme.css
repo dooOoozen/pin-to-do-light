@@ -2047,17 +2047,25 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: calc(var(-
 :root[data-style="frost"] .day-head { border-width: 1px; }
 
 /* ==========================================================================
-   DIALOG TRANSPARENCY — one rule, one alpha
-   图纸 was the example the request came from, so its numbers are the ones every material
-   below now borrows: the shell, the settings sub-panels and the popups all sit at 74%, and
-   the four materials are listed here instead of carrying their own copy so the parameter
-   cannot drift apart again. No blur: this is alpha only. The card layer keeps its own,
-   much higher opacity (the 94% rules inside each material block) because behind that window
-   there is no ground of ours at all — 74% there would put a task title on the wallpaper. */
-:root:is([data-style="blueprint"], [data-style="frost"], [data-style="diner"], [data-style="garden"], [data-style="hazard"])
-  :is(.hud, .hud-thin, .modal-panel, .plan-pop) {
-  background-color: color-mix(in srgb, var(--paper-hi) 74%, transparent);
+   PANEL TRANSPARENCY — one colour and one alpha, on every material
+   图纸 was the example the request came with, so 74% over --paper-hi is what those five
+   still draw. It is now a pair of variables instead of a hard-coded rule, and the other five
+   materials get the same pair at 100% — which is why each surface keeps its own colour as the
+   fallback: 弹框 is --paper, 模块面板 is --paper, the thin plates are --paper-lo, and a single
+   shared source would have quietly repainted all of them. The card layer keeps its own, much
+   higher opacity (the 94% rules inside each material block) because behind that window there
+   is no ground of ours at all — 74% there would put a task title on the wallpaper.
+   `:root` on each rule is not decoration: .plan-pop's own background lives in dashboard.css,
+   which loads after this sheet, so a bare class would lose to it regardless of order here. */
+:root {
+  --pop-bg: color-mix(in srgb, var(--pop-ink, var(--paper)) var(--pop-a, 100%), transparent);
 }
+:root:is([data-style="blueprint"], [data-style="frost"], [data-style="diner"], [data-style="garden"], [data-style="hazard"]) {
+  --pop-ink: var(--paper-hi); --pop-a: 74%;
+}
+:root .hud { background-color: color-mix(in srgb, var(--pop-ink, var(--paper)) var(--pop-a, 100%), transparent); }
+:root .hud-thin { background-color: color-mix(in srgb, var(--pop-ink, var(--paper-lo)) var(--pop-a, 100%), transparent); }
+:root .modal-panel, :root .plan-pop { background-color: var(--pop-bg); }
 
 /* ---------------------------------------------------------------- the corner switch
    Round or square is the third axis, and it belongs to no material: 图纸 with square corners

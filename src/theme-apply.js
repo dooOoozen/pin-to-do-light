@@ -24,7 +24,11 @@
       { v: '--head-hi', n: '标题条', w: '模块与弹窗标题栏的底色' },
       { v: '--field-focus', n: '输入聚焦', w: '输入框获得焦点时的底色' },
       { v: '--plate-mod', n: '模块底板', w: '仪表盘每块模块自己的板底' },
-      { v: '--cream', n: '奶油', w: '图标按钮选中态、计时徽章底' }
+      { v: '--cream', n: '奶油', w: '图标按钮选中态、计时徽章底' },
+      /* one colour and one alpha across .hud / .hud-thin / .modal-panel / .plan-pop; the
+         fallback is the surface colour those panels use when the material says nothing */
+      { v: '--pop-bg', n: '弹窗背景', w: '弹框、模块面板、浮层的底；滑条定它有多透',
+        src: '--pop-ink', a: '--pop-a', fb: '--paper' }
     ] },
     { group: '分组底板 / PLATES', items: [
       { v: '--plate-day', n: '日期分组底', w: '台账里日期分组的底色' },

@@ -1155,32 +1155,103 @@
     fitTodayRing();
   }
 
-  /* 环形图的直径 = 两个格子的高度. Measured rather than guessed, because the counter block's
-     height moves with the interface scale, the module's span and row count, and how many digits
-     each figure has — no container query can know that. The ring is out of flow in dashboard.css,
-     so writing this back cannot change the height it just measured. */
+  /* 环形图的直径 = 两个格子的高度, and 格子随模块铺满. Both are measured rather than guessed,
+     because the counter block's size moves with the interface scale, the module's span and row
+     count, and how many digits each figure has — no container query can know that. The ring is out
+     of flow in dashboard.css, so writing these back cannot change the height they just measured,
+     and the tiles divide a block whose own box comes from the plate, not from the tiles. */
   function fitTodayRing() {
     const stats = doc.querySelector('#modToday .pd-stats');
     const body = doc.querySelector('#modToday .mod-today-body');
     if (!stats || !body) return;
     const measure = () => {
-      const stack = stats.getBoundingClientRect().height;
+      const gap = parseFloat(getComputedStyle(stats).rowGap) || 6;
       const room = body.clientHeight;
+      /* one track means the stacked layout (the plate is narrower than 300px, so the ring is above
+         the counters); two means the ring sits beside them and the counters get a definite row. */
+      const tracks = getComputedStyle(body).gridTemplateColumns.split(' ').length;
+      pickStatCols(stats.getBoundingClientRect(), tracks === 2);
+      /* read after the divide is written, because in the stacked layout the block's height is the
+         tiles' own content height and the number of rows is what pickStatCols just chose */
+      const stack = stats.getBoundingClientRect().height;
       /* 环形图的直径 = 两个格子的高度 — stated in tile heights, not in the height of the block,
          because a short plate lays the four counters out in one row (dashboard.css) and the block
          is then one tile tall. Reading the block would have shrunk the ring to its 44px floor the
          moment the counters stopped wrapping. */
       const tile = stats.querySelector('.stat');
       const th = tile ? tile.getBoundingClientRect().height : stack / 2;
-      const want = th * 2 + (parseFloat(getComputedStyle(stats).rowGap) || 6);
-      /* one column means the ring sits above the counters, so it only gets what the counters
-         leave over; two columns means it is beside them and the whole height is available */
-      const cols = getComputedStyle(body).gridTemplateColumns.split(' ').length;
-      const cap = cols === 1 ? room - stack - 16 : room;
+      const want = th * 2 + gap;
+      /* Beside the counters the ring is capped by their own height, not by the plate: the plate
+         includes the figures row and the body's padding, and a ring that tall drew over the edge
+         of the module. Stacked, it only gets what the counters leave over. */
+      const cap = tracks === 1 ? room - stack - 16 : stack;
       const d = Math.round(Math.max(44, Math.min(want, cap > 44 ? cap : want, 170)));
       if (d !== body.__ringD) {
         body.__ringD = d;
         body.style.setProperty('--ring-d', d + 'px');
+      }
+      /* The ring's column has to be as wide as the ring it is asked to hold, or the diameter above
+         is cut by 26cqi of plate and the counters stand taller than their own gauge. 42% of the
+         content width is the most it may take, so the tiles never lose the room they were divided
+         from. The column is measured from the block, which the divide cannot change, so writing it
+         back here cannot start a loop. */
+      if (tracks === 2) {
+        const col = Math.round(Math.max(64, Math.min(d, (body.clientWidth - 24) * 0.42, 170)));
+        if (col !== body.__ringCol) {
+          body.__ringCol = col;
+          body.style.setProperty('--ring-col', col + 'px');
+        }
+      }
+    };
+    /* How the four tiles divide the area. A side-by-side plate has a definite counters box, so the
+       rows take its height too; a stacked one is narrower than 300px and the block keeps its
+       content height, because stretching it would take the row the ring stands in. The divide kept
+       is the one whose tile is widest-than-tall and closest to a square, which is
+       模块尺寸水平方向越小，小格子越像正方形 stated as a rule. */
+    const pickStatCols = (area, stretch) => {
+      const gap = parseFloat(getComputedStyle(stats).rowGap) || 6;
+      const first = stats.querySelector('.stat');
+      const natural = first ? first.getBoundingClientRect().height : area.height;
+      const order = [1, 2, 4].map((c) => {
+        const rows = Math.ceil(4 / c);
+        const th = stretch ? (area.height - (rows - 1) * gap) / rows : natural;
+        const tw = (area.width - (c - 1) * gap) / c;
+        /* a tile narrower than this cannot hold its own label, and one shorter than this clips
+           the number, which is the failure the user reads as 字被切掉 rather than as a layout */
+        if (tw < 42 || th < 34) return null;
+        /* penalised rather than excluded: the divide that fits four labels in a narrow plate is not
+           always inside the 1:1–2.8:1 range, so the further out of it a candidate is, the worse it
+           scores instead of being dropped. Taller than wide scores worse again — 68x113 and 142x53
+           both hold the same 34px of content, and the first leaves 80px of the tile empty. */
+        const ar = tw / th;
+        return {
+          c,
+          score: Math.abs(Math.log(ar)) +
+            (ar > 2.8 ? (ar - 2.8) * 2 : 0) +
+            (ar < 1 ? 1.2 : 0)
+        };
+      }).filter(Boolean).sort((a, b) => a.score - b.score).map((x) => x.c);
+      const write = (c) => {
+        if (c !== body.__statCols) {
+          body.__statCols = c;
+          body.style.setProperty('--stat-cols', String(c));
+        }
+      };
+      /* writing a custom property invalidates style, so the read below lays out again and reports
+         what these tiles actually painted: a divide that clips the number, or one that leaves the
+         label without its tail, is not the layout the plate asked for. */
+      const cut = () => Array.prototype.some.call(stats.querySelectorAll('.stat'), (n) => {
+        const k = n.querySelector('.k');
+        return n.scrollHeight > n.clientHeight + 1 || !!(k && k.scrollWidth > k.clientWidth + 1);
+      });
+      for (let i = 0; i < order.length; i++) {
+        write(order[i]);
+        if (!cut()) return;
+      }
+      if (order.length) write(order[0]);
+      else {
+        body.__statCols = 0;
+        body.style.removeProperty('--stat-cols');
       }
     };
     if (!stats.__ringObs && window.ResizeObserver) {
@@ -3925,6 +3996,13 @@
 
       function renderPalette() {
         if (!window.NeonTheme) return;
+        /* A store push lands here from the other window too — a timer starting, a card going
+           out to the desk. Rebuilding while the native picker is open would drop the colour
+           sitting in it, so the repaint is deferred while one is open. */
+        if (doc.querySelector('.pal-swatch:focus') && renderPalette.busy) return;
+        renderPalette.busy = true;
+        clearTimeout(renderPalette.t);
+        renderPalette.t = setTimeout(() => { renderPalette.busy = false; }, 1200);
         const theme = NeonTheme.themeOf(S.state.settings);
         const tag = $('#palTheme', root);
         if (tag) {
@@ -3932,6 +4010,26 @@
           tag.textContent = '// ' + (st ? st.n.split(' ')[0] : '') +
             (theme === 'ink' ? ' · 夜' : ' · 昼');
         }
+        /* A row is built from the *live* root, so an unsaved picker would vanish on the next
+           rebuild: its colour is on the root as an inline property and settings.palette only
+           gets it when the picker settles. Read those back off the root before emptying the
+           hosts and put them on after. The names come from the swatches themselves, so a line
+           picker restores the source it writes (--edge-ink), not the finished token it shows. */
+        const live = doc.documentElement.style;
+        const held = {};
+        $$('.pal-swatch', root).forEach((sw) => {
+          [sw.dataset.k, sw.dataset.a].forEach((k) => {
+            const v = k ? live.getPropertyValue(k).trim() : '';
+            if (v) held[k] = v;
+          });
+        });
+        $$('.pal-alpha', root).forEach((sl) => {
+          const v = live.getPropertyValue(sl.dataset.a).trim();
+          if (v) held[sl.dataset.a] = v;
+        });
+        const restore = () => {
+          Object.keys(held).forEach((k) => live.setProperty(k, held[k]));
+        };
         NeonTheme.TOKENS.forEach((grp, gi) => {
           /* one host per group, because each group is its own section in the column flow */
           const host = root.querySelector('.pal-rows[data-pal="' + gi + '"]');
@@ -3956,11 +4054,17 @@
                (--edge-a). Reading the source through its own fallback is what makes the chip show
                the body ink on a material that never names one. */
             const token = it.src || it.v;
+            /* the three names the restore has to know are carried on the row itself: the store
+               is re-read while this dialog is open (any other window can push), and a rebuild
+               that lost the picker's half-saved colour would be worse than the flicker */
             const sw = doc.createElement('input');
             sw.type = 'color';
             sw.className = 'pal-swatch';
+            sw.dataset.k = token;
+            if (it.a) sw.dataset.a = it.a;
+            if (it.fb) sw.dataset.fb = it.fb;
             sw.value = it.src
-              ? NeonTheme.toHex(NeonTheme.resolve('var(' + it.src + ', var(--ink))'))
+              ? NeonTheme.toHex(NeonTheme.resolve('var(' + it.src + ', var(' + (it.fb || '--ink') + '))'))
               : NeonTheme.current(it.v);
             const hex = doc.createElement('span');
             hex.className = 'pal-hex';
@@ -3980,6 +4084,7 @@
               const sl = doc.createElement('input');
               sl.type = 'range';
               sl.className = 'pal-alpha';
+              sl.dataset.a = it.a;
               sl.min = '2'; sl.max = '100'; sl.step = '1';
               sl.value = String(Math.max(2, Math.round(NeonTheme.alphaOf(it.v) * 100)));
               const av = doc.createElement('span');
@@ -3996,6 +4101,7 @@
             host.appendChild(row);
           });
         });
+        restore();
       }
       /* one card per material, each showing its own palette, because "diner" or "print"
          is hard to choose from a name alone */

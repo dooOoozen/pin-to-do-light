@@ -556,7 +556,6 @@ body.side-dragging { cursor: col-resize; }
 
 .pd-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 8px; }
 .pd-stats:has(~ *) { height: 100%; }
-.mod[data-mod="today"] .pd-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; }
 /* How many tiles fit in a row is a question about the module, not about the window: the panel
    is resizable, each module has its own span, and a `@media (max-width: 900px)` rule gave the
    same box four-in-a-row at one scale and two-by-two at another while the window said the same
@@ -1431,12 +1430,16 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .mod[data-mod="today"] { container-type: size; container-name: plate; }
 .mod-today-body {
   display: grid;
-  /* The ring's column is a fixed share of the plate rather than max-content: its diameter comes
-     from the height of the counter block (--ring-d below), and if the column were sized by the
-     ring the two would lean on each other — a wider ring narrows the counters, narrower counters
-     set smaller numbers and so are shorter, a shorter stack asks for a smaller ring. */
-  grid-template-columns: clamp(64px, 26cqi, 170px) minmax(0, 1fr);
-  grid-template-rows: auto auto;
+  /* The ring's column is `--ring-col`, which dashboard.js measures from the height of the counter
+     block it stands beside; the clamp is what it is before that first measurement lands. Its
+     diameter comes from that column, and if the column were sized by the ring the two would lean
+     on each other — a wider ring narrows the counters, narrower counters set smaller numbers and
+     so are shorter, a shorter stack asks for a smaller ring. */
+  grid-template-columns: var(--ring-col, clamp(64px, 26cqi, 170px)) minmax(0, 1fr);
+  /* row 1 is the counters and it gets the height the plate has left; row 2 is the figures line,
+     which only ever asks for its own line. `auto auto` here used to leave the block floating in
+     the middle of a plate that was 35px of tiles and 106px of nothing. */
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 8px 14px; align-content: center; align-items: center;
   min-height: 0; padding: 10px 12px;
 }
@@ -1468,9 +1471,16 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .today-figs { display: flex; flex-wrap: wrap; gap: 3px 16px; min-width: 0; }
 .today-figs > div { display: flex; align-items: baseline; gap: 5px; }
 .today-figs b { font-size: clamp(10px, 8cqi, 16px); }
+/* 铺满模块: the block is the width of the counters column and the height of row 1, and the
+   only free dimension is how the four tiles are divided — `--stat-cols`, which dashboard.js
+   picks from the measured area so a wide plate gets four across and a narrow one two, with the
+   tile's own aspect staying near square either way. `minmax(0, 1fr)` rows are what let the
+   tiles take the height; with `auto` they sat at their content height and the row track kept
+   the rest of the plate empty. */
 .mod[data-mod="today"] .pd-stats {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto;
-  gap: 6px; padding: 0; width: 100%;
+  display: grid; grid-template-columns: repeat(var(--stat-cols, 2), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 6px; padding: 0; width: 100%; height: 100%;
 }
 .mod[data-mod="today"] .pd-stats .stat {
   display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 2px;
@@ -1519,19 +1529,13 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 /* A one-row plate is 168px tall: the ring takes the height and the counters have to take the
    width. Two columns of counters in that plate measured 108×35 each — three times as wide as
    tall, which is the 长方形 the report names, and it happens at every scale because 1fr columns
-   follow the plate, never the other way round. Four across the same 220px is 52×35, and the row
-   the counters no longer need is the row the ring gets. */
+   follow the plate, never the other way round. Four across the same plate is 52×35, and the row
+   the counters no longer need is the row the ring gets.
+   This is only the starting guess: on a plate wide enough to seat the ring beside the counters
+   dashboard.js measures the area and restates --stat-cols, because 340px of tiles in a 467px
+   column — what a hard cap here used to leave — is the dead space the 铺满模块 report is about. */
 @container plate (max-block-size: 220px) {
-  /* Four across, and the block stops growing at 340px: on a six-column plate the counters would
-     otherwise be 122px wide each against 35px of height, which is the same 长方形 that started
-     this, only further out. Past that width the plate belongs to the ring, not to the tiles.
-     An explicit width rather than aspect-ratio on the tile, because aspect-ratio on a box that is
-     `overflow: hidden` and therefore has no automatic minimum size squashed a 48px tile to 22px
-     and cut the number in half — measured, not assumed. */
-  .mod[data-mod="today"] .pd-stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    width: min(100%, 340px); justify-self: center;
-  }
+  .mod[data-mod="today"] { --stat-cols: 4; }
 }
 /* The ring is never hidden. Two rules used to take it away below 210px of module, and that is
    what the 2×N 「看不到环形图」 report is: at that span the plate is narrow but tall, there was

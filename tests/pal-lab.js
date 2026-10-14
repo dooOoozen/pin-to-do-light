@@ -23,7 +23,14 @@
     probe.style.color = '';
     probe.style.color = css;
     var s = getComputedStyle(probe).color;
-    var m = /color\(\s*srgb[^)]*?\/\s*([\d.]+)/.exec(s) || /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(s);
+    /* a colour-mix that resolves to fully opaque comes back as `color(srgb r g b)` with no slash
+       at all, and one that is translucent as `color(srgb r g b / a)` — an alpha parser that only
+       looks for the second form reports the opaque case as NaN, which every comparison against
+       NaN then passes. Opaque is the answer, not a missing one. */
+    var m = /color\(\s*srgb[^)]*?\/\s*([\d.]+)/.exec(s);
+    if (m) return parseFloat(m[1]);
+    if (/color\(\s*srgb/.test(s)) return 1;
+    m = /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(s);
     if (m) return parseFloat(m[1]);
     return /rgb\(/.test(s) ? 1 : NaN;
   }
@@ -56,7 +63,7 @@
       });
       note('rows=' + all.length + ' no-where=' + noWhere.length +
         ' labPanels=' + doc.querySelectorAll('.pal-panel').length);
-      if (all.length < 38) fails.push('ROWS-MISSING ' + all.length);
+      if (all.length < 39) fails.push('ROWS-MISSING ' + all.length);
       if (noWhere.length) fails.push('ROW-WITHOUT-WHERE ' + noWhere.length);
 
       var lines = rowsOf('线条');
@@ -66,13 +73,32 @@
       var noSlider = lines.filter(function (r) { return !r.querySelector('input[type=range]'); });
       if (noSlider.length) fails.push('LINE-NO-STRENGTH ' + noSlider.length);
 
+      /* 弹窗背景 is the same kind of row but lives under 纸面, and its number is the one the
+         user is asking about: how see-through the dialogs are on this material right now */
+      var paper = rowsOf('纸面') || [];
+      var pop = paper.filter(function (r) {
+        var n = r.querySelector('.pal-name');
+        return n && (n.textContent || '').indexOf('弹窗背景') >= 0;
+      })[0];
+      if (!pop) fails.push('NO-PANEL-BACKGROUND-ROW');
+      else {
+        var ps = pop.querySelector('input[type=range]');
+        var plive = Math.round(alpha('var(--pop-bg)') * 100);
+        note('pop slider=' + (ps ? ps.value : 'n/a') + ' live=' + plive);
+        if (!ps) fails.push('POP-NO-STRENGTH');
+        else if (!isFinite(plive)) fails.push('POP-ALPHA-UNPARSED');
+        else if (Math.abs(Number(ps.value) - plive) > 2) fails.push('POP-SLIDER-START ' + ps.value + '<>' + plive);
+      }
+
       /* the slider has to start on the strength the line actually renders at, not on a number
          the sheet happens to spell — most materials never write --rule-a and ride the fallback */
       var edge = lines[0];
       var rng = edge.querySelector('input[type=range]');
       var live = Math.round(alpha('var(--edge)') * 100);
       note('edge slider=' + (rng ? rng.value : 'n/a') + ' live-alpha=' + live);
-      if (!rng || Math.abs(Number(rng.value) - live) > 2) fails.push('SLIDER-START ' + (rng ? rng.value : 'n/a') + '<>' + live);
+      if (!rng) fails.push('EDGE-NO-STRENGTH');
+      else if (!isFinite(live)) fails.push('EDGE-ALPHA-UNPARSED');
+      else if (Math.abs(Number(rng.value) - live) > 2) fails.push('SLIDER-START ' + (rng ? rng.value : 'n/a') + '<>' + live);
 
       /* drag it and the panel must answer. The handler writes one inline custom property, so the
          undo is that same property put back exactly — including the case where the user's own
@@ -80,11 +106,14 @@
       if (rng) {
         var root = doc.documentElement;
         var prev = root.style.getPropertyValue('--edge-a');
-        rng.value = String(Math.min(100, live + 30));
+        /* move it toward the middle, not up by thirty: a line already at full strength has no
+           room above, and a slider that cannot be raised is not the fault being tested for */
+        var target = live > 50 ? live - 30 : live + 30;
+        rng.value = String(target);
         rng.dispatchEvent(new Event('input', { bubbles: true }));
         var after = Math.round(alpha('var(--edge)') * 100);
-        note('after-drag alpha=' + after);
-        if (after <= live + 5) fails.push('SLIDER-DOES-NOTHING ' + live + '->' + after);
+        note('drag ' + live + '->' + target + ' alpha=' + after);
+        if (Math.abs(after - target) > 3) fails.push('SLIDER-DOES-NOTHING ' + target + '<>' + after);
         if (prev) root.style.setProperty('--edge-a', prev); else root.style.removeProperty('--edge-a');
         var back = Math.round(alpha('var(--edge)') * 100);
         note('restored alpha=' + back);

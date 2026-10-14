@@ -20,12 +20,17 @@
 
   /* Chromium serialises a color-mix() result as color(srgb r g b / a), not as rgba(), so both
      shapes have to be read. Returning 1 for an unparsable string is what made the first run of
-     this test report the five translucent materials as opaque. */
+     this test report the five translucent materials as opaque.
+     And an opaque mix comes back as color(srgb r g b) with the slash dropped entirely: an alpha
+     parser that only knows the slashed form answers NaN for the four opaque materials, and every
+     `Math.abs(NaN - want) > tol` comparison then passes. Opaque is a reading, not a failure to
+     read. */
   function alphaOf(c) {
     var s = String(c || '').trim();
     if (s === 'transparent') return 0;
     var m = /color\(\s*srgb[^)]*?\/\s*([\d.]+)/.exec(s);
     if (m) return parseFloat(m[1]);
+    if (/color\(\s*srgb/.test(s)) return 1;
     m = /rgba?\(([^)]+)\)/.exec(s);
     if (!m) return NaN;
     var parts = m[1].split(/[\s,/]+/).filter(function (x) { return x !== ''; });
@@ -50,6 +55,7 @@
       ' pickers=' + doc.querySelectorAll('.gc-pick').length +
       ' presets=' + doc.querySelectorAll('.pal-pick').length;
     note(line);
+    if (!isFinite(a) || (t >= 0 && !isFinite(t))) fails.push(style + ' ALPHA-UNPARSED ' + a + '/' + t);
     if (Math.abs(a - want) > 0.02) fails.push(style + ' PANEL-ALPHA ' + a + ' want ' + want);
     if (TRANSLUCENT[style] && t >= 0 && Math.abs(t - want) > 0.02) fails.push(style + ' SUBPANEL-ALPHA ' + t);
     if (bs && br !== '50%' && br.indexOf('12px') < 0 && br !== '0px') fails.push(style + ' BTN-RADIUS ' + br);
