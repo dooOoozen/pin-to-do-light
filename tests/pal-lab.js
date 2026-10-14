@@ -28,15 +28,16 @@
     return /rgb\(/.test(s) ? 1 : NaN;
   }
 
+  /* each token group is its own settings section now, so a group's rows live in the panel whose
+     heading names it */
   function rowsOf(groupText) {
-    var heads = Array.prototype.slice.call(doc.querySelectorAll('.pal-group'));
-    var h = heads.filter(function (n) { return (n.textContent || '').indexOf(groupText) >= 0; })[0];
-    if (!h) return null;
-    var out = [];
-    for (var n = h.nextElementSibling; n && !n.classList.contains('pal-group'); n = n.nextElementSibling) {
-      if (n.classList.contains('pal-row')) out.push(n);
-    }
-    return out;
+    var panels = Array.prototype.slice.call(doc.querySelectorAll('.settings-grid .pal-panel'));
+    var p = panels.filter(function (n) {
+      var h = n.querySelector('h3');
+      return h && (h.textContent || '').indexOf(groupText) >= 0;
+    })[0];
+    if (!p) return null;
+    return Array.prototype.slice.call(p.querySelectorAll('.pal-row'));
   }
 
   Promise.resolve().then(function () { return API.getState(); })
@@ -54,7 +55,7 @@
         return !w || !(w.textContent || '').trim();
       });
       note('rows=' + all.length + ' no-where=' + noWhere.length +
-        ' groups=' + doc.querySelectorAll('.pal-group').length);
+        ' labPanels=' + doc.querySelectorAll('.pal-panel').length);
       if (all.length < 38) fails.push('ROWS-MISSING ' + all.length);
       if (noWhere.length) fails.push('ROW-WITHOUT-WHERE ' + noWhere.length);
 

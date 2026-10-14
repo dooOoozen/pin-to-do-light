@@ -3747,8 +3747,16 @@
       '    <div class="set-hint" style="margin-bottom:6px">改动即时生效并保存，只作用于当前材质与当前昼夜。'
       + '每一行下面那行小字写明这个颜色画在界面哪里。「线条」那一组是取色器加浓度滑条：'
       + '取色器定它是什么颜色，滑条定它有多实；没动过的线仍然跟着「正文」色，调正文即可。</div>' +
-      '    <div id="palRows"></div>' +
       '  </div>' +
+      /* One panel per token group rather than one 1658px lab. The settings body flows by column,
+         and the balancer can only move pieces it was given: with the lab as a single block that
+         cannot fit beside it, the two columns ended 1127px apart. Each heading names the lab
+         because the column flow does not keep these next to the intro panel. */
+      (window.NeonTheme ? NeonTheme.TOKENS.map(function (grp, i) {
+        return '  <div class="panel hud-thin pal-panel">' +
+          '<h3>调色台 · ' + escapeHtml(grp.group) + '</h3>' +
+          '<div class="pal-rows" data-pal="' + i + '"></div></div>';
+      }).join('') : '') +
       '  <div class="panel hud-thin" id="panelToggles">' +
       '    <h3>行为 · 提醒 · 系统</h3>' +
       '  </div>' +
@@ -3807,13 +3815,17 @@
       '    <h3>关于 / ABOUT <span class="tiny faint" id="aboutVer"></span></h3>' +
       '    <div class="set-hint">桌面任务卡片：卡盒停在屏幕边缘，悬停铺开卡片，单击把它们散布到桌面。' +
       '全部数据只存在这台机器上，不经过任何服务器。</div>' +
-      '    <div class="set-hint faint" id="aboutData" style="margin-top:4px;word-break:break-all"></div>' +
-      '    <div class="divider"></div>' +
-      '    <div class="row"><span class="set-hint" id="aboutRepo">源码与发布</span><span class="spacer"></span>' +
+      '    <div class="row" style="margin-top:7px">' +
       '      <button class="btn sm" data-act="repoHome">打开仓库主页</button>' +
       '      <button class="btn sm" data-act="checkUpdate">检查更新</button></div>' +
       '    <div class="set-hint" id="aboutUpd" style="margin-top:6px;min-height:15px;line-height:1.5">还没检查过。</div>' +
-      '    <div class="row" style="margin-top:6px" id="aboutGet"></div>' +
+      '    <div class="row" style="margin-top:4px" id="aboutGet"></div>' +
+      /* The address and the data file each get a line to themselves. They used to share the
+         button row, and a 44-character URL plus two buttons is 430px in a 306px column — the
+         buttons were drawn outside the panel, which is what 显示错误 was. */
+      '    <div class="divider"></div>' +
+      '    <div class="set-hint faint" id="aboutRepo" style="word-break:break-all"></div>' +
+      '    <div class="set-hint faint" id="aboutData" style="margin-top:2px;word-break:break-all"></div>' +
       '  </div>' +
       '</div>';
     const foot =
@@ -3821,7 +3833,6 @@
       '<button class="btn primary" data-act="done">完成 CLOSE</button>';
 
     openModal(modalShell('系统设置', 'SETTINGS // CONTROL DECK', body, foot, true), async (root) => {
-      const palRows = $('#palRows', root);
 
       /* 关于: which build this is, and what GitHub says the latest one is. The release page URL
          is kept here rather than rebuilt from the version, so the button opens exactly the page
@@ -3858,7 +3869,7 @@
       }
 
       function renderPalette() {
-        if (!palRows || !window.NeonTheme) return;
+        if (!window.NeonTheme) return;
         const theme = NeonTheme.themeOf(S.state.settings);
         const tag = $('#palTheme', root);
         if (tag) {
@@ -3866,12 +3877,11 @@
           tag.textContent = '// ' + (st ? st.n.split(' ')[0] : '') +
             (theme === 'ink' ? ' · 夜' : ' · 昼');
         }
-        palRows.innerHTML = '';
-        NeonTheme.TOKENS.forEach((grp) => {
-          const head = doc.createElement('div');
-          head.className = 'pal-group';
-          head.textContent = grp.group;
-          palRows.appendChild(head);
+        NeonTheme.TOKENS.forEach((grp, gi) => {
+          /* one host per group, because each group is its own section in the column flow */
+          const host = root.querySelector('.pal-rows[data-pal="' + gi + '"]');
+          if (!host) return;
+          host.innerHTML = '';
           grp.items.forEach((it) => {
             const row = doc.createElement('label');
             row.className = 'pal-row';
@@ -3928,7 +3938,7 @@
               row.appendChild(sl);
               row.appendChild(av);
             }
-            palRows.appendChild(row);
+            host.appendChild(row);
           });
         });
       }

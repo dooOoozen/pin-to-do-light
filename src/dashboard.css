@@ -1080,10 +1080,9 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
 .cal-day-list .task { border-bottom: 1px dashed var(--rule); }
 
 /* ---------------------------------------------------------------- colour lab */
-.pal-group {
-  font-size: 9px; letter-spacing: .18em; color: var(--ink-3);
-  margin: 8px 0 3px; padding-bottom: 2px; border-bottom: 1px dashed var(--rule);
-}
+/* The colour lab's groups are separate .panel sections now — see the note in dashboard.js about
+   the column balancer — so their headings are ordinary .panel h3 and there is no in-panel group
+   strip left to style. */
 .pal-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
 /* name on top, and under it the one line that says where this colour actually paints — thirty-odd
    swatches labelled 提亮 / 压暗 / 面板底 are not navigable without it */

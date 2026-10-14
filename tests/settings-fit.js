@@ -65,6 +65,31 @@
       check(stacked >= 3, 'only ' + stacked + ' section pairs sit in a column, so the spacing check is vacuous');
       check(worst <= 14, 'a short section still leaves a ' + Math.round(worst) + 'px hole: ' + worstAt);
       check(best >= 4, 'sections are touching with no gap at all: ' + Math.round(best) + 'px');
+      /* P1b — the columns must also *end* level. Every neighbour gap can be honest while one
+         column still finishes 1127px below the other, which is what a single 1658px-tall
+         section did to the balancer: it cannot move a piece it was never given. */
+      var ends = Object.keys(cols).map(function (k) {
+        var list = cols[k];
+        return Math.round(Math.max.apply(null, list.map(function (x) { return x.bottom; })) -
+          Math.min.apply(null, list.map(function (x) { return x.top; })));
+      }).sort(function (a, b) { return b - a; });
+      var spread = ends.length > 1 ? ends[0] - ends[ends.length - 1] : 0;
+      notes.push('colHeights=' + ends.join('/') + ' spread=' + spread);
+      check(ends.length < 2 || spread <= Math.max(120, Math.round(ends[0] * 0.12)),
+        'the columns end ' + spread + 'px apart: ' + ends.join('/'));
+      /* P1c — and nothing may be painted past its own section. The 关于 row put a
+         44-character URL and two buttons on one line: 430px of content in a 306px column. */
+      panels.forEach(function (p) {
+        var h3 = q('.panel h3', p);
+        var name = ((h3 && h3.textContent) || '?').trim().slice(0, 12);
+        check(p.scrollWidth <= p.clientWidth + 1,
+          'section overflows its column: ' + name + ' ' + p.scrollWidth + '>' + p.clientWidth);
+        var past = Array.prototype.slice.call(p.querySelectorAll('*')).filter(function (n) {
+          var r = n.getBoundingClientRect(), pr = p.getBoundingClientRect();
+          return r.width > 0 && r.right > pr.right + 1;
+        });
+        check(!past.length, 'drawn outside its section: ' + name + ' x' + past.length);
+      });
       document.querySelector('.modal-backdrop, [data-act="cancel"]').click();
       return wait(600);
     })
