@@ -61,29 +61,44 @@ function curl(args, bodyFile) {
 }
 
 try {
-  const payload = ".git/gh-release-body.json";
-  writeFileSync(payload, JSON.stringify({
-    tag_name: tag,
-    target_commitish: "main",
-    name: name || tag,
-    body: bodyFile ? readFileSync(bodyFile, "utf8") : "",
-    draft: false,
-    prerelease
-  }));
-  const rel = JSON.parse(curl(["-H", "Content-Type: application/json",
-    "-X", "POST", "https://api.github.com/repos/" + REPO + "/releases"], payload));
-  console.log("release id=" + rel.id + " tag=" + rel.tag_name + " prerelease=" + rel.prerelease);
+  const fname = asset.split(/[\\/]/).pop();
+  const size = statSync(asset).size;
+  let rel = null;
+  if (argv.includes("--replace")) {
+    const list = JSON.parse(curl(["https://api.github.com/repos/" + REPO + "/releases?per_page=30"]));
+    rel = list.find((r) => r.tag_name === tag) || null;
+    if (rel) {
+      for (const a of rel.assets || []) {
+        curl(["-X", "DELETE", a.url]);
+        console.log("deleted old asset=" + a.name);
+      }
+    }
+  }
+  if (!rel) {
+    const payload = ".git/gh-release-body.json";
+    writeFileSync(payload, JSON.stringify({
+      tag_name: tag,
+      target_commitish: "main",
+      name: name || tag,
+      body: bodyFile ? readFileSync(bodyFile, "utf8") : "",
+      draft: false,
+      prerelease
+    }));
+    rel = JSON.parse(curl(["-H", "Content-Type: application/json",
+      "-X", "POST", "https://api.github.com/repos/" + REPO + "/releases"], payload));
+    rmSync(payload, { force: true });
+    console.log("release id=" + rel.id + " tag=" + rel.tag_name + " prerelease=" + rel.prerelease);
+  } else {
+    console.log("reusing release id=" + rel.id + " tag=" + rel.tag_name);
+  }
   console.log("page=" + rel.html_url);
 
-  const fname = asset.split(/[\\/]/).pop();
   const up = rel.upload_url.replace(/\{[^}]*\}/g, "") + "?name=" + encodeURIComponent(fname);
   const a = JSON.parse(curl(["-H", "Content-Type: application/octet-stream",
     "-X", "POST", up], asset));
-  const size = statSync(asset).size;
   console.log("asset=" + a.name + " bytes=" + a.size + "/" + size + " state=" + a.state);
   console.log("download=" + a.browser_download_url);
   if (a.size !== size) console.log("!! SIZE-MISMATCH");
-  rmSync(payload, { force: true });
 } finally {
   rmSync(netrc, { force: true });
 }
