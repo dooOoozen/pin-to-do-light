@@ -295,14 +295,16 @@ body.side-dragging { cursor: col-resize; }
 /* the schedule on the right edge, countdown beside it — one line, so a row is one
    row tall whatever it carries */
 .task-due {
-  flex: none; align-self: center; text-align: right;
+  /* shrinkable, but only down to the date: b is fixed and the countdown beside it is the part
+     that gives, which is the order the report asked for — 日期 stays, 逾期 X 天 / 还有 X 小时 goes */
+  flex: 0 1 auto; align-self: center; text-align: right;
   display: flex; align-items: baseline; justify-content: flex-end; gap: 7px;
-  max-width: 260px; font-variant-numeric: tabular-nums;
+  max-width: 260px; min-width: 0; font-variant-numeric: tabular-nums;
 }
-.task-due b { font-size: 10px; font-weight: 700; letter-spacing: .02em; color: var(--ink-2); }
+.task-due b { font-size: 10px; font-weight: 700; letter-spacing: .02em; color: var(--ink-2); flex: none; }
 .task-due b.today { color: var(--brick); }
 .task-due b.late { color: var(--vermillion); }
-.task-due i { font-style: normal; font-size: 8.5px; letter-spacing: .06em; color: var(--ink-3); }
+.task-due i { font-style: normal; font-size: 8.5px; letter-spacing: .06em; color: var(--ink-3); flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .task-due.late i { color: var(--vermillion); }
 .task:hover .task-due b { color: var(--paper); }
 .task:hover .task-due i { color: var(--paper-dim); }
@@ -327,16 +329,24 @@ body.side-dragging { cursor: col-resize; }
 .day-head.overdue b { color: var(--vermillion); }
 .day-head .day-count { margin-left: auto; font-size: 9px; color: var(--ink-3); }
 .task-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-/* title left, everything else right, all on one line */
-.task-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* title left, everything else right, all on one line. `overflow: hidden` is the difference
+   between a tight row and a broken one: .task-right used to be `flex: none`, so once the flags
+   outgrew what was left they kept drawing straight through the schedule column — 分组文字和日期
+   重叠, 重复方式和日期重叠 — and at 界面缩放 1.35 the same text needs a third more room to say
+   the same thing. */
+.task-line { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
 /* shrink-to-fit, not flex-grow: the hover buttons sit on the title's shoulder, and a
    stretched title would push them off to the right edge where the schedule lives */
 .task-title {
-  flex: 0 1 auto; min-width: 0;
+  /* a floor, so the flags give way before the title loses its last few glyphs — 优先保留标题和日期 */
+  flex: 0 1 auto; min-width: 3.2em;
   font-size: 12.5px; font-weight: 700; line-height: 1.4;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
 }
-.task-right { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; min-width: 0; }
+/* The shrink weight is the priority order: with 1000 against the title's 1, the dot and its
+   flags are what disappears when the row runs out, and the title only starts losing characters
+   once there is nothing left to drop. */
+.task-right { display: flex; align-items: center; gap: 8px; flex: 0 1000 auto; margin-left: auto; min-width: 0; overflow: hidden; }
 .task-flags { display: flex; align-items: center; gap: 7px; flex: none; }
 .flag {
   font-size: 9px; letter-spacing: .06em; color: var(--ink-3);
@@ -1123,6 +1133,12 @@ body.row-dragging, body.row-dragging .task { cursor: grabbing; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .tk-pick { flex: 0 1 200px; min-width: 0; font-size: 11px; }
+/* The task picker and its two filters travel as one box, so the strip's wrapping row keeps them
+   on the same line instead of dropping the search box alone onto a second one. */
+.tk-pickbox { display: flex; align-items: center; gap: 5px; flex: 1 1 280px; min-width: 0; }
+.tk-pickq { flex: 1 1 92px; min-width: 58px; padding: 4px 6px; font-size: 11px; }
+.tk-pickg { flex: 0 1 84px; min-width: 52px; }
+.tk-pickn { flex: none; white-space: nowrap; }
 .tk-dur {
   flex: none; margin-left: auto;
   font-size: 17px; font-weight: 700; letter-spacing: .06em;

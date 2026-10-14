@@ -975,3 +975,44 @@ pub fn cursor_pos() -> Option<Point> {
         None
     }
 }
+
+#[link(name = "shell32")]
+extern "system" {
+    fn ShellExecuteW(
+        hwnd: Hwnd,
+        op: *const u16,
+        file: *const u16,
+        params: *const u16,
+        dir: *const u16,
+        show: i32,
+    ) -> isize;
+}
+
+/// Open a URL in the browser the user actually chose.
+///
+/// `explorer.exe <url>` would also work, and `cmd /C start` is the usual Stack Overflow
+/// answer; the second one hands the string to a shell, which is one `&` away from running
+/// something else. ShellExecuteW resolves the association without a shell in between.
+pub fn open_with_default_app(target: &str) -> Result<(), String> {
+    fn wide(text: &str) -> Vec<u16> {
+        text.encode_utf16().chain(std::iter::once(0u16)).collect()
+    }
+    let op = wide("open");
+    let file = wide(target);
+    /* 1 is SW_SHOWNORMAL; anything the shell can return that is still <= 32 is one of its
+       SE_ERR_* codes rather than an instance handle */
+    let done = unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            op.as_ptr(),
+            file.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            1,
+        )
+    };
+    if done <= 32 {
+        return Err(format!("ShellExecuteW {}", done));
+    }
+    Ok(())
+}

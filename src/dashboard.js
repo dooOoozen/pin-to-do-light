@@ -36,6 +36,7 @@
     state: null, view: 'all', groupId: null, q: '', prio: 'all', sort: 'smart',
     miniGroup: null, lastDone: null, calMonth: null, calDay: null,
     tkDay: null, tkMode: 'week', tkScroll: null,
+    tkPickQ: '', tkPickG: '__all__',
     rpRange: 'week', rpOffset: 0
   };
   const el = {};
@@ -171,6 +172,19 @@
     el.miniGroup.innerHTML = allOption + options;
     if (!S.miniGroup || (S.miniGroup !== '__all__' && !D.groupById(S.state, S.miniGroup))) S.miniGroup = S.state.settings.activeGroupId;
     el.miniGroup.value = S.miniGroup;
+  }
+
+  /* GitHub tags come back as v1.2.3 and Cargo's version as 1.2.3, so compare them segment by
+     segment as numbers. A tag that will not parse reads as "not newer" — a typo in a tag name is
+     no reason to tell someone their build is out of date. */
+  function cmpVer(a, b) {
+    const parts = (s) => String(s || '').replace(/^v/i, '').split('.').map((x) => parseInt(x, 10) || 0);
+    const pa = parts(a), pb = parts(b);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const d = (pa[i] || 0) - (pb[i] || 0);
+      if (d) return d > 0 ? 1 : -1;
+    }
+    return 0;
   }
 
   function escapeHtml(s) {
@@ -320,7 +334,10 @@
     el.viewSub.textContent = 'OPEN ' + st.open + ' / DONE ' + st.done + ' / TOTAL ' + st.total;
     const accent = S.view === 'group' ? D.colorOf(S.state, S.groupId) : D.PALETTE.brick;
     document.body.style.setProperty('--accent', accent);
+    /* The square is the group's own colour, so on any view that is not a group it paints a
+       brick chip that means nothing — 时间线 showed one and read as a stray widget. */
     el.tbDot.style.background = accent;
+    el.tbDot.classList.toggle('u-hidden', S.view !== 'group');
     el.btnOverlay.classList.toggle('primary', S.state.settings.overlay !== false);
   }
 
@@ -1647,17 +1664,38 @@
     label.textContent = runTodo ? runTodo.title : (open ? '（任务已删除）' : '未在计时');
     bar.appendChild(label);
     if (!open) {
-      const sel = doc.createElement('select');
-      sel.className = 'select tk-pick';
-      sel.id = 'tkPick';
-      D.sortTodos(S.state.todos.filter((t) => !t.done), 'smart').forEach((t) => {
-        const o = doc.createElement('option');
-        o.value = t.id;
-        o.textContent = t.title;
-        sel.appendChild(o);
-      });
-      if (!sel.children.length) sel.disabled = true;
-      bar.appendChild(sel);
+      /* One <select> holding every open task is not a choice, it is a scroll — with sixty of
+         them the task you want is somewhere under the thumb. A search box and a group filter
+         narrow the same list. They rebuild the options themselves rather than calling
+         renderAll, because a full re-render would blow away the element the keyboard is in. */
+      const box = doc.createElement('span');
+      box.className = 'tk-pickbox';
+      box.innerHTML =
+        '<input class="input tk-pickq" id="tkPickQ" placeholder="搜索任务" autocomplete="off" value="' + escapeHtml(S.tkPickQ) + '" />' +
+        '<select class="select select-sm tk-pickg" id="tkPickG">' +
+        '<option value="__all__">全部 ALL</option>' +
+        sortedGroups().map((g) => '<option value="' + g.id + '">' + escapeHtml(g.name) + '</option>').join('') +
+        '</select>' +
+        '<select class="select tk-pick" id="tkPick"></select>' +
+        '<span class="tiny faint tk-pickn" id="tkPickN"></span>';
+      bar.appendChild(box);
+      const qin = $('#tkPickQ', box), gsel = $('#tkPickG', box), sel = $('#tkPick', box), cnt = $('#tkPickN', box);
+      if (gsel && D.groupById(S.state, S.tkPickG)) gsel.value = S.tkPickG; else S.tkPickG = '__all__';
+      const fill = () => {
+        const q = S.tkPickQ.trim().toLowerCase();
+        const keep = D.sortTodos(S.state.todos.filter((t) => {
+          if (t.done) return false;
+          if (S.tkPickG !== '__all__' && t.groupId !== S.tkPickG) return false;
+          if (!q) return true;
+          return (t.title + ' ' + (t.notes || '') + ' ' + (t.tags || []).join(' ')).toLowerCase().indexOf(q) >= 0;
+        }), 'smart');
+        sel.innerHTML = keep.map((t) => '<option value="' + t.id + '">' + escapeHtml(t.title) + '</option>').join('');
+        sel.disabled = !keep.length;
+        if (cnt) cnt.textContent = keep.length + ' 可选';
+      };
+      fill();
+      if (qin) qin.addEventListener('input', () => { S.tkPickQ = qin.value; fill(); });
+      if (gsel) gsel.addEventListener('change', () => { S.tkPickG = gsel.value; fill(); });
     }
     const dur = doc.createElement('span');
     dur.className = 'tk-dur';
@@ -2229,11 +2267,13 @@
       closeCtx();
       const todoId = blk.dataset.todo, entryId = blk.dataset.entry;
       const t = D.todoById(S.state, todoId);
-      const cut = (s) => (s.length > 14 ? s.slice(0, 13) + '…' : s);
       const items = [];
       if (t) {
-        items.push(['编辑任务「' + cut(t.title) + '」', '', () => { openTodoModal(t); }]);
-        items.push(['删除任务「' + cut(t.title) + '」', 'danger', () => {
+        /* no title in the label: the block you right-clicked is the only thing the menu can
+           act on, so 「编辑任务「财务月结…」」 spent the width it needs on a quote of what
+           you are already looking at */
+        items.push(['编辑任务', '', () => { openTodoModal(t); }]);
+        items.push(['删除任务', 'danger', () => {
           API.op({ type: 'todo:delete', id: todoId }).then((res) => {
             toast(res && res.ok ? '任务已删除 // DELETED' : '删除失败', res && res.ok ? '' : 'bad');
           });
@@ -3763,6 +3803,18 @@
       '    <div class="divider"></div>' +
       '    <div class="about-line" id="aboutLine">DASHBOARD 1971</div>' +
       '  </div>' +
+      '  <div class="panel hud-thin">' +
+      '    <h3>关于 / ABOUT <span class="tiny faint" id="aboutVer"></span></h3>' +
+      '    <div class="set-hint">桌面任务卡片：卡盒停在屏幕边缘，悬停铺开卡片，单击把它们散布到桌面。' +
+      '全部数据只存在这台机器上，不经过任何服务器。</div>' +
+      '    <div class="set-hint faint" id="aboutData" style="margin-top:4px;word-break:break-all"></div>' +
+      '    <div class="divider"></div>' +
+      '    <div class="row"><span class="set-hint" id="aboutRepo">源码与发布</span><span class="spacer"></span>' +
+      '      <button class="btn sm" data-act="repoHome">打开仓库主页</button>' +
+      '      <button class="btn sm" data-act="checkUpdate">检查更新</button></div>' +
+      '    <div class="set-hint" id="aboutUpd" style="margin-top:6px;min-height:15px;line-height:1.5">还没检查过。</div>' +
+      '    <div class="row" style="margin-top:6px" id="aboutGet"></div>' +
+      '  </div>' +
       '</div>';
     const foot =
       '<div class="spacer"></div>' +
@@ -3770,6 +3822,22 @@
 
     openModal(modalShell('系统设置', 'SETTINGS // CONTROL DECK', body, foot, true), async (root) => {
       const palRows = $('#palRows', root);
+
+      /* 关于: which build this is, and what GitHub says the latest one is. The release page URL
+         is kept here rather than rebuilt from the version, so the button opens exactly the page
+         the API named — and the host still refuses anything outside the repository. */
+      let aboutInfo = { version: '', repo: '' }, releaseUrl = '';
+      API.appInfo().then((v) => {
+        aboutInfo = v || aboutInfo;
+        const tag = $('#aboutVer', root);
+        if (tag) tag.textContent = '// v' + aboutInfo.version;
+        const repo = $('#aboutRepo', root);
+        if (repo) repo.textContent = aboutInfo.repo;
+        /* named rather than described: "it is in the install folder" is a sentence, a path is
+           something you can actually go and copy before a 恢复出厂示例 */
+        const data = $('#aboutData', root);
+        if (data && aboutInfo.dataFile) data.textContent = '数据文件：' + aboutInfo.dataFile;
+      }).catch(() => { /* the panel still shows the buttons; they will report why they failed */ });
 
       function savePalette(token, value) {
         /* keyed by material and hour: an edit made while 黑黄战术 is on must not follow the user
@@ -4418,6 +4486,35 @@
         }
         if (act === 'export') { await exportData(); return; }
         if (act === 'import') { await importData(); return; }
+        if (act === 'repoHome' || act === 'repoRelease') {
+          const url = act === 'repoHome' ? aboutInfo.repo : releaseUrl;
+          if (!url) { toast('还不知道仓库地址', 'warn'); return; }
+          API.openRepoPage(url).then(() => toast('已在浏览器打开 // OPENED'))
+            .catch((e) => toast('打不开：' + e, 'bad'));
+          return;
+        }
+        if (act === 'checkUpdate') {
+          const out = $('#aboutUpd', root), get = $('#aboutGet', root);
+          if (out) out.textContent = '正在查询 GitHub…';
+          if (get) get.innerHTML = '';
+          releaseUrl = '';
+          API.latestRelease().then((r) => {
+            if (!r || r.none) { if (out) out.textContent = '这个仓库还没有发布版本，没有可比的东西。'; return; }
+            const newer = cmpVer(r.tag, aboutInfo.version) > 0;
+            if (out) {
+              out.textContent = (newer ? '有新版本 ' + r.tag : '已经是最新的 ' + aboutInfo.version) +
+                (r.published ? '（发布 ' + String(r.published).slice(0, 10) + '）' : '');
+            }
+            if (newer) {
+              releaseUrl = r.url || '';
+              if (get) {
+                get.innerHTML = '<button class="btn sm primary" data-act="repoRelease">打开发布页 ' +
+                  escapeHtml(r.tag) + '</button>';
+              }
+            }
+          }).catch((e) => { if (out) out.textContent = '检查失败：' + e; });
+          return;
+        }
         if (act === 'relayout') { API.op({ type: 'placements:reset' }); toast('卡片已重排 // REPACKED'); return; }
         if (act === 'dockReset') { API.op({ type: 'settings:update', patch: { dockPos: 0.5 } }); toast('卡盒已置中 // DOCK CENTERED'); return; }
         if (act === 'clearDone') { API.op({ type: 'todo:clearCompleted' }); toast('已完成任务已清空'); return; }

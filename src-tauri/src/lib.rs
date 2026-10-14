@@ -1460,6 +1460,45 @@ fn receipts_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     Ok(config_dir(app)?.join("receipts"))
 }
 
+/* ---------------------------------------------------------------- about / updates
+   The repository is named here and nowhere else on purpose: the renderer asks "what is the
+   latest release" and "open this page", and both are answered against a compiled-in constant,
+   so the HTTP client and the shell opener cannot be pointed at anything else by the page. */
+pub const REPO: &str = "dooOoozen/pin-to-do-light";
+
+#[tauri::command]
+fn latest_release() -> Result<serde_json::Value, String> {
+    let url = format!("https://api.github.com/repos/{}/releases/latest", REPO);
+    let (status, text) = net::get_json(&url, "")?;
+    /* a repository with no published release answers 404, which is an answer rather than a
+       failure — the panel says so instead of reporting an error */
+    if status == 404 {
+        return Ok(serde_json::json!({ "none": true }));
+    }
+    if !(200..300).contains(&status) {
+        return Err(format!("GitHub 返回 {}", status));
+    }
+    let v: serde_json::Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+    let field = |k: &str| -> String {
+        v.get(k).and_then(|x| x.as_str()).unwrap_or("").to_string()
+    };
+    Ok(serde_json::json!({
+        "tag": field("tag_name"),
+        "url": field("html_url"),
+        "published": field("published_at"),
+    }))
+}
+
+#[tauri::command]
+fn open_repo_page(url: String) -> Result<(), String> {
+    let root = format!("https://github.com/{}", REPO);
+    /* the release page URL came back from GitHub, so it is checked before the shell sees it */
+    if !url.starts_with(&root) {
+        return Err("只能打开本项目的主页".into());
+    }
+    win32::open_with_default_app(&url)
+}
+
 /* ---------------------------------------------------------------- agent transport
    Everything the language model can do is reachable through these four commands, and the
    shape is deliberate: the renderer composes an OpenAI-compatible request and names the
@@ -1827,6 +1866,7 @@ fn boot_note(app: AppHandle, note: String) -> Result<(), String> {
 fn app_info(app: AppHandle) -> serde_json::Value {
     serde_json::json!({
         "version": app.package_info().version.to_string(),
+        "repo": format!("https://github.com/{}", REPO),
         "mode": "tauri",
         "platform": std::env::consts::OS,
         "shape": SHAPE_MODE.load(Ordering::Relaxed) && SHAPE_WORKS.load(Ordering::Relaxed),
@@ -1878,6 +1918,8 @@ pub fn run() {
             save_png,
             open_dir,
             receipt_dir,
+            latest_release,
+            open_repo_page,
             monitors,
             set_deck_monitor,
             ai_chat,

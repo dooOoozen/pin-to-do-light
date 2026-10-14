@@ -41,8 +41,10 @@
       if (!menu) throw new Error('no menu appeared');
       var labels = Array.prototype.slice.call(menu.querySelectorAll('.btn')).map(function (x) { return x.textContent; });
       note('items=' + labels.length + ' :: ' + labels.join(' | '));
-      if (!/^编辑任务/.test(labels[0] || '')) fails.push('FIRST NOT EDIT: ' + labels[0]);
-      if (!/^删除任务/.test(labels[1] || '')) fails.push('SECOND NOT DELETE: ' + labels[1]);
+      /* exact, not a prefix: the report was that the quoted title does not belong in the label */
+      if ((labels[0] || '') !== '编辑任务') fails.push('FIRST NOT EDIT: ' + labels[0]);
+      if ((labels[1] || '') !== '删除任务') fails.push('SECOND NOT DELETE: ' + labels[1]);
+      if (labels.join('').indexOf('「') >= 0) fails.push('TITLE-STILL-QUOTED ' + labels.join(' / '));
       if (!/只删这条时间记录/.test(labels[2] || '')) fails.push('THIRD NOT RECORD: ' + labels[2]);
       /* dismiss the way a real click elsewhere would */
       doc.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 4, clientY: 4 }));

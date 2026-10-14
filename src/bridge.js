@@ -139,6 +139,12 @@
       savePng: (dataUrl, name, dir) => invoke('save_png', { dataUrl: String(dataUrl || ''), name: String(name || 'receipt.png'), dir: String(dir || '') }),
       openDir: (path) => invoke('open_dir', { path: String(path || '') }),
       receiptDir: () => invoke('receipt_dir'),
+      /* The 关于 panel. The repository lives in the host, so the page can neither ask the
+         HTTP client for another URL nor get the shell to open one it invented:
+         openRepoPage re-checks the address against the same constant before the shell sees it. */
+      appInfo: () => invoke('app_info'),
+      latestRelease: () => invoke('latest_release'),
+      openRepoPage: (url) => invoke('open_repo_page', { url: String(url || '') }),
       monitors: () => invoke('monitors'),
       setDeckMonitor: (index) => invoke('set_deck_monitor', { index: Number(index) }),
       /* The agent's whole network surface. `aiChat` takes the request body as a string and
