@@ -1,9 +1,10 @@
 /* Three things the screenshots caught, measured rather than eyeballed.
 
-   P1  The settings sections used to be a two-column grid, and a grid row is as tall as its
-       tallest member — so a short section left a hole under itself as big as the height
-       difference. Now they flow by column, so the only vertical space is the declared one.
-       Measured: the gap between one section's bottom edge and the next one below it.
+   P1  The settings body is one scrolling column with a left nav — after two rounds of CSS
+       column flow (holes, then a 1127px imbalance, then a spanning band that made one stretch
+       single-column and the next two). Measured: one left edge for every section, one nav entry
+       per section with a label, the modal body not competing with the pane for the wheel, and
+       clicking the last entry actually bringing 关于 to the top of the pane.
 
    P2  The assign popover grew a third control and the name field collapsed to nothing,
        because .input was allowed to shrink to zero beside a select with an intrinsic width.
@@ -35,92 +36,69 @@
 
   Promise.resolve()
     .then(function () { document.getElementById('btnSettings').click(); return wait(1000); })
-    /* ---- P1: no holes between sections ---- */
+    /* ---- P1: one scrolling column, with a nav that walks it ---- */
     .then(function () {
-      var grid = q('.settings-grid');
-      check(!!grid, 'no .settings-grid');
-      if (!grid) return null;
-      var panels = Array.prototype.slice.call(grid.querySelectorAll('.panel'));
-      check(panels.length >= 6, 'only ' + panels.length + ' settings sections rendered');
-      /* P1a — the colour lab is ONE band that spans the sheet's columns, with its sections
-         inside it. Broken out into loose sections it balanced to 4px apart and scattered one
-         screen across the whole sheet, which is the other half of what was asked for. */
-      var band = q('.pal-band', grid);
-      check(!!band, 'no .pal-band — the lab is loose sections again');
-      var inBand = band ? Array.prototype.slice.call(band.querySelectorAll('.panel')) : [];
-      var lab = Array.prototype.slice.call(grid.querySelectorAll('#panelStyle, #panelPalette, .pal-panel'));
-      check(lab.length >= 6, 'only ' + lab.length + ' lab sections rendered');
-      check(!!band && lab.every(function (p) { return band.contains(p); }),
-        'lab sections outside the band: ' + lab.filter(function (p) { return !band || !band.contains(p); })
-          .map(function (p) { return ((q('h3', p) || {}).textContent || '?').trim().split(' /')[0]; }).join(','));
-      if (band) {
-        var bw = box(band), gw = box(grid);
-        notes.push('band=' + Math.round(bw.w) + '/' + Math.round(gw.w));
-        check(bw.w >= gw.w - 12, 'the lab band is ' + Math.round(bw.w) + 'px across a ' +
-          Math.round(gw.w) + 'px sheet, so it does not span the columns');
-      }
-      /* The two flows are measured apart: the sheet's columns above and below the band, and the
-         band's own columns inside it. Keyed by x they would mix and the ranges would be nonsense —
-         and a column set that starts *under* the band is not a 1650px hole in the one above it. */
-      function flow(list, label, tol) {
-        var cols = {};
-        list.forEach(function (p) {
-          var b = box(p);
-          /* a section that spans the flow is not a piece of any column in it */
-          var key = p.classList.contains('band-span') ? 'span' : Math.round(b.x);
-          if (key === 'span') return;
-          (cols[key] || (cols[key] = [])).push({ top: b.y, bottom: b.bottom,
-            name: ((q('.panel h3', p) || {}).textContent || '').split(' /')[0] });
-        });
-        var worst = 0, worstAt = '', best = 1e9, stacked = 0;
-        Object.keys(cols).forEach(function (k) {
-          var one = cols[k].sort(function (a, b) { return a.top - b.top; });
-          stacked += Math.max(0, one.length - 1);
-          for (var i = 1; i < one.length; i++) {
-            var gap = one[i].top - one[i - 1].bottom;
-            if (gap > worst) { worst = gap; worstAt = one[i - 1].name + ' → ' + one[i].name; }
-            if (gap < best) best = gap;
-          }
-        });
-        var ends = Object.keys(cols).map(function (k) {
-          var one = cols[k];
-          return Math.round(Math.max.apply(null, one.map(function (x) { return x.bottom; })) -
-            Math.min.apply(null, one.map(function (x) { return x.top; })));
-        }).sort(function (a, b) { return b - a; });
-        var spread = ends.length > 1 ? ends[0] - ends[ends.length - 1] : 0;
-        notes.push(label + ': cols=' + ends.length + ' gap=' + Math.round(best) + '..' +
-          Math.round(worst) + ' heights=' + ends.join('/') + ' spread=' + spread);
-        check(stacked >= 1, label + ': only ' + stacked + ' section pairs sit in a column, so the spacing check is vacuous');
-        check(!list.length || worst <= 14, label + ': a short section leaves a ' +
-          Math.round(worst) + 'px hole: ' + worstAt);
-        check(!list.length || best >= 4, label + ': sections touch with no gap: ' + Math.round(best) + 'px');
-        /* P1b — the columns must also *end* level. Every neighbour gap can be honest while one
-           column still finishes 1127px below the other, which is what a single 1658px-tall
-           section did to the balancer: it cannot move a piece it was never given. The tolerance
-           is not tighter than a quarter because the fill is sequential and sections are not
-           split — with pieces of 553/244/616 the best available split is 797 against 616. What
-           the report was about is a column ending a screen away from its neighbour. */
-        check(ends.length < 2 || spread <= Math.max(120, Math.round(ends[0] * tol)),
-          label + ': the columns end ' + spread + 'px apart: ' + ends.join('/'));
-      }
-      var outer = panels.filter(function (p) { return !band || !band.contains(p); });
-      var above = [], below = [];
-      if (band) {
-        var bandTop = box(band).y;
-        outer.forEach(function (p) { (box(p).y < bandTop ? above : below).push(p); });
-      } else {
-        above = outer;
-      }
-      flow(above, 'sheet-above', 0.25);
-      flow(below, 'sheet-below', 0.25);
-      flow(inBand, 'band', 0.25);
-      /* P1c — and nothing may be painted past its own section. The 关于 row put a
-         44-character URL and two buttons on one line: 430px of content in a 306px column. */
+      var lay = q('.set-layout');
+      check(!!lay, 'no .set-layout — the settings body is back to flowing by column');
+      if (!lay) return null;
+      var nav = q('.set-nav', lay), main = q('.set-main', lay);
+      var body = q('.modal-body');
+      var layb = box(lay), mainb = main ? box(main) : null;
+      notes.push('lay=' + Math.round(layb.h) + ' main=' + (mainb ? Math.round(mainb.h) : '?') +
+        '/' + (main ? main.clientHeight + 'c' + main.scrollHeight : '?') +
+        ' body=' + (body ? body.clientHeight + 'c' + body.scrollHeight + ' cssH=' + getComputedStyle(body).height : '?'));
+      check(!!nav && !!main, 'the nav or the scrolling pane is missing');
+      var panels = Array.prototype.slice.call(main.querySelectorAll(':scope > .panel'));
+      check(panels.length >= 10, 'only ' + panels.length + ' settings sections rendered');
+      var xs = {};
+      panels.forEach(function (p) { xs[Math.round(box(p).x)] = 1; });
+      notes.push('panels=' + panels.length + ' distinctLeftEdges=' + Object.keys(xs).length);
+      check(Object.keys(xs).length === 1, 'the settings column is not single: ' + Object.keys(xs).length + ' left edges');
+      var btns = Array.prototype.slice.call(nav.querySelectorAll('.set-navbtn'));
+      check(btns.length === panels.length, 'nav has ' + btns.length + ' entries for ' + panels.length + ' sections');
+      check(btns.every(function (b) { return (b.textContent || '').trim().length > 1; }), 'a nav entry has no label');
+      /* the body itself must not scroll as well, or two bars fight over the same wheel */
+      if (body) check(body.scrollHeight <= body.clientHeight + 2,
+        'the modal body scrolls too: ' + body.scrollHeight + '>' + body.clientHeight);
+      /* a middle section can reach the top of the pane, so that is what its entry has to do */
+      btns[1].click();
+      return wait(1000);
+    })
+    .then(function () {
+      var main = q('.set-main'), nav = q('.set-nav');
+      var panels = Array.prototype.slice.call(main.querySelectorAll(':scope > .panel'));
+      var d2 = Math.round(box(panels[1]).y - box(main).y);
+      var on2 = Array.prototype.slice.call(main.parentElement.querySelectorAll('.set-navbtn.on'));
+      notes.push('toSecond=' + d2 + ' active=' + ((on2[0] || {}).textContent || '').trim());
+      check(d2 >= -2 && d2 <= 6, 'the second entry left its section ' + d2 + 'px from the top');
+      check(on2.length === 1 && (on2[0].textContent || '').indexOf('外观') >= 0,
+        'the entry that was clicked is not the one marked active: ' + ((on2[0] || {}).textContent || 'none'));
+      Array.prototype.slice.call(nav.querySelectorAll('.set-navbtn'))[panels.length - 1].click();
+      return wait(1600);
+    })
+    .then(function () {
+      var main = q('.set-main'), panels = Array.prototype.slice.call(main.querySelectorAll(':scope > .panel'));
+      var last = panels[panels.length - 1];
+      var mb = box(main), lb = box(last);
+      var atEnd = main.scrollTop >= main.scrollHeight - main.clientHeight - 4;
+      var d = Math.round(lb.y - mb.y);
+      /* the last sections are shorter than the pane and there is no scroll left under them, so
+         "came to the top" is the wrong claim — what has to be true is that the pane went as far
+         as it can and the section is now inside it */
+      notes.push('jump=' + d + ' atEnd=' + atEnd + ' lastVisible=' + (lb.bottom <= mb.bottom + 2));
+      check(atEnd, 'the pane did not reach the bottom: scrollTop=' + Math.round(main.scrollTop));
+      check(lb.bottom <= mb.bottom + 2 && lb.y >= mb.y - 2,
+        'the last section is not in view after its nav entry: ' + d + '..' + Math.round(lb.bottom - mb.y));
+      var on = main.parentElement.querySelectorAll('.set-navbtn.on');
+      check(on.length === 1, on.length + ' nav entries are marked active');
+      check(on[0] && (on[0].textContent || '').indexOf('关于') >= 0, 'the active entry is not 关于: ' + (on[0] || {}).textContent);
+      /* and nothing may be painted past its own section — the 关于 row once put a
+         44-character URL and two buttons on one line and drew them outside the panel */
       panels.forEach(function (p) {
         var h3 = q('.panel h3', p);
         var name = ((h3 && h3.textContent) || '?').trim().slice(0, 12);
         check(p.scrollWidth <= p.clientWidth + 1,
-          'section overflows its column: ' + name + ' ' + p.scrollWidth + '>' + p.clientWidth);
+          'section overflows the column: ' + name + ' ' + p.scrollWidth + '>' + p.clientWidth);
         var past = Array.prototype.slice.call(p.querySelectorAll('*')).filter(function (n) {
           var r = n.getBoundingClientRect(), pr = p.getBoundingClientRect();
           return r.width > 0 && r.right > pr.right + 1;
@@ -130,6 +108,7 @@
       document.querySelector('.modal-backdrop, [data-act="cancel"]').click();
       return wait(600);
     })
+
     /* ---- P2: the assign popover ---- */
     .then(function () {
       check(navTo('时间轴'), 'no 时间轴 button');

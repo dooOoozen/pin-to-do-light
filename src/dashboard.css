@@ -383,28 +383,40 @@ body.side-dragging { cursor: col-resize; }
 .empty .big { font-size: 15px; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; }
 .empty .small { font-size: 10.5px; margin-top: 7px; letter-spacing: .1em; color: var(--ink-2); }
 
-/* ---------------------------------------------------------------- settings */
-
-/* The settings sections fill by column rather than by row. A two-column grid sizes each row
-   to its tallest member, so a short section like 小票机 leaves a hole under itself as big as
-   the height difference — which is what "间隙还是很大" was. Removing the gap only made the
-   hole look like a mistake rather than a layout. Column flow has no rows to size, so the
-   spacing is one honest number, and the count still follows the width. */
-.settings-grid {
-  column-width: 300px; column-gap: 8px;
+/* ---------------------------------------------------------------- settings
+   Left nav, right single column. The sections used to flow down two CSS columns, which
+   needed the columns to end level: that meant splitting the colour lab into six sections
+   (scattered one screen across both columns), then a spanning band (one column of one, a
+   column pair of the other). All of it was the balancer's problem, and none of it was the
+   user's. A single scrolling column with a nav has nothing to balance — the nav is built
+   from the sections that rendered, so it cannot drift out of step with them. */
+/* `height: 100%` does not resolve here: .modal-panel's own height comes from its max-height
+   clamp, so the body's is indefinite for percentage purposes and the layout grew to its content
+   — which left the wheel with the body and the nav with nothing to scroll. Making the body a
+   flex parent hands the layout a resolved height instead of asking it to guess one. */
+.modal-body:has(> .set-layout) { overflow: hidden; display: flex; }
+.set-layout { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; }
+.set-nav {
+  flex: none; width: 106px; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 1px; padding-right: 2px;
+  scrollbar-width: none; -ms-overflow-style: none;
 }
-.settings-grid .panel { break-inside: avoid; margin: 0 0 8px; }
-/* The colour lab spans the settings columns as one band, so its six sections sit together
-   instead of being scattered one per column, and inside the band they flow by column the same
-   way — a grid would size each row to its tallest member and put the holes back. */
-.pal-band {
-  column-span: all; break-inside: avoid; margin: 0 0 8px;
-  column-width: 300px; column-gap: 8px;
+.set-nav::-webkit-scrollbar { width: 0; height: 0; }
+.set-navbtn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 4px 6px; border: 1px solid transparent; background: none; cursor: pointer;
+  font-size: 10.5px; line-height: 1.25; color: var(--ink-2); text-align: left;
 }
-.pal-band .panel { break-inside: avoid; margin: 0 0 8px; }
-/* 外观风格 across the band rather than down one column of it: ten material cards in a 306px
-   column is 940px of height, in 664px it is a third of that */
-.pal-band > .band-span { column-span: all; }
+.set-navbtn i { font-style: normal; font-size: 7.5px; letter-spacing: .14em; color: var(--ink-3); }
+.set-navbtn:hover { color: var(--ink); border-color: var(--rule); }
+.set-navbtn.on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.set-navbtn.on i { color: var(--paper-dim); }
+.set-main {
+  position: relative; flex: 1 1 auto; min-width: 0; overflow-y: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.set-main::-webkit-scrollbar { width: 0; height: 0; }
+.set-main .panel { margin: 0 0 8px; }
 .panel { padding: 9px 10px; }
 .panel h3 { font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; margin-bottom: 7px; padding-bottom: 5px; border-bottom: 1px solid var(--edge); }
 .set-row {

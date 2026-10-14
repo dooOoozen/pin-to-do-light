@@ -3677,7 +3677,9 @@
   function openSettings() {
     const st = S.state.settings;
     const body =
-      '<div class="settings-grid">' +
+      '<div class="set-layout">' +
+      '  <nav class="set-nav" id="setNav"></nav>' +
+      '  <div class="set-main" id="setMain">' +
       '  <div class="panel hud-thin" id="panelInterface">' +
       '    <h3>界面显示 / INTERFACE</h3>' +
       '    <div class="range-row"><span class="tiny faint">字体大小</span><input type="range" id="rUi" min="0.8" max="2" step="0.05" value="' + st.uiScale + '" /><span class="val" id="vUi">' + Number(st.uiScale).toFixed(2) + '\u00D7</span></div>' +
@@ -3699,6 +3701,29 @@
       '    <div class="divider"></div>' +
       '    <div class="set-row"><div><div class="set-label">卡盒位置</div><div class="set-hint">解锁后可直接拖动桌面卡盒，也可点右侧置中</div></div><button class="btn sm" data-act="dockReset">置中</button></div>' +
       '  </div>' +
+      '  <div class="panel hud-thin" id="panelStyle">' +
+      '    <h3>外观风格 / STYLE <span class="tiny faint" id="styleNow"></span></h3>' +
+      '    <div class="style-grid" id="styleRows"></div>' +
+      '    <div id="styleHour"></div>' +
+      '    <div class="set-hint" style="margin-top:7px">风格决定材质（圆角、铬条、阴影、字体），昼夜只决定颜色。' +
+      '两者互不干涉，随时可切；调色台里钉住的颜色仍按昼/夜分别保存。</div>' +
+      '  </div>' +
+      '  <div class="panel hud-thin" id="panelPalette">' +
+      '    <h3>调色台 / COLOUR LAB <span class="tiny faint" id="palTheme"></span></h3>' +
+      '    <div class="row" style="margin-bottom:6px">' +
+      '      <span class="tiny faint">正在调整</span><span class="spacer"></span>' +
+      '      <button class="btn sm" data-act="palDay">白昼</button>' +
+      '      <button class="btn sm" data-act="palNight">夜间</button>' +
+      '      <button class="btn sm danger" data-act="palReset">重置本主题</button>' +
+      '    </div>' +
+      '    <div class="set-hint">改动即时生效并保存，只作用于当前材质与当前昼夜。'
+      + '每一行下面那行小字写明这个颜色画在界面哪里。「线条」那一组是取色器加浓度滑条：'
+      + '取色器定它是什么颜色，滑条定它有多实；没动过的线仍然跟着「正文」色，调正文即可。</div>' +
+      '  </div>' +
+      (window.NeonTheme ? NeonTheme.TOKENS.map(function (grp, i) {
+        return '  <div class="panel hud-thin pal-panel"><h3>' + escapeHtml(grp.group) + '</h3>' +
+          '<div class="pal-rows" data-pal="' + i + '"></div></div>';
+      }).join('') : '') +
       '  <div class="panel hud-thin" id="panelReceipt">' +
       '    <h3>小票机 / RECEIPT <span class="tiny faint" id="rcpNow"></span></h3>' +
       '    <div id="rcpRows"></div>' +
@@ -3729,38 +3754,6 @@
       '    <label class="label">API 密钥 / KEY</label>' +
       '    <div class="row"><span class="set-hint" id="aiKeyHint">—</span><input class="input" id="aiKey" type="password" placeholder="粘贴密钥" autocomplete="off" /><button class="btn sm" id="aiKeyUse">保存</button><button class="btn sm ghost" id="aiKeyDel">清除</button></div>' +
       '    <div class="set-hint" style="margin-top:7px">密钥只写进 Windows 凭据管理器：不进数据文件、不随「导出」离开这台机器，请求由宿主进程发出，页面读不到它。开启后每次发送的是你输入的那句话加上当前任务列表；关闭后不发任何请求。</div>' +
-      '  </div>' +
-      /* The whole lab is one band that spans the settings columns, and the token groups are
-         sections inside it. Splitting the groups into loose sections balanced the two columns to
-         4px apart and scattered one screen across both of them, which is the other thing the user
-         will not accept; `column-span: all` gets both — the lab stays in one place, and the
-         sections are still small enough for the columns above and below it to end level. */
-      '  <div class="pal-band">' +
-      /* 外观风格 travels with the lab and spans the band: as a 940px loose section it was the
-         thing forcing the four sections above it 632px apart. */
-      '    <div class="panel hud-thin band-span" id="panelStyle">' +
-      '      <h3>外观风格 / STYLE <span class="tiny faint" id="styleNow"></span></h3>' +
-      '      <div class="style-grid" id="styleRows"></div>' +
-      '      <div id="styleHour"></div>' +
-      '      <div class="set-hint" style="margin-top:7px">风格决定材质（圆角、铬条、阴影、字体），昼夜只决定颜色。' +
-      '两者互不干涉，随时可切；调色台里钉住的颜色仍按昼/夜分别保存。</div>' +
-      '    </div>' +
-      '    <div class="panel hud-thin" id="panelPalette">' +
-      '      <h3>调色台 / COLOUR LAB <span class="tiny faint" id="palTheme"></span></h3>' +
-      '      <div class="row" style="margin-bottom:6px">' +
-      '        <span class="tiny faint">正在调整</span><span class="spacer"></span>' +
-      '        <button class="btn sm" data-act="palDay">白昼</button>' +
-      '        <button class="btn sm" data-act="palNight">夜间</button>' +
-      '        <button class="btn sm danger" data-act="palReset">重置本主题</button>' +
-      '      </div>' +
-      '      <div class="set-hint">改动即时生效并保存，只作用于当前材质与当前昼夜。'
-      + '每一行下面那行小字写明这个颜色画在界面哪里。「线条」那一组是取色器加浓度滑条：'
-      + '取色器定它是什么颜色，滑条定它有多实；没动过的线仍然跟着「正文」色，调正文即可。</div>' +
-      '    </div>' +
-      (window.NeonTheme ? NeonTheme.TOKENS.map(function (grp, i) {
-        return '    <div class="panel hud-thin pal-panel"><h3>' + escapeHtml(grp.group) + '</h3>' +
-          '<div class="pal-rows" data-pal="' + i + '"></div></div>';
-      }).join('') : '') +
       '  </div>' +
       '  <div class="panel hud-thin" id="panelToggles">' +
       '    <h3>行为 · 提醒 · 系统</h3>' +
@@ -3832,12 +3825,51 @@
       '    <div class="set-hint faint" id="aboutRepo" style="word-break:break-all"></div>' +
       '    <div class="set-hint faint" id="aboutData" style="margin-top:2px;word-break:break-all"></div>' +
       '  </div>' +
+      '  </div>' +
       '</div>';
     const foot =
       '<div class="spacer"></div>' +
       '<button class="btn primary" data-act="done">完成 CLOSE</button>';
 
     openModal(modalShell('系统设置', 'SETTINGS // CONTROL DECK', body, foot, true), async (root) => {
+      /* The nav is read off the sections that actually rendered — one entry per panel, its
+         heading split into the Chinese name and the English word — so adding a section can
+         never leave the nav one item short, which is what a hand-written list would do. */
+      const setMain = $('#setMain', root), setNav = $('#setNav', root);
+      const secs = setMain ? Array.prototype.slice.call(setMain.querySelectorAll(':scope > .panel')) : [];
+      if (setNav && secs.length) {
+        setNav.innerHTML = secs.map(function (p, i) {
+          const h = p.querySelector('h3');
+          const t = ((h && h.textContent) || '').trim();
+          const zh = t.split(' /')[0].trim();
+          const en = ((t.split('/')[1] || '').split('//')[0] || '').trim().split(' ')[0];
+          return '<button class="set-navbtn" type="button" data-sec="' + i + '">' +
+            escapeHtml(zh) + (en ? '<i>' + escapeHtml(en) + '</i>' : '') + '</button>';
+        }).join('');
+        const mark = (i) => {
+          Array.prototype.forEach.call(setNav.children, function (b) {
+            b.classList.toggle('on', Number(b.dataset.sec) === i);
+          });
+        };
+        setNav.addEventListener('click', (ev) => {
+          const b = ev.target.closest('.set-navbtn');
+          if (!b) return;
+          const p = secs[Number(b.dataset.sec)];
+          setMain.scrollTo({ top: p.offsetTop, behavior: 'smooth' });
+          mark(Number(b.dataset.sec));
+        });
+        /* the highlight follows the scroll, so the nav says where you are, not where you last
+           clicked. The last sections can never reach the top of the pane — there is not enough
+           scroll left under them — so at the bottom the pane is pinned to the last one. */
+        setMain.addEventListener('scroll', () => {
+          const top = setMain.scrollTop + 32;
+          let cur = 0;
+          secs.forEach(function (p, i) { if (p.offsetTop <= top) cur = i; });
+          if (setMain.scrollTop + setMain.clientHeight >= setMain.scrollHeight - 4) cur = secs.length - 1;
+          mark(cur);
+        });
+        mark(0);
+      }
 
       /* 关于: which build this is, and what GitHub says the latest one is. The release page URL
          is kept here rather than rebuilt from the version, so the button opens exactly the page

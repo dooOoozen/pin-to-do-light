@@ -31,7 +31,7 @@
   /* each token group is its own settings section now, so a group's rows live in the panel whose
      heading names it */
   function rowsOf(groupText) {
-    var panels = Array.prototype.slice.call(doc.querySelectorAll('.settings-grid .pal-panel'));
+    var panels = Array.prototype.slice.call(doc.querySelectorAll('.set-main .pal-panel'));
     var p = panels.filter(function (n) {
       var h = n.querySelector('h3');
       return h && (h.textContent || '').indexOf(groupText) >= 0;
